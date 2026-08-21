@@ -82,8 +82,8 @@ document.addEventListener("DOMContentLoaded", function () {
         password.focus();
         return;
       }
-
-      alert("LonerPay account action received. Payment services will be connected in the next stage.");
+window.location.href = "dashboard.html";
+      
     });
   });
 });
