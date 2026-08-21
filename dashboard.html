@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LonerPay Dashboard</title>
+
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #f5f7fb;
+      color: #111827;
+    }
+
+    .header {
+      background: #111827;
+      color: white;
+      padding: 20px;
+    }
+
+    .header h1 {
+      margin: 0 0 5px;
+    }
+
+    .container {
+      padding: 20px;
+      max-width: 700px;
+      margin: auto;
+    }
+
+    .balance {
+      background: #111827;
+      color: white;
+      padding: 25px;
+      border-radius: 18px;
+      margin-bottom: 20px;
+    }
+
+    .balance small {
+      opacity: 0.7;
+    }
+
+    .balance h2 {
+      font-size: 32px;
+      margin: 10px 0 0;
+    }
+
+    .services {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 15px;
+    }
+
+    .service {
+      background: white;
+      padding: 20px;
+      border-radius: 15px;
+      text-align: center;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      cursor: pointer;
+    }
+
+    .service div {
+      font-size: 30px;
+      margin-bottom: 8px;
+    }
+
+    .service h3 {
+      margin: 5px 0;
+    }
+
+    .service p {
+      margin: 0;
+      color: #6b7280;
+      font-size: 13px;
+    }
+
+    .transactions {
+      background: white;
+      margin-top: 20px;
+      padding: 20px;
+      border-radius: 15px;
+    }
+
+    .transaction {
+      padding: 15px 0;
+      border-bottom: 1px solid #eee;
+    }
+
+    .transaction:last-child {
+      border-bottom: none;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="header">
+    <h1>💳 LonerPay</h1>
+    <div>One app. Everyday payments.</div>
+  </div>
+
+  <div class="container">
+
+    <div class="balance">
+      <small>Wallet Balance</small>
+      <h2>₦0.00</h2>
+    </div>
+
+    <h2>Services</h2>
+
+    <div class="services">
+
+      <div class="service" onclick="alert('Airtime service coming next')">
+        <div>📱</div>
+        <h3>Airtime</h3>
+        <p>Buy airtime</p>
+      </div>
+
+      <div class="service" onclick="alert('Data service coming next')">
+        <div>📶</div>
+        <h3>Data</h3>
+        <p>Buy data</p>
+      </div>
+
+      <div class="service" onclick="alert('Electricity service coming next')">
+        <div>⚡</div>
+        <h3>Electricity</h3>
+        <p>Pay electricity</p>
+      </div>
+
+      <div class="service" onclick="alert('TV service coming next')">
+        <div>📺</div>
+        <h3>TV</h3>
+        <p>Pay TV subscription</p>
+      </div>
+
+    </div>
+
+    <div class="transactions">
+      <h2>Recent Transactions</h2>
+
+      <div class="transaction">
+        No transactions yet.
+      </div>
+
+    </div>
+
+  </div>
+
+</body>
+</html>
