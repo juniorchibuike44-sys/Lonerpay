@@ -112,11 +112,32 @@
 
     <div class="services">
 
-      <div class="service" onclick="alert('Airtime service coming next')">
-        <div>📱</div>
-        <h3>Airtime</h3>
-        <p>Buy airtime</p>
-      </div>
+    <div class="service" onclick="
+  let phone = prompt('Enter phone number');
+  if (!phone) return;
+
+  let network = prompt('Enter network: MTN, Airtel, Glo or 9mobile');
+  if (!network) return;
+
+  let amount = prompt('Enter airtime amount (₦)');
+  if (!amount) return;
+
+  alert(
+    'Airtime Order\\n\\n' +
+    'Phone: ' + phone + '\\n' +
+    'Network: ' + network + '\\n' +
+    'Amount: ₦' + amount + '\\n\\n' +
+    'Ready for payment.'
+  );
+">
+  <div>📱</div>
+  <h3>Airtime</h3>
+  <p>Buy airtime</p>
+</div>
+        
+        
+        
+    
 
       <div class="service" onclick="alert('Data service coming next')">
         <div>📶</div>
