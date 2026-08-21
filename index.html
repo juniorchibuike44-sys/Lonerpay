@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LonerPay — One app. Everyday payments.</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="nav">
+    <a class="brand" href="#"><span class="logo">L</span> Loner<span>Pay</span></a>
+    <nav>
+      <a href="#services">Services</a>
+      <a href="#how">How it works</a>
+      <a href="#security">Security</a>
+    </nav>
+    <button class="outline" onclick="showModal('login')">Log in</button>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="hero-copy">
+        <p class="eyebrow">EVERYDAY PAYMENTS, SIMPLIFIED</p>
+        <h1>Pay bills.<br><span>Live easier.</span></h1>
+        <p class="lead">Buy airtime and data, pay electricity and TV bills, and manage your wallet from one simple place.</p>
+        <div class="actions">
+          <button class="primary" onclick="showModal('signup')">Get started</button>
+          <a class="secondary" href="#services">Explore services →</a>
+        </div>
+      </div>
+      <div class="phone">
+        <div class="phone-top">LonerPay <span>•••</span></div>
+        <p class="small">Available balance</p>
+        <h2>₦125,400.00</h2>
+        <div class="quick">
+          <button onclick="alert('Airtime service selected')">📱<b>Airtime</b></button>
+          <button onclick="alert('Data service selected')">📶<b>Data</b></button>
+          <button onclick="alert('Electricity selected')">⚡<b>Electricity</b></button>
+          <button onclick="alert('TV service selected')">📺<b>TV</b></button>
+        </div>
+        <div class="transaction"><span>MTN Data</span><b>-₦5,000</b></div>
+        <div class="transaction"><span>Wallet funding</span><b class="green">+₦20,000</b></div>
+      </div>
+    </section>
+
+    <section id="services" class="section">
+      <p class="eyebrow">SERVICES</p>
+      <h2>Everything you need, in one app.</h2>
+      <div class="cards">
+        <article><div class="icon">📱</div><h3>Airtime</h3><p>Recharge your line in seconds.</p></article>
+        <article><div class="icon">📶</div><h3>Data</h3><p>Buy data bundles whenever you need them.</p></article>
+        <article><div class="icon">⚡</div><h3>Electricity</h3><p>Pay your electricity bill without the stress.</p></article>
+        <article><div class="icon">📺</div><h3>TV</h3><p>Keep your entertainment subscriptions active.</p></article>
+      </div>
+    </section>
+
+    <section id="how" class="section light">
+      <p class="eyebrow">HOW IT WORKS</p>
+      <h2>Simple from start to finish.</h2>
+      <div class="steps">
+        <div><b>01</b><h3>Create your account</h3><p>Sign up with your phone number and secure your account.</p></div>
+        <div><b>02</b><h3>Fund your wallet</h3><p>Add money securely so your everyday payments are ready.</p></div>
+        <div><b>03</b><h3>Pay in seconds</h3><p>Choose a service, confirm your details, and you're done.</p></div>
+      </div>
+    </section>
+
+    <section id="security" class="security">
+      <div><p class="eyebrow">BUILT FOR TRUST</p><h2>Your money deserves simplicity and security.</h2><p>Clear transaction records, receipts, notifications and secure account access are core parts of LonerPay.</p></div>
+      <div class="security-box">🔒 <b>Secure by design</b><br><span>Payments, wallet activity and account access are designed with security in mind.</span></div>
+    </section>
+  </main>
+
+  <footer><div class="brand"><span class="logo">L</span> Loner<span>Pay</span></div><p>One app. Everyday payments.</p><small>© 2026 LonerPay. All rights reserved.</small></footer>
+
+  <div id="modal" class="modal" onclick="if(event.target===this)closeModal()">
+    <div class="modal-card">
+      <button class="close" onclick="closeModal()">×</button>
+      <h2 id="modalTitle">Welcome to LonerPay</h2>
+      <p id="modalText">This demo shows the customer entry point. Production authentication and payment APIs will be connected during backend development.</p>
+      <input placeholder="Phone number">
+      <input type="password" placeholder="Password">
+      <button class="primary full">Continue</button>
+    </div>
+  </div>
+  <script src="script.js"></script>
+</body>
+</html>
