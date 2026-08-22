@@ -229,7 +229,7 @@
   balanceElement.textContent =
     "₦" + newBalance.toFixed(2);
 
-  alert(type + " payment successful!");
+  
 
   return true;
 } function recordTransaction(type, amount, details) {
@@ -252,26 +252,208 @@
 
   transactionsBox.appendChild(transaction);
 } 
+
 function buyAirtime() {
-  const phone = prompt("Enter phone number:");
-  if (!phone) return;
+  const overlay = document.createElement("div");
 
-  const network = prompt("Enter network: MTN, Airtel, Glo or 9mobile:");
-  if (!network) return;
+  overlay.style.cssText = `
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.65);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    padding: 20px;
+  `;
 
-  const amount = prompt("Enter airtime amount (₦):");
-  if (!amount) return;
+  overlay.innerHTML = `
+    <div style="
+      background:white;
+      width:100%;
+      max-width:420px;
+      border-radius:20px;
+      padding:24px;
+      box-sizing:border-box;
+      font-family:Arial,sans-serif;
+    ">
+      <h2 style="margin-top:0;">Buy Airtime</h2>
 
-  if (!processPayment(
-  "Airtime",
-  amount,
-  "Phone: " + phone + "\nNetwork: " + network
-)) return; 
-   recordTransaction(
-  "Airtime",
-  amount,
-  "Phone: " + phone + " | Network: " + network
-);  
+      <label>Phone Number</label>
+      <input id="airtimePhone" type="tel"
+        placeholder="08012345678"
+        style="width:100%;padding:14px;margin:8px 0 16px;
+        box-sizing:border-box;border:1px solid #ccc;border-radius:10px;">
+
+      <label>Network</label>
+      <select id="airtimeNetwork"
+        style="width:100%;padding:14px;margin:8px 0 16px;
+        box-sizing:border-box;border:1px solid #ccc;border-radius:10px;">
+        <option value="">Select network</option>
+        <option>MTN</option>
+        <option>Airtel</option>
+        <option>Glo</option>
+        <option>9mobile</option>
+      </select>
+
+      <label>Amount (₦)</label>
+      <input id="airtimeAmount" type="number"
+        placeholder="1000"
+        min="1"
+        style="width:100%;padding:14px;margin:8px 0 20px;
+        box-sizing:border-box;border:1px solid #ccc;border-radius:10px;">
+
+      <button id="airtimeContinue"
+        style="
+          width:100%;
+          padding:15px;
+          border:0;
+          border-radius:12px;
+          background:#111827;
+          color:white;
+          font-size:16px;
+          font-weight:bold;
+        ">
+        Continue
+      </button>
+
+      <button id="airtimeCancel"
+        style="
+          width:100%;
+          padding:14px;
+          margin-top:10px;
+          border:0;
+          background:transparent;
+          font-size:15px;
+        ">
+        Cancel
+      </button>
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
+
+  overlay.querySelector("#airtimeCancel").onclick = () => {
+    overlay.remove();
+  };
+
+  overlay.querySelector("#airtimeContinue").onclick = () => {
+    const phone = overlay.querySelector("#airtimePhone").value.trim();
+    const network = overlay.querySelector("#airtimeNetwork").value;
+    const amount = Number(
+      overlay.querySelector("#airtimeAmount").value
+    );
+
+    if (!phone || !network || !amount || amount <= 0) {
+      alert("Please enter all airtime details.");
+      return;
+    }
+
+    overlay.innerHTML = `
+      <div style="
+        background:white;
+        width:100%;
+        max-width:420px;
+        border-radius:20px;
+        padding:24px;
+        box-sizing:border-box;
+        font-family:Arial,sans-serif;
+      ">
+        <h2 style="margin-top:0;">Review Payment</h2>
+
+        <p><strong>Service</strong><br>Airtime</p>
+        <p><strong>Network</strong><br>${network}</p>
+        <p><strong>Phone Number</strong><br>${phone}</p>
+        <p><strong>Amount</strong><br>₦${amount.toFixed(2)}</p>
+
+        <button id="confirmAirtime"
+          style="
+            width:100%;
+            padding:15px;
+            border:0;
+            border-radius:12px;
+            background:#111827;
+            color:white;
+            font-size:16px;
+            font-weight:bold;
+          ">
+          Confirm Payment
+        </button>
+
+        <button id="backAirtime"
+          style="
+            width:100%;
+            padding:14px;
+            margin-top:10px;
+            border:0;
+            background:transparent;
+            font-size:15px;
+          ">
+          Back
+        </button>
+      </div>
+    `;
+
+    overlay.querySelector("#backAirtime").onclick = () => {
+      overlay.remove();
+      buyAirtime();
+    };
+
+    overlay.querySelector("#confirmAirtime").onclick = () => {
+      const details =
+        "Phone: " + phone + " | Network: " + network;
+
+      if (!processPayment("Airtime", amount, details)) {
+        overlay.remove();
+        return;
+      }
+
+      recordTransaction("Airtime", amount, details);
+
+      overlay.innerHTML = `
+        <div style="
+          background:white;
+          width:100%;
+          max-width:420px;
+          border-radius:20px;
+          padding:30px 24px;
+          box-sizing:border-box;
+          text-align:center;
+          font-family:Arial,sans-serif;
+        ">
+          <div style="font-size:55px;">✅</div>
+
+          <h2>Payment Successful</h2>
+
+          <p>Your airtime payment was completed successfully.</p>
+
+          <p><strong>₦${amount.toFixed(2)}</strong></p>
+
+          <p>${network} • ${phone}</p>
+
+          <button id="airtimeDone"
+            style="
+              width:100%;
+              padding:15px;
+              border:0;
+              border-radius:12px;
+              background:#111827;
+              color:white;
+              font-size:16px;
+              font-weight:bold;
+              margin-top:15px;
+            ">
+            Done
+          </button>
+        </div>
+      `;
+
+      overlay.querySelector("#airtimeDone").onclick = () => {
+        overlay.remove();
+      };
+    };
+  };
+} 
   
     
     
