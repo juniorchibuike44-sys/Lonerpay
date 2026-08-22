@@ -200,7 +200,26 @@
   </div>
 
   );
-<script>
+<script>function recordTransaction(type, amount, details) {
+  const transactionsBox = document.querySelector(".transactions");
+  if (!transactionsBox) return;
+
+  const empty = transactionsBox.querySelector(".transaction");
+
+  if (empty && empty.textContent.includes("No transactions yet")) {
+    empty.remove();
+  }
+
+  const transaction = document.createElement("div");
+  transaction.className = "transaction";
+
+  transaction.innerHTML =
+    "<strong>" + type + "</strong><br>" +
+    "₦" + Number(amount).toFixed(2) + "<br>" +
+    "<small>" + details + "</small>";
+
+  transactionsBox.appendChild(transaction);
+} 
 function buyAirtime() {
   const phone = prompt("Enter phone number:");
   if (!phone) return;
