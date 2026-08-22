@@ -267,7 +267,11 @@ function buyAirtime() {
   amount,
   "Phone: " + phone + "\nNetwork: " + network
 )) return; 
-    
+   recordTransaction(
+  "Airtime",
+  amount,
+  "Phone: " + phone + " | Network: " + network
+);  
   
     
     
@@ -291,19 +295,33 @@ function buyData() {
   const amount = prompt("Enter data amount:");
   if (!amount) return;
 
-  alert(
-    "Data Order" +
-    String.fromCharCode(10, 10) +
-    "Phone: " + phone +
-    String.fromCharCode(10) +
-    "Network: " + network +
-    String.fromCharCode(10) +
-    "Plan: " + plan +
-    String.fromCharCode(10) +
-    "Amount: ₦" + amount +
-    String.fromCharCode(10, 10) +
-    "Ready for payment."
-  );
+  if (!processPayment(
+  "Data",
+  amount,
+  "Phone: " + phone +
+  " | Network: " + network +
+  " | Plan: " + plan
+)) return;
+
+recordTransaction(
+  "Data",
+  amount,
+  "Phone: " + phone +
+  " | Network: " + network +
+  " | Plan: " + plan
+);
+  
+    
+    
+    
+    
+    
+    
+    
+    
+    
+  
+  
 }
 function buyElectricity() {
   const meterNumber = prompt("Enter meter number:");
@@ -315,13 +333,25 @@ function buyElectricity() {
   const amount = prompt("Enter electricity amount:");
   if (!amount) return;
 
-  alert(
-    "Electricity Order\n\n" +
-    "Meter: " + meterNumber + "\n" +
-    "Type: " + meterType + "\n" +
-    "Amount: ₦" + amount + "\n\n" +
-    "Ready for payment."
-  );
+  if (!processPayment(
+  "Electricity",
+  amount,
+  "Meter: " + meterNumber +
+  " | Type: " + meterType
+)) return;
+
+recordTransaction(
+  "Electricity",
+  amount,
+  "Meter: " + meterNumber +
+  " | Type: " + meterType
+); 
+  
+    
+  
+    
+  
+  
 }function buyTV() {
   const provider = prompt("Enter TV provider: DStv, GOtv, or Startimes");
   if (!provider) return;
@@ -335,14 +365,28 @@ function buyElectricity() {
   const amount = prompt("Enter subscription amount:");
   if (!amount) return;
 
-  alert(
-    "TV Subscription Order\n\n" +
-    "Provider: " + provider + "\n" +
-    "IUC/Smartcard: " + smartcard + "\n" +
-    "Plan: " + plan + "\n" +
-    "Amount: ₦" + amount + "\n\n" +
-    "Ready for payment."
-  );
+  if (!processPayment(
+  "TV",
+  amount,
+  "Provider: " + provider +
+  " | IUC/Smartcard: " + smartcard +
+  " | Plan: " + plan
+)) return;
+
+recordTransaction(
+  "TV",
+  amount,
+  "Provider: " + provider +
+  " | IUC/Smartcard: " + smartcard +
+  " | Plan: " + plan
+); 
+  
+    
+    
+    
+    
+    
+  
 }// LonerPay demo wallet
 let walletBalance = Number(localStorage.getItem("lonerpay_balance") || 0);
 
