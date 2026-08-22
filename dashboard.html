@@ -211,17 +211,21 @@ function buyAirtime() {
   const amount = prompt("Enter airtime amount (₦):");
   if (!amount) return;
 
-  alert(
-    "Airtime Order" +
-    String.fromCharCode(10, 10) +
-    "Phone: " + phone +
-    String.fromCharCode(10) +
-    "Network: " + network +
-    String.fromCharCode(10) +
-    "Amount: ₦" + amount +
-    String.fromCharCode(10, 10) +
-    "Ready for payment."
-  );
+  if (!processPayment(
+  "Airtime",
+  amount,
+  "Phone: " + phone + "\nNetwork: " + network
+)) return; 
+    
+  
+    
+    
+    
+    
+    
+    
+  
+
 }
 function buyData() {
   const phone = prompt("Enter phone number:");
@@ -307,7 +311,55 @@ function addDemoFunds() {
   updateWalletDisplay();
 
   alert("Wallet funded successfully!\n\nBalance: ₦" + walletBalance.toFixed(2));
-}
+}function processPayment(service, amount, details) {
+  amount = Number(amount);
+
+  if (!Number.isFinite(amount) || amount <= 0) {
+    alert("Invalid payment amount.");
+    return false;
+  }
+
+  if (walletBalance < amount) {
+    alert(
+      "Insufficient wallet balance.\n\n" +
+      "Required: ₦" + amount.toFixed(2) + "\n" +
+      "Available: ₦" + walletBalance.toFixed(2)
+    );
+    return false;
+  }
+
+  walletBalance -= amount;
+  localStorage.setItem("lonerpay_balance", walletBalance);
+  updateWalletDisplay();
+
+  const transactionsBox = document.querySelector(".transactions");
+
+  if (transactionsBox) {
+    const empty = transactionsBox.querySelector(".transaction");
+
+    if (empty && empty.textContent.includes("No transactions yet")) {
+      empty.remove();
+    }
+
+    const transaction = document.createElement("div");
+    transaction.className = "transaction";
+
+    transaction.textContent =
+      service + " — ₦" + amount.toFixed(2) +
+      " — Successful";
+
+    transactionsBox.appendChild(transaction);
+  }
+
+  alert(
+    service + " payment successful!\n\n" +
+    details + "\n" +
+    "Amount: ₦" + amount.toFixed(2) + "\n\n" +
+    "Remaining balance: ₦" + walletBalance.toFixed(2)
+  );
+
+  return true;
+} 
 
 document.addEventListener("DOMContentLoaded", function () {
   updateWalletDisplay();
