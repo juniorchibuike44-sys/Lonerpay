@@ -288,7 +288,41 @@ function buyElectricity() {
     "Amount: ₦" + amount + "\n\n" +
     "Ready for payment."
   );
-} 
+}// LonerPay demo wallet
+let walletBalance = Number(localStorage.getItem("lonerpay_balance") || 0);
+
+function updateWalletDisplay() {
+  const balance = document.querySelector(".balance h2");
+  if (balance) {
+    balance.textContent = "₦" + walletBalance.toFixed(2);
+  }
+}
+
+function addDemoFunds() {
+  const amount = prompt("Enter demo wallet amount:");
+  if (!amount || isNaN(amount) || Number(amount) <= 0) return;
+
+  walletBalance += Number(amount);
+  localStorage.setItem("lonerpay_balance", walletBalance);
+  updateWalletDisplay();
+
+  alert("Wallet funded successfully!\n\nBalance: ₦" + walletBalance.toFixed(2));
+}
+
+document.addEventListener("DOMContentLoaded", function () {
+  updateWalletDisplay();
+
+  const walletButton = document.createElement("button");
+  walletButton.textContent = "＋ Add Demo Funds";
+  walletButton.onclick = addDemoFunds;
+  walletButton.style.cssText =
+    "margin-top:10px;padding:12px 18px;border:0;border-radius:10px;background:#111827;color:white;font-size:16px;";
+
+  const balanceBox = document.querySelector(".balance");
+  if (balanceBox) {
+    balanceBox.appendChild(walletButton);
+  }
+});  
 </script> 
 </body>
 </html> 
