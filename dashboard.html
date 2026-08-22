@@ -200,7 +200,39 @@
   </div>
 
   );
-<script>function recordTransaction(type, amount, details) {
+<script>function processPayment(type, amount, details) {
+  const value = Number(amount);
+
+  if (!value || value <= 0) {
+    alert("Enter a valid amount.");
+    return false;
+  }
+
+  const balanceElement = document.querySelector(".balance h2");
+
+  if (!balanceElement) {
+    alert("Wallet balance not found.");
+    return false;
+  }
+
+  const currentBalance = Number(
+    balanceElement.textContent.replace(/[₦,]/g, "")
+  );
+
+  if (value > currentBalance) {
+    alert("Insufficient wallet balance.");
+    return false;
+  }
+
+  const newBalance = currentBalance - value;
+
+  balanceElement.textContent =
+    "₦" + newBalance.toFixed(2);
+
+  alert(type + " payment successful!");
+
+  return true;
+} function recordTransaction(type, amount, details) {
   const transactionsBox = document.querySelector(".transactions");
   if (!transactionsBox) return;
 
