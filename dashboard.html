@@ -170,7 +170,7 @@
         
       
 
-      <div class="service" onclick="alert('Electricity service coming next')">
+      <div class="service" onclick="buyElectricity()"
         <div>⚡</div>
         <h3>Electricity</h3>
         <p>Pay electricity</p>
@@ -246,7 +246,25 @@ function buyData() {
     "Ready for payment."
   );
 }
-</script>
+function buyElectricity() {
+  const meterNumber = prompt("Enter meter number:");
+  if (!meterNumber) return;
+
+  const meterType = prompt("Enter meter type: Prepaid or Postpaid");
+  if (!meterType) return;
+
+  const amount = prompt("Enter electricity amount:");
+  if (!amount) return;
+
+  alert(
+    "Electricity Order\n\n" +
+    "Meter: " + meterNumber + "\n" +
+    "Type: " + meterType + "\n" +
+    "Amount: ₦" + amount + "\n\n" +
+    "Ready for payment."
+  );
+}
+</script> 
 </body>
 </html> 
 
