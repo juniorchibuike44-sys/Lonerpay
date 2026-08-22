@@ -180,7 +180,7 @@
         
       
 
-      <div class="service" onclick="alert('TV service coming next')">
+      <div class="service" onclick="buyTV()"> 
         <div>📺</div>
         <h3>TV</h3>
         <p>Pay TV subscription</p>
@@ -267,7 +267,28 @@ function buyElectricity() {
     "Amount: ₦" + amount + "\n\n" +
     "Ready for payment."
   );
-}
+}function buyTV() {
+  const provider = prompt("Enter TV provider: DStv, GOtv, or Startimes");
+  if (!provider) return;
+
+  const smartcard = prompt("Enter IUC/Smartcard number:");
+  if (!smartcard) return;
+
+  const plan = prompt("Enter TV plan:");
+  if (!plan) return;
+
+  const amount = prompt("Enter subscription amount:");
+  if (!amount) return;
+
+  alert(
+    "TV Subscription Order\n\n" +
+    "Provider: " + provider + "\n" +
+    "IUC/Smartcard: " + smartcard + "\n" +
+    "Plan: " + plan + "\n" +
+    "Amount: ₦" + amount + "\n\n" +
+    "Ready for payment."
+  );
+} 
 </script> 
 </body>
 </html> 
