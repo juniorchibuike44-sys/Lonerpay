@@ -673,17 +673,19 @@ recordTransaction(
   
 }// LonerPay demo wallet
 let walletBalance = Number(localStorage.getItem("lonerpay_balance"));
-if (Number(localStorage.getItem("lonerpay_balance")) <= 0) { 
+
+if (!Number.isFinite(walletBalance) || walletBalance <= 0) {
     walletBalance = 100000;
-    localStorage.setItem("lonerpay_balance", walletBalance);
-  } 
+    localStorage.setItem("lonerpay_balance", "100000");
+}
 
 function updateWalletDisplay() {
-  const balance = document.querySelector(".balance h2");
-  if (balance) {
-    balance.textContent = "₦" + walletBalance.toFixed(2);
-  }
-}
+    const balance = document.querySelector(".balance h2");
+    if (balance) {
+        balance.textContent = "₦" + walletBalance.toFixed(2);
+    }
+} 
+
 
 function addDemoFunds() {
   const amount = prompt("Enter demo wallet amount:");
