@@ -532,13 +532,74 @@ recordTransaction(
   "Meter: " + meterNumber +
   " | Type: " + meterType
 ); 
- alert("Electricity payment successful!");  
+ showPaymentSuccess(
+    "Electricity",
+    amount,
+    "Meter: " + meterNumber + " | Type: " + meterType
+);  
+}     
+ function showPaymentSuccess(service, amount, details) {
+  const overlay = document.createElement("div");
+
+  overlay.style.cssText = `
+    position:fixed;
+    inset:0;
+    background:rgba(0,0,0,0.65);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    z-index:9999;
+    padding:20px;
+  `;
+
+  overlay.innerHTML = `
+    <div style="
+      background:white;
+      width:100%;
+      max-width:420px;
+      border-radius:20px;
+      padding:30px 24px;
+      box-sizing:border-box;
+      text-align:center;
+      font-family:Arial,sans-serif;
+    ">
+      <div style="font-size:55px;">✅</div>
+
+      <h2>Payment Successful</h2>
+
+      <p>Your ${service} payment was completed successfully.</p>
+
+      <p><strong>Amount</strong><br>
+      ₦${Number(amount).toFixed(2)}</p>
+
+      <p>${details}</p>
+
+      <button id="paymentSuccessDone" style="
+        width:100%;
+        padding:15px;
+        border:0;
+        border-radius:12px;
+        background:#111827;
+        color:white;
+        font-size:16px;
+        font-weight:bold;
+        margin-top:15px;
+      ">
+        Done
+      </button>
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
+
+  overlay.querySelector("#paymentSuccessDone").onclick = () => {
+    overlay.remove();
+  };
+}  
     
   
-    
   
-  
-}function buyTV() {
+function buyTV() {
   const provider = prompt("Enter TV provider: DStv, GOtv, or Startimes");
   if (!provider) return;
 
@@ -566,7 +627,13 @@ recordTransaction(
   " | IUC/Smartcard: " + smartcard +
   " | Plan: " + plan
 ); 
- alert("TV payment successful!");  
+ showPaymentSuccess(
+    "TV",
+    amount,
+    "Provider: " + provider +
+    " | IUC/Smartcard: " + smartcard +
+    " | Plan: " + plan
+);  
     
     
     
@@ -637,7 +704,64 @@ function addDemoFunds() {
 
   return true;
 } 
+function showPaymentSuccess(service, amount, details) {
+    const overlay = document.createElement("div");
 
+    overlay.style.cssText = `
+        position:fixed;
+        inset:0;
+        background:rgba(0,0,0,0.65);
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        z-index:9999;
+        padding:20px;
+    `;
+
+    overlay.innerHTML = `
+        <div style="
+            background:white;
+            width:100%;
+            max-width:420px;
+            border-radius:20px;
+            padding:30px 24px;
+            box-sizing:border-box;
+            text-align:center;
+            font-family:Arial,sans-serif;
+        ">
+            <div style="font-size:55px;">✅</div>
+
+            <h2>Payment Successful</h2>
+
+            <p>Your ${service} payment was completed successfully.</p>
+
+            <p><strong>Amount</strong><br>
+            ₦${Number(amount).toFixed(2)}</p>
+
+            <p>${details}</p>
+
+            <button id="successDone" style="
+                width:100%;
+                padding:15px;
+                border:0;
+                border-radius:12px;
+                background:#111827;
+                color:white;
+                font-size:16px;
+                font-weight:bold;
+                margin-top:15px;
+            ">
+                Done
+            </button>
+        </div>
+    `;
+
+    document.body.appendChild(overlay);
+
+    overlay.querySelector("#successDone").onclick = () => {
+        overlay.remove();
+    };
+} 
 document.addEventListener("DOMContentLoaded", function () {
   updateWalletDisplay();
 
