@@ -268,10 +268,9 @@ if (save) {
 
   transactionsBox.appendChild(transaction);
 } 
-function loadSavedTransactions() {
-    const saved = JSON.parse(
-        localStorage.getItem("lonerPayTransactions") || "[]"
-    );
+const saved = JSON.parse(
+    localStorage.getItem("lonerPayTransactions")
+) || []; 
 
     saved.forEach(transaction => {
         recordTransaction(
