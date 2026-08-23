@@ -711,8 +711,7 @@ function addDemoFunds() {
   updateWalletDisplay();
 
   alert("Wallet funded successfully!\n\nBalance: ₦" + walletBalance.toFixed(2));
-}
-  function processWalletPayment(service, amount, details) { 
+}function processWalletPayment(service, amount, details) { 
   amount = Number(amount);
 
   if (!Number.isFinite(amount) || amount <= 0) {
