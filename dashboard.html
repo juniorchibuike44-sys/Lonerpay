@@ -721,19 +721,25 @@ function addDemoFunds() {
     alert("Invalid payment amount.");
     return false;
   }
-
-  if (walletBalance < amount) {
+let currentWalletBalance =
+    Number(localStorage.getItem("lonerpay_balance")) || 0; 
+  if (currentWalletBalance < amount) { 
     alert(
       "Insufficient wallet balance.\n\n" +
       "Required: ₦" + amount.toFixed(2) + "\n" +
-      "Available: ₦" + walletBalance.toFixed(2)
+      "Available: ₦" + currentWalletBalance.toFixed(2) 
     );
     return false;
   }
 
-  walletBalance -= amount;
-  localStorage.setItem("lonerpay_balance", walletBalance);
-  updateWalletDisplay();
+  currentWalletBalance -= amount;
+localStorage.setItem("lonerpay_balance", currentWalletBalance);
+
+const balanceEl = document.querySelector(".balance h2");
+if (balanceEl) {
+    balanceEl.textContent =
+        "₦" + currentWalletBalance.toFixed(2);
+} 
 
   const transactionsBox = document.querySelector(".transactions");
 
