@@ -443,18 +443,10 @@ function buyAirtime() {
     };
 
     overlay.querySelector("#confirmAirtime").onclick = () => {
-   alert("Confirm button reached"); 
-      const details =
-        "Phone: " + phone + " | Network: " + network;
-alert("About to process payment"); 
-alert("Function type: " + typeof processWalletPayment);  
-      try {
-    const result = processWalletPayment("Airtime", amount, details);
-    alert("Payment function returned: " + result);
-} catch (err) {
-    alert("PAYMENT ERROR: " + err.message);
-}
-return; 
+   
+  if (!processWalletPayment("Airtime", amount, details)) {
+    return;
+  } 
 
       // recordTransaction("Airtime", amount, details); 
 
