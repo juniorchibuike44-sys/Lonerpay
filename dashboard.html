@@ -672,7 +672,12 @@ recordTransaction(
     
   
 }// LonerPay demo wallet
-let walletBalance = Number(localStorage.getItem("lonerpay_balance") || 0);
+let walletBalance = Number(localStorage.getItem("lonerpay_balance"));
+
+if (!localStorage.getItem("lonerpay_balance")) {
+    walletBalance = 100000;
+    localStorage.setItem("lonerpay_balance", walletBalance);
+  } 
 
 function updateWalletDisplay() {
   const balance = document.querySelector(".balance h2");
