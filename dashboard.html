@@ -105,7 +105,7 @@
 
     <div class="balance">
       <small>Wallet Balance</small>
-      <h2>₦12345.67</h2> 
+      <h2>₦0.00</h2> 
     </div>
 
     <h2>Services</h2>
@@ -685,7 +685,7 @@ function updateWalletDisplay() {
         balance.textContent = "₦" + walletBalance.toFixed(2);
     }
 } 
-
+updateWalletDisplay(); 
 
 function addDemoFunds() {
   const amount = prompt("Enter demo wallet amount:");
