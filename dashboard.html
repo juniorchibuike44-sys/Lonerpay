@@ -232,7 +232,7 @@
   
 
   return true;
-} function recordTransaction(type, amount, details) {
+function recordTransaction(type, amount, details, save = true) { 
   const transactionsBox = document.querySelector(".transactions");
   if (!transactionsBox) return;
 
@@ -241,7 +241,23 @@
   if (empty && empty.textContent.includes("No transactions yet")) {
     empty.remove();
   }
+if (save) {
+    const transactions = JSON.parse(
+        localStorage.getItem("lonerPayTransactions") || "[]"
+    );
 
+    transactions.unshift({
+        type: type,
+        amount: Number(amount),
+        details: details,
+        date: new Date().toISOString()
+    });
+
+    localStorage.setItem(
+        "lonerPayTransactions",
+        JSON.stringify(transactions.slice(0, 50))
+    );
+} 
   const transaction = document.createElement("div");
   transaction.className = "transaction";
 
@@ -252,7 +268,22 @@
 
   transactionsBox.appendChild(transaction);
 } 
+function loadSavedTransactions() {
+    const saved = JSON.parse(
+        localStorage.getItem("lonerPayTransactions") || "[]"
+    );
 
+    saved.forEach(transaction => {
+        recordTransaction(
+            transaction.type,
+            transaction.amount,
+            transaction.details,
+            false
+        );
+    });
+}
+
+loadSavedTransactions(); 
 function buyAirtime() {
   const overlay = document.createElement("div");
 
