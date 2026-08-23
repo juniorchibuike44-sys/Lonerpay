@@ -673,8 +673,7 @@ recordTransaction(
   
 }// LonerPay demo wallet
 let walletBalance = Number(localStorage.getItem("lonerpay_balance"));
-
-if (!localStorage.getItem("lonerpay_balance")) {
+if (Number(localStorage.getItem("lonerpay_balance")) <= 0) { 
     walletBalance = 100000;
     localStorage.setItem("lonerpay_balance", walletBalance);
   } 
