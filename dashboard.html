@@ -447,7 +447,8 @@ function buyAirtime() {
       const details =
         "Phone: " + phone + " | Network: " + network;
 alert("About to process payment"); 
-      if (!processPayment("Airtime", amount, details)) {
+      if (!
+      processWalletPayment("Airtime", amount, details)) { 
         overlay.remove();
         return;
       }
@@ -710,7 +711,8 @@ function addDemoFunds() {
   updateWalletDisplay();
 
   alert("Wallet funded successfully!\n\nBalance: ₦" + walletBalance.toFixed(2));
-}function processPayment(service, amount, details) {
+}
+  function processWalletPayment(service, amount, details) { 
   amount = Number(amount);
 
   if (!Number.isFinite(amount) || amount <= 0) {
