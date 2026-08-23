@@ -446,7 +446,7 @@ function buyAirtime() {
    alert("Confirm button reached"); 
       const details =
         "Phone: " + phone + " | Network: " + network;
-
+alert("About to process payment"); 
       if (!processPayment("Airtime", amount, details)) {
         overlay.remove();
         return;
