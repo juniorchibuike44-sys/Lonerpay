@@ -493,12 +493,13 @@ recordTransaction(
   " | Plan: " + plan
 );
   
- alert(
-  "Data Payment Successful!\n\n" +
-  "Amount: ₦" + Number(amount).toFixed(2) + "\n" +
-  network + " • " + phone + "\n" +
-  "Plan: " + plan
-);    
+ showPaymentSuccess(
+  "Data",
+  amount,
+  "Phone: " + phone +
+  " | Network: " + network +
+  " | Plan: " + plan
+); 
     
     
     
