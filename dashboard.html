@@ -107,7 +107,20 @@
       <small>Wallet Balance</small>
       <h2>₦0.00</h2> 
     </div>
+<script>
+(function () {
+  const key = "lonerpay_balance";
+  let savedBalance = Number(localStorage.getItem(key));
 
+  if (!Number.isFinite(savedBalance) || savedBalance <= 0) {
+    savedBalance = 100000;
+    localStorage.setItem(key, String(savedBalance));
+  }
+
+  document.querySelector(".balance h2").textContent =
+    "₦" + savedBalance.toFixed(2);
+})();
+</script> 
     <h2>Services</h2>
 
     <div class="services">
