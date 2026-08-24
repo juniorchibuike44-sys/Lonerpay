@@ -26,7 +26,8 @@ export default async function handler(req, res) {
     });
 
     const data = await response.json();
-
+console.log("VTPASS STATUS:", response.status);
+console.log("VTPASS RESPONSE:", JSON.stringify(data)); 
     return res.status(response.status).json(data);
   } catch (error) {
     return res.status(500).json({
