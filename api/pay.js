@@ -6,7 +6,20 @@ export default async function handler(req, res) {
   try {
     const { serviceID, billersCode, variation_code, amount, phone, email } =
       req.body;
+const now = new Date(
+  new Date().toLocaleString("en-US", {
+    timeZone: "Africa/Lagos"
+  })
+);
 
+const requestId =
+  now.getFullYear().toString() +
+  String(now.getMonth() + 1).padStart(2, "0") +
+  String(now.getDate()).padStart(2, "0") +
+  String(now.getHours()).padStart(2, "0") +
+  String(now.getMinutes()).padStart(2, "0") +
+  "LONER" +
+  Date.now(); 
     const response = await fetch("https://sandbox.vtpass.com/api/pay", {
       method: "POST",
       headers: {
@@ -15,7 +28,8 @@ export default async function handler(req, res) {
         "secret-key": process.env.VTPASS_SECRET_KEY
       },
       body: JSON.stringify({
-        request_id: `LONER_${Date.now()}`,
+        request_id: requestId, 
+
         serviceID,
         billersCode,
         variation_code,
