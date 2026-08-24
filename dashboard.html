@@ -450,16 +450,54 @@ function buyAirtime() {
     overlay.querySelector("#backAirtime").onclick = () => {
       overlay.remove();
       buyAirtime();
-    };
+    }
+overlay.querySelector("#confirmAirtime").onclick = async () => {
+    const details =
+        "Phone: " + phone + " | Network: " + network;
 
-    overlay.querySelector("#confirmAirtime").onclick = () => {
-   const details =
-    "Phone: " + phone + " | Network: " + network; 
-  if (!processWalletPayment("Airtime", amount, details)) {
+    try {
+        const response = await fetch("/api/pay", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                serviceID: network.toLowerCase(),
+                billersCode: phone,
+                variation_code: "",
+                amount: Number(amount),
+                phone: phone,
+                email: "sandbox@sandbox.com"
+            })
+        });
+
+        const data = await response.json(); 
+      const vtStatus = data?.content?.transactions?.status;
+
+if (data.code === "000" && vtStatus === "delivered") {
+    if (!processWalletPayment("Airtime", amount, details)) {
+        return;
+    }
+} else if (
+    data.code === "099" ||
+    vtStatus === "pending" ||
+    vtStatus === "initiated"
+) {
+    alert("Payment is pending. Please check again shortly.");
     return;
-  } 
+} else {
+    alert(
+        "Payment failed: " +
+        (data.response_description || "Please try again.")
+    );
+    return;
+}
 
-      // recordTransaction("Airtime", amount, details); 
+} catch (error) {
+    console.error(error);
+    alert("Could not connect to payment provider.");
+    return;
+    } // recordTransaction("Airtime", amount, details); 
 
       overlay.innerHTML = `
         <div style="
