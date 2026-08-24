@@ -734,11 +734,7 @@ let currentWalletBalance =
     );
     return false;
   }
-if (amount === 99) {
-    recordTransaction(service, amount, details, true, "Failed");
-    alert("Payment failed. Please try again.");
-    return false;
-} 
+
 
   currentWalletBalance -= amount;
 localStorage.setItem("lonerpay_balance", currentWalletBalance);
