@@ -249,7 +249,7 @@ if (value === 99) {
 
   return true;
 } 
-function recordTransaction(type, amount, details, save = true) { 
+function recordTransaction(type, amount, details, save = true, status = "Successful") { 
   const transactionsBox = document.querySelector(".transactions");
   if (!transactionsBox) return;
 
@@ -267,7 +267,7 @@ if (save) {
         type: type,
         amount: Number(amount),
         details: details,
-status: "Successful",
+status: status, 
 date: new Date().toISOString() 
     });
 
@@ -283,7 +283,7 @@ date: new Date().toISOString()
     "<strong>" + type + "</strong><br>" +
     "₦" + Number(amount).toFixed(2) + "<br>" +
     "<small>" + details + "</small><br>" +
-"<small><strong>Status: Successful</strong></small>"; 
+"<small><strong>Status: " + status + "</strong></small>";  
 
   transactionsBox.appendChild(transaction);
 } 
@@ -298,7 +298,9 @@ function loadSavedTransactions()
             transaction.type,
             transaction.amount,
             transaction.details,
-            false
+false,
+transaction.status || "Successful" 
+            
         );
     });
 }
@@ -733,9 +735,11 @@ let currentWalletBalance =
     return false;
   }
 if (amount === 99) {
+    recordTransaction(service, amount, details, true, "Failed");
     alert("Payment failed. Please try again.");
     return false;
 } 
+
   currentWalletBalance -= amount;
 localStorage.setItem("lonerpay_balance", currentWalletBalance);
 
