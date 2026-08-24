@@ -236,7 +236,10 @@
     alert("Insufficient wallet balance.");
     return false;
   }
-
+if (value === 99) {
+    alert("Payment failed. Please try again.");
+    return false;
+} 
   const newBalance = currentBalance - value;
 
   balanceElement.textContent =
