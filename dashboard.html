@@ -732,7 +732,10 @@ let currentWalletBalance =
     );
     return false;
   }
-
+if (amount === 99) {
+    alert("Payment failed. Please try again.");
+    return false;
+} 
   currentWalletBalance -= amount;
 localStorage.setItem("lonerpay_balance", currentWalletBalance);
 
