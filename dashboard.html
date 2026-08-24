@@ -279,7 +279,8 @@ date: new Date().toISOString()
   transaction.innerHTML =
     "<strong>" + type + "</strong><br>" +
     "₦" + Number(amount).toFixed(2) + "<br>" +
-    "<small>" + details + "</small>";
+    "<small>" + details + "</small><br>" +
+"<small><strong>Status: Successful</strong></small>"; 
 
   transactionsBox.appendChild(transaction);
 } 
