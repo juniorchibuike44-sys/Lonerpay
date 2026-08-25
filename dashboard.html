@@ -452,7 +452,7 @@ function buyAirtime() {
       buyAirtime();
     }
 overlay.querySelector("#confirmAirtime").onclick = async () => {
-  alert("Confirm button connected"); 
+  
   const details =
         "Phone: " + phone + " | Network: " + network;
 
@@ -487,9 +487,7 @@ if (data.code === "000" && vtStatus === "delivered") {
     alert("Payment is pending. Please check again shortly.");
     return;
 } else {
-    alert(
-        "Payment failed: " +
-        (data.response_description || "Please try again.")
+    alert("Payment failed: " + JSON.stringify(data)); 
     );
     return;
 }
