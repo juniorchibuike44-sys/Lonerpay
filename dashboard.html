@@ -241,7 +241,8 @@ if (value === 99) {
     return false;
 } 
   const newBalance = currentBalance - value;
-
+walletBalance = newBalance;
+localStorage.setItem("lonerpay_balance", String(newBalance)); 
   balanceElement.textContent =
     "₦" + newBalance.toFixed(2);
 
