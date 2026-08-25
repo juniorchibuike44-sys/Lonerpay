@@ -133,15 +133,15 @@
         👤 Personal Information
       </button>
 
-      <button onclick="showMessage('Security settings will be available soon.')">
+            <button onclick="securitySettings()"> 
         🔐 Security and PIN
       </button>
 
-      <button onclick="showMessage('Notification settings will be available soon.')">
+            <button onclick="toggleNotifications()"> 
         🔔 Notifications
       </button>
 
-      <button onclick="showMessage('Help and support will be available soon.')">
+            <button onclick="contactSupport()"> 
         💬 Help and Support
       </button>
 
@@ -199,7 +199,49 @@
     }
 
     document.querySelector(".menu button").onclick = editProfile;
-    loadProfile(); 
+    loadProfile();     function securitySettings() {
+      alert(
+        "Your personal information is stored only on this device.\n\nSecure PIN setup will be activated after the LonerPay backend is connected. Never share your password, PIN, or verification code with anyone."
+      );
+    }
+
+    function updateNotificationButton() {
+      const enabled =
+        localStorage.getItem("lonerpayNotifications") === "enabled";
+
+      const buttons = document.querySelectorAll(".menu button");
+      buttons[2].textContent =
+        enabled ? "🔔 Notifications: ON" : "🔕 Notifications: OFF";
+    }
+
+    function toggleNotifications() {
+      const enabled =
+        localStorage.getItem("lonerpayNotifications") === "enabled";
+
+      localStorage.setItem(
+        "lonerpayNotifications",
+        enabled ? "disabled" : "enabled"
+      );
+
+      updateNotificationButton();
+
+      alert(
+        enabled
+          ? "Notifications have been turned off."
+          : "Notifications have been turned on."
+      );
+    }
+
+    function contactSupport() {
+      const message = encodeURIComponent(
+        "Hello LonerPay Support, I need assistance with my account."
+      );
+
+      window.location.href =
+        "https://wa.me/2349131123780?text=" + message;
+    }
+
+    updateNotificationButton(); 
   </script>
 </body>
 </html>
