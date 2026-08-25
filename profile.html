@@ -164,7 +164,42 @@
       if (confirmed) {
         window.location.href = "index.html";
       }
+    }    function loadProfile() {
+      const savedName =
+        localStorage.getItem("lonerpayProfileName") || "LonerPay User";
+
+      const savedPhone =
+        localStorage.getItem("lonerpayProfilePhone") ||
+        "Manage your account and security";
+
+      document.querySelector(".profile-card h2").textContent = savedName;
+      document.querySelector(".profile-card p").textContent = savedPhone;
+      document.querySelector(".avatar").textContent =
+        savedName.charAt(0).toUpperCase();
     }
+
+    function editProfile() {
+      const currentName =
+        localStorage.getItem("lonerpayProfileName") || "";
+
+      const currentPhone =
+        localStorage.getItem("lonerpayProfilePhone") || "";
+
+      const name = prompt("Enter your full name:", currentName);
+      if (name === null || name.trim() === "") return;
+
+      const phone = prompt("Enter your phone number:", currentPhone);
+      if (phone === null || phone.trim() === "") return;
+
+      localStorage.setItem("lonerpayProfileName", name.trim());
+      localStorage.setItem("lonerpayProfilePhone", phone.trim());
+
+      loadProfile();
+      alert("Personal information saved successfully.");
+    }
+
+    document.querySelector(".menu button").onclick = editProfile;
+    loadProfile(); 
   </script>
 </body>
 </html>
