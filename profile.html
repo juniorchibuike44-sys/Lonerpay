@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LonerPay Profile</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #f5f7fb;
+      color: #111827;
+    }
+
+    .header {
+      background: #111827;
+      color: white;
+      padding: 22px 18px;
+      display: flex;
+      align-items: center;
+      gap: 15px;
+    }
+
+    .back {
+      color: white;
+      text-decoration: none;
+      font-size: 26px;
+    }
+
+    .header h1 {
+      margin: 0;
+      font-size: 22px;
+    }
+
+    .container {
+      max-width: 500px;
+      margin: auto;
+      padding: 20px;
+    }
+
+    .profile-card {
+      background: white;
+      border-radius: 18px;
+      padding: 25px 20px;
+      text-align: center;
+      box-shadow: 0 5px 18px rgba(0,0,0,0.08);
+      margin-bottom: 20px;
+    }
+
+    .avatar {
+      width: 80px;
+      height: 80px;
+      margin: auto;
+      border-radius: 50%;
+      background: #f59e0b;
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 32px;
+      font-weight: bold;
+    }
+
+    .profile-card h2 {
+      margin: 15px 0 5px;
+    }
+
+    .profile-card p {
+      margin: 0;
+      color: #6b7280;
+    }
+
+    .menu {
+      background: white;
+      border-radius: 18px;
+      overflow: hidden;
+      box-shadow: 0 5px 18px rgba(0,0,0,0.08);
+    }
+
+    .menu button {
+      width: 100%;
+      border: none;
+      border-bottom: 1px solid #e5e7eb;
+      background: white;
+      padding: 18px;
+      text-align: left;
+      font-size: 16px;
+      cursor: pointer;
+    }
+
+    .menu button:last-child {
+      border-bottom: none;
+    }
+
+    .menu button:active {
+      background: #f3f4f6;
+    }
+
+    .logout {
+      color: #dc2626;
+      font-weight: bold;
+    }
+
+    .version {
+      text-align: center;
+      color: #9ca3af;
+      font-size: 13px;
+      margin-top: 25px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="header">
+    <a class="back" href="dashboard.html">←</a>
+    <h1>My Profile</h1>
+  </div>
+
+  <main class="container">
+    <section class="profile-card">
+      <div class="avatar">L</div>
+      <h2>LonerPay User</h2>
+      <p>Manage your account and security</p>
+    </section>
+
+    <section class="menu">
+      <button onclick="showMessage('Personal information will be available soon.')">
+        👤 Personal Information
+      </button>
+
+      <button onclick="showMessage('Security settings will be available soon.')">
+        🔐 Security and PIN
+      </button>
+
+      <button onclick="showMessage('Notification settings will be available soon.')">
+        🔔 Notifications
+      </button>
+
+      <button onclick="showMessage('Help and support will be available soon.')">
+        💬 Help and Support
+      </button>
+
+      <button class="logout" onclick="logout()">
+        🚪 Log Out
+      </button>
+    </section>
+
+    <p class="version">LonerPay Version 1.0</p>
+  </main>
+
+  <script>
+    function showMessage(message) {
+      alert(message);
+    }
+
+    function logout() {
+      const confirmed = confirm("Are you sure you want to log out?");
+
+      if (confirmed) {
+        window.location.href = "index.html";
+      }
+    }
+  </script>
+</body>
+</html>
