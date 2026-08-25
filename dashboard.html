@@ -893,7 +893,17 @@ document.addEventListener("DOMContentLoaded", function () {
   const balanceBox = document.querySelector(".balance");
   if (balanceBox) {
     balanceBox.appendChild(walletButton);
-  }
+  }      const profileButton = document.createElement("button");
+      profileButton.textContent = "👤 My Profile";
+      profileButton.onclick = function () {
+        window.location.href = "profile.html";
+      };
+      profileButton.style.cssText =
+        "margin-top:10px;margin-left:8px;padding:12px 18px;border:none;border-radius:10px;background:#111827;color:white;font-weight:bold;cursor:pointer;";
+
+      if (balanceBox) {
+        balanceBox.appendChild(profileButton);
+      } 
 });  
 </script> 
 </body>
