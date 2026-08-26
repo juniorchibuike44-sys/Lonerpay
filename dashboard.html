@@ -458,11 +458,13 @@ overlay.querySelector("#confirmAirtime").onclick = async () => {
         "Phone: " + phone + " | Network: " + network;
 
     try {
-        const response = await fetch("/api/pay", {
+        const response = await fetch("/api/secure-pay",  {
             method: "POST",
             headers: {
-                "Content-Type": "application/json"
-            },
+  "Content-Type": "application/json",
+  Authorization: `Bearer ${localStorage.getItem("lonerpay_access_token")}`
+}, 
+            
             body: JSON.stringify({
                 serviceID: network.toLowerCase(),
                 billersCode: phone,
@@ -473,11 +475,29 @@ overlay.querySelector("#confirmAirtime").onclick = async () => {
             })
         });
 
-        const data = await response.json(); 
+        const data = await response.json();if (!response.ok) {
+  if (!response.ok) { alert(data.error || data.message || "Payment failed");
+  return;
+}
+
+if (
+  data.wallet &&
+  Number.isFinite(Number(data.wallet.balance))
+) {
+  walletBalance = Number(data.wallet.balance);
+
+  const balanceElement =
+    document.querySelector(".balance h2");
+
+  if (balanceElement) {
+    balanceElement.textContent =
+      "₦" + walletBalance.toFixed(2);
+  }
+      }  
       const vtStatus = data?.content?.transactions?.status;
 
 if (data.code === "000" && vtStatus === "delivered") {
-    if (!processWalletPayment("Airtime", amount, details)) {
+    if (!data.wallet ) {
         return;
     }
 } else if (
