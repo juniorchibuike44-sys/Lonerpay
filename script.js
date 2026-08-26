@@ -73,7 +73,8 @@ document.addEventListener("DOMContentLoaded", function () {
       "[data-action='get-started'], .get-started"
     )
     .forEach(function (button) {
-      button.addEventListener("click", function () {
+      button.addEventListener("click", function (event) { 
+        event.preventDefault(); 
         showModal("signup");
       });
     });
@@ -83,7 +84,8 @@ document.addEventListener("DOMContentLoaded", function () {
       "[data-action='login'], .login-button"
     )
     .forEach(function (button) {
-      button.addEventListener("click", function () {
+      button.addEventListener("click", function (event) { 
+       event.preventDefault(); 
         showModal("login");
       });
     });
