@@ -68,3 +68,15 @@
     }
   }
 })();
+function removeDemoFundsControl() {
+  document
+    .querySelectorAll("button, a, [role='button']")
+    .forEach(element => {
+      if (element.textContent.includes("Add Demo Funds")) {
+        element.remove();
+      }
+    });
+}
+
+removeDemoFundsControl();
+setTimeout(removeDemoFundsControl, 500); 
