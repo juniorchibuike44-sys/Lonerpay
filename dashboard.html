@@ -475,7 +475,7 @@ overlay.querySelector("#confirmAirtime").onclick = async () => {
             })
         });
 
-        const data = await response.json();if (!response.ok) {
+        const data = await response.json(); 
   if (!response.ok) { alert(data.error || data.message || "Payment failed");
   return;
 }
