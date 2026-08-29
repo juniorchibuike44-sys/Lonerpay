@@ -1,4 +1,4 @@
-(async function loadSecureWallet() {
+async function refreshSecureWallet() {
   const balanceElement = document.querySelector(".balance h2");
   const accessToken = localStorage.getItem("lonerpay_access_token");
 
@@ -67,7 +67,10 @@
       balanceElement.textContent = "Unavailable";
     }
   }
-})();
+}
+
+window.refreshSecureWallet = refreshSecureWallet;
+refreshSecureWallet();
 function removeDemoFundsControl() {
   document
     .querySelectorAll("button, a, [role='button']")
