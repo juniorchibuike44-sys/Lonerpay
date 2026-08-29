@@ -39,11 +39,13 @@ const electricityServices = new Set([
   "kano-electric",
   "yola-electric"
 ]);
+const tvServices = new Set(["dstv", "gotv", "startimes"]);
 
 const allowedPaymentServices = new Set([
   ...airtimeServices,
   ...dataServices,
-  ...electricityServices
+  ...electricityServices,
+  ...tvServices
 ]);
 
 export default async function handler(req, res) {
@@ -84,7 +86,9 @@ export default async function handler(req, res) {
     variation_code,
     amount,
     phone,
-    email
+    email,
+    subscription_type,
+    quantity
   } = req.body || {};
 
   const paymentAmount = Number(amount);
@@ -112,6 +116,10 @@ export default async function handler(req, res) {
     variation_code !== "postpaid"
   ) {
     return res.status(400).json({ error: "Invalid meter type" });
+  }
+
+  if (tvServices.has(serviceID) && !variation_code) {
+    return res.status(400).json({ error: "Select a TV bouquet" });
   }
 
   let user;
@@ -248,6 +256,35 @@ export default async function handler(req, res) {
       }
     }
 
+    if (tvServices.has(serviceID)) {
+      const verifyResponse = await fetch(
+        "https://sandbox.vtpass.com/api/merchant-verify",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "api-key": vtpassApiKey,
+            "secret-key": vtpassSecretKey
+          },
+          body: JSON.stringify({ serviceID, billersCode })
+        }
+      );
+      const verifyData = await verifyResponse.json();
+
+      if (
+        !verifyResponse.ok ||
+        String(verifyData?.code || "") !== "000" ||
+        verifyData?.content?.WrongBillersCode === true
+      ) {
+        return res.status(422).json({
+          error:
+            verifyData?.response_description ||
+            verifyData?.message ||
+            "Smartcard verification failed"
+        });
+      }
+    }
+
     const debit = await callRpc("debit_wallet", {
       p_user_id: user.id,
       p_amount: paymentAmount,
@@ -258,6 +295,8 @@ export default async function handler(req, res) {
         variation_code: variation_code || "",
         phone: phone || "",
         email: email || ""
+        ,subscription_type: subscription_type || ""
+        ,quantity: Number(quantity || 1)
       }
     });
 
@@ -286,7 +325,13 @@ export default async function handler(req, res) {
           variation_code: variation_code || "",
           amount: paymentAmount,
           phone: phone || billersCode,
-          email: email || "sandbox@sandbox.com"
+          email: email || "sandbox@sandbox.com",
+          ...(tvServices.has(serviceID)
+            ? {
+                subscription_type: subscription_type || "change",
+                quantity: Number(quantity || 1)
+              }
+            : {})
         })
       }
     );
