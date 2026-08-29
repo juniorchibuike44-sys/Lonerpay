@@ -112,6 +112,47 @@
       font-size: 13px;
       margin-top: 25px;
     }
+
+    .pin-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      background: rgba(0, 0, 0, 0.65);
+    }
+
+    .pin-card {
+      width: 100%;
+      max-width: 420px;
+      padding: 24px;
+      border-radius: 20px;
+      background: white;
+    }
+
+    .pin-card input {
+      width: 100%;
+      padding: 13px;
+      margin: 7px 0 12px;
+      border: 1px solid #d1d5db;
+      border-radius: 10px;
+      font-size: 18px;
+      letter-spacing: 8px;
+      text-align: center;
+    }
+
+    .pin-primary, .pin-cancel {
+      width: 100%;
+      padding: 14px;
+      border: 0;
+      border-radius: 11px;
+      font-size: 16px;
+    }
+
+    .pin-primary { background: #111827; color: white; font-weight: bold; }
+    .pin-cancel { margin-top: 7px; background: transparent; }
   </style>
 </head>
 
@@ -162,6 +203,8 @@
       const confirmed = confirm("Are you sure you want to log out?");
 
       if (confirmed) {
+        localStorage.removeItem("lonerpay_access_token");
+        localStorage.removeItem("lonerpay_refresh_token");
         window.location.href = "index.html";
       }
     }    function loadProfile() {
@@ -199,10 +242,84 @@
     }
 
     document.querySelector(".menu button").onclick = editProfile;
-    loadProfile();     function securitySettings() {
-      alert(
-        "Your personal information is stored only on this device.\n\nSecure PIN setup will be activated after the LonerPay backend is connected. Never share your password, PIN, or verification code with anyone."
-      );
+    loadProfile();
+
+    async function securitySettings() {
+      const accessToken = localStorage.getItem("lonerpay_access_token");
+      if (!accessToken) {
+        alert("Please log in again to manage your payment PIN.");
+        window.location.href = "index.html";
+        return;
+      }
+
+      try {
+        const statusResponse = await fetch("/api/pin", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${accessToken}`
+          },
+          body: JSON.stringify({ action: "status" })
+        });
+        const status = await statusResponse.json();
+        if (!statusResponse.ok) throw new Error(status.error || "Could not load PIN settings");
+        showPinForm(status.has_pin);
+      } catch (error) {
+        alert(error.message);
+      }
+    }
+
+    function showPinForm(hasPin) {
+      const overlay = document.createElement("div");
+      overlay.className = "pin-overlay";
+      overlay.innerHTML = `
+        <div class="pin-card">
+          <h2 style="margin-top:0;">${hasPin ? "Change Payment PIN" : "Create Payment PIN"}</h2>
+          <p style="color:#6b7280;">Use exactly four digits. Never share this PIN with anyone.</p>
+          ${hasPin ? `<label>Current PIN</label><input id="currentPin" type="password" inputmode="numeric" maxlength="4" autocomplete="off">` : ""}
+          <label>New PIN</label>
+          <input id="newPin" type="password" inputmode="numeric" maxlength="4" autocomplete="off">
+          <label>Confirm new PIN</label>
+          <input id="confirmPin" type="password" inputmode="numeric" maxlength="4" autocomplete="off">
+          <button class="pin-primary" id="savePin">${hasPin ? "Change PIN" : "Create PIN"}</button>
+          <button class="pin-cancel" id="cancelPin">Cancel</button>
+        </div>`;
+      document.body.appendChild(overlay);
+      overlay.querySelector("#cancelPin").onclick = () => overlay.remove();
+      overlay.querySelector("#savePin").onclick = async event => {
+        const button = event.currentTarget;
+        const newPin = overlay.querySelector("#newPin").value;
+        const confirmedPin = overlay.querySelector("#confirmPin").value;
+        const currentPin = hasPin ? overlay.querySelector("#currentPin").value : "";
+        if (!/^\d{4}$/.test(newPin)) return alert("PIN must contain exactly 4 digits.");
+        if (newPin !== confirmedPin) return alert("The new PIN entries do not match.");
+        if (hasPin && !/^\d{4}$/.test(currentPin)) return alert("Enter your current 4-digit PIN.");
+
+        button.disabled = true;
+        button.textContent = "Saving...";
+        try {
+          const response = await fetch("/api/pin", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${localStorage.getItem("lonerpay_access_token")}`
+            },
+            body: JSON.stringify({
+              action: hasPin ? "change" : "set",
+              pin: newPin,
+              current_pin: currentPin
+            })
+          });
+          const data = await response.json();
+          if (!response.ok) throw new Error(data.error || "Could not save payment PIN");
+          overlay.remove();
+          alert(data.message);
+        } catch (error) {
+          alert(error.message);
+          button.disabled = false;
+          button.textContent = hasPin ? "Change PIN" : "Create PIN";
+        }
+      };
     }
 
     function updateNotificationButton() {
