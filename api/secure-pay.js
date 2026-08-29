@@ -24,6 +24,28 @@ function createRequestId() {
   );
 }
 
+const airtimeServices = new Set(["mtn", "airtel", "glo", "etisalat", "9mobile"]);
+const dataServices = new Set(["mtn-data", "airtel-data", "glo-data", "etisalat-data"]);
+const electricityServices = new Set([
+  "aba-electric",
+  "abuja-electric",
+  "benin-electric",
+  "eko-electric",
+  "enugu-electric",
+  "ibadan-electric",
+  "ikeja-electric",
+  "jos-electric",
+  "kaduna-electric",
+  "kano-electric",
+  "yola-electric"
+]);
+
+const allowedPaymentServices = new Set([
+  ...airtimeServices,
+  ...dataServices,
+  ...electricityServices
+]);
+
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({
@@ -78,10 +100,18 @@ export default async function handler(req, res) {
     });
   }
 
-  if (!/^[a-z0-9_-]+$/i.test(serviceID)) {
+  if (!allowedPaymentServices.has(serviceID)) {
     return res.status(400).json({
       error: "Invalid service"
     });
+  }
+
+  if (
+    electricityServices.has(serviceID) &&
+    variation_code !== "prepaid" &&
+    variation_code !== "postpaid"
+  ) {
+    return res.status(400).json({ error: "Invalid meter type" });
   }
 
   let user;
@@ -171,6 +201,52 @@ export default async function handler(req, res) {
 
     user = await userResponse.json();
     requestId = createRequestId();
+
+    if (electricityServices.has(serviceID)) {
+      const verifyResponse = await fetch(
+        "https://sandbox.vtpass.com/api/merchant-verify",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "api-key": vtpassApiKey,
+            "secret-key": vtpassSecretKey
+          },
+          body: JSON.stringify({
+            serviceID,
+            billersCode,
+            type: variation_code
+          })
+        }
+      );
+      const verifyData = await verifyResponse.json();
+      const verifyContent = verifyData?.content || {};
+
+      if (
+        !verifyResponse.ok ||
+        String(verifyData?.code || "") !== "000" ||
+        verifyContent.WrongBillersCode === true ||
+        verifyContent.Can_Vend === "no"
+      ) {
+        return res.status(422).json({
+          error:
+            verifyData?.response_description ||
+            verifyData?.message ||
+            "Meter verification failed"
+        });
+      }
+
+      const providerMinimum = Number(
+        verifyContent.Min_Purchase_Amount ||
+        verifyContent.Minimum_Amount ||
+        0
+      );
+      if (providerMinimum > 0 && paymentAmount < providerMinimum) {
+        return res.status(400).json({
+          error: `Minimum payment is ₦${providerMinimum.toFixed(2)}`
+        });
+      }
+    }
 
     const debit = await callRpc("debit_wallet", {
       p_user_id: user.id,
