@@ -475,10 +475,38 @@ overlay.querySelector("#confirmAirtime").onclick = async () => {
             })
         });
 
-        const data = await response.json(); 
-  if (!response.ok) { alert(data.error || data.message || "Payment failed");
-  return;
-}
+        const data = await response.json();
+
+  if (!response.ok) {
+    const failedStatus = data.refunded
+      ? "Failed — Refunded"
+      : (response.status === 402
+          ? "Failed — Insufficient Funds"
+          : "Failed — Refund Required");
+
+    recordTransaction(
+      "Airtime",
+      amount,
+      "Network: " + network + " | Phone: " + phone,
+      true,
+      failedStatus
+    );
+
+    if (typeof window.refreshSecureWallet === "function") {
+      await window.refreshSecureWallet();
+    }
+
+    const failureMessage =
+      data.error || data.message || "Payment failed";
+    const refundMessage = data.refunded
+      ? "\n\nYour wallet has been refunded."
+      : (data.refund_error
+          ? "\n\nRefund error: " + data.refund_error
+          : "");
+
+    alert(failureMessage + refundMessage);
+    return;
+  }
 
 if (
   data.wallet &&
@@ -505,6 +533,13 @@ if (data.code === "000" && vtStatus === "delivered") {
     vtStatus === "pending" ||
     vtStatus === "initiated"
 ) {
+    recordTransaction(
+      "Airtime",
+      amount,
+      "Network: " + network + " | Phone: " + phone,
+      true,
+      "Pending"
+    );
     alert("Payment is pending. Please check again shortly.");
     return;
 } else {
@@ -929,5 +964,4 @@ document.addEventListener("DOMContentLoaded", function () {
 </script><script src="wallet-client.js"></script>  
 </body>
 </html> 
-
 
