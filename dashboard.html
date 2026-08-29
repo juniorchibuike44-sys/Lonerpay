@@ -91,6 +91,17 @@
     .transaction:last-child {
       border-bottom: none;
     }
+
+    .receipt-button {
+      margin-top: 10px;
+      padding: 9px 14px;
+      border: 0;
+      border-radius: 9px;
+      background: #111827;
+      color: white;
+      font-weight: bold;
+      cursor: pointer;
+    }
   </style>
 </head>
 
@@ -250,9 +261,29 @@ localStorage.setItem("lonerpay_balance", String(newBalance));
 
   return true;
 } 
-function recordTransaction(type, amount, details, save = true, status = "Successful") { 
+function makeReceiptId() {
+  return "LP-" + Date.now().toString(36).toUpperCase() +
+    "-" + Math.random().toString(36).slice(2, 7).toUpperCase();
+}
+
+function escapeReceiptText(value) {
+  return String(value ?? "").replace(/[&<>"']/g, character => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;"
+  })[character]);
+}
+
+function recordTransaction(type, amount, details, save = true, status = "Successful", date, receiptId) { 
   const transactionsBox = document.querySelector(".transactions");
   if (!transactionsBox) return;
+
+  const transactionData = {
+    type: type,
+    amount: Number(amount),
+    details: details,
+    status: status,
+    date: date || new Date().toISOString(),
+    receiptId: receiptId || makeReceiptId()
+  };
 
   const empty = transactionsBox.querySelector(".transaction");
 
@@ -264,13 +295,7 @@ if (save) {
         localStorage.getItem("lonerPayTransactions") || "[]"
     );
 
-    transactions.unshift({
-        type: type,
-        amount: Number(amount),
-        details: details,
-status: status, 
-date: new Date().toISOString() 
-    });
+    transactions.unshift(transactionData);
 
     localStorage.setItem(
         "lonerPayTransactions",
@@ -281,12 +306,18 @@ date: new Date().toISOString()
   transaction.className = "transaction";
 
   transaction.innerHTML =
-    "<strong>" + type + "</strong><br>" +
+    "<strong>" + escapeReceiptText(type) + "</strong><br>" +
     "₦" + Number(amount).toFixed(2) + "<br>" +
-    "<small>" + details + "</small><br>" +
-"<small><strong>Status: " + status + "</strong></small>";  
+    "<small>" + escapeReceiptText(details) + "</small><br>" +
+    "<small><strong>Status: " + escapeReceiptText(status) + "</strong></small><br>" +
+    "<button type=\"button\" class=\"receipt-button\">View Receipt</button>";
+
+  transaction.querySelector(".receipt-button").onclick = () => {
+    showDigitalReceipt(transactionData);
+  };
 
   transactionsBox.appendChild(transaction);
+  return transactionData;
 } 
 function loadSavedTransactions() 
 {
@@ -300,10 +331,78 @@ function loadSavedTransactions()
             transaction.amount,
             transaction.details,
 false,
-transaction.status || "Successful" 
+transaction.status || "Successful",
+transaction.date,
+transaction.receiptId
             
         );
     });
+}
+
+function showDigitalReceipt(transaction) {
+  const overlay = document.createElement("div");
+  const receiptDate = new Date(transaction.date || Date.now());
+  const readableDate = Number.isNaN(receiptDate.getTime())
+    ? String(transaction.date || "")
+    : receiptDate.toLocaleString();
+
+  overlay.style.cssText = `
+    position:fixed;inset:0;background:rgba(0,0,0,0.7);display:flex;
+    align-items:center;justify-content:center;z-index:12000;padding:20px;
+  `;
+
+  overlay.innerHTML = `
+    <div style="background:white;width:100%;max-width:430px;border-radius:20px;
+      padding:25px;box-sizing:border-box;font-family:Arial,sans-serif;">
+      <div style="text-align:center;border-bottom:1px dashed #d1d5db;padding-bottom:16px;">
+        <div style="font-size:36px;">💳</div>
+        <h2 style="margin:8px 0 4px;">LonerPay Receipt</h2>
+        <small>One app. Everyday payments.</small>
+      </div>
+      <div style="line-height:1.7;padding:16px 0;word-break:break-word;">
+        <div><strong>Receipt ID:</strong> ${escapeReceiptText(transaction.receiptId)}</div>
+        <div><strong>Service:</strong> ${escapeReceiptText(transaction.type)}</div>
+        <div><strong>Amount:</strong> ₦${Number(transaction.amount).toFixed(2)}</div>
+        <div><strong>Details:</strong> ${escapeReceiptText(transaction.details)}</div>
+        <div><strong>Status:</strong> ${escapeReceiptText(transaction.status || "Successful")}</div>
+        <div><strong>Date:</strong> ${escapeReceiptText(readableDate)}</div>
+      </div>
+      <button type="button" class="download-receipt" style="width:100%;padding:14px;
+        border:0;border-radius:11px;background:#111827;color:white;font-weight:bold;">
+        Download Receipt
+      </button>
+      <button type="button" class="close-receipt" style="width:100%;padding:13px;
+        border:0;background:transparent;font-weight:bold;margin-top:6px;">Close</button>
+    </div>`;
+
+  document.body.appendChild(overlay);
+  overlay.querySelector(".close-receipt").onclick = () => overlay.remove();
+  overlay.querySelector(".download-receipt").onclick = () =>
+    downloadDigitalReceipt(transaction, readableDate);
+}
+
+function downloadDigitalReceipt(transaction, readableDate) {
+  const receiptLines = [
+    "LONERPAY DIGITAL RECEIPT",
+    "One app. Everyday payments.",
+    "--------------------------------",
+    "Receipt ID: " + transaction.receiptId,
+    "Service: " + transaction.type,
+    "Amount: ₦" + Number(transaction.amount).toFixed(2),
+    "Details: " + transaction.details,
+    "Status: " + (transaction.status || "Successful"),
+    "Date: " + readableDate,
+    "--------------------------------",
+    "Thank you for using LonerPay."
+  ];
+  const file = new Blob([receiptLines.join("\n")], { type: "text/plain;charset=utf-8" });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(file);
+  link.download = "LonerPay-Receipt-" + transaction.receiptId + ".txt";
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(link.href), 1000);
 }
 
 loadSavedTransactions(); 
@@ -453,6 +552,15 @@ function buyAirtime() {
       buyAirtime();
     }
 overlay.querySelector("#confirmAirtime").onclick = async () => {
+  const confirmButton = overlay.querySelector("#confirmAirtime");
+
+  if (confirmButton.disabled) {
+    return;
+  }
+
+  confirmButton.disabled = true;
+  confirmButton.textContent = "Processing...";
+  confirmButton.style.opacity = "0.65";
   
   const details =
         "Phone: " + phone + " | Network: " + network;
@@ -496,6 +604,10 @@ overlay.querySelector("#confirmAirtime").onclick = async () => {
       await window.refreshSecureWallet();
     }
 
+    if (typeof window.refreshSecureTransactions === "function") {
+      await window.refreshSecureTransactions();
+    }
+
     const failureMessage =
       data.error || data.message || "Payment failed";
     const refundMessage = data.refunded
@@ -505,6 +617,9 @@ overlay.querySelector("#confirmAirtime").onclick = async () => {
           : "");
 
     alert(failureMessage + refundMessage);
+    confirmButton.disabled = false;
+    confirmButton.textContent = "Confirm Payment";
+    confirmButton.style.opacity = "1";
     return;
   }
 
@@ -541,22 +656,34 @@ if (data.code === "000" && vtStatus === "delivered") {
       "Pending"
     );
     alert("Payment is pending. Please check again shortly.");
+    if (typeof window.refreshSecureTransactions === "function") {
+      await window.refreshSecureTransactions();
+    }
     return;
 } else {
    alert("Payment failed");  
-    
+    confirmButton.disabled = false;
+    confirmButton.textContent = "Confirm Payment";
+    confirmButton.style.opacity = "1";
     return;
 }
 
 } catch (error) {
     console.error(error);
     alert("Could not connect to payment provider.");
+    confirmButton.disabled = false;
+    confirmButton.textContent = "Confirm Payment";
+    confirmButton.style.opacity = "1";
     return;
     } recordTransaction(
   "Airtime",
   amount,
   "Network: " + network + " | Phone: " + phone
 );  
+
+      if (typeof window.refreshSecureTransactions === "function") {
+        await window.refreshSecureTransactions();
+      }
 
       overlay.innerHTML = `
         <div style="
@@ -961,11 +1088,7 @@ document.addEventListener("DOMContentLoaded", function () {
         balanceBox.appendChild(profileButton);
       } 
 });  
-</script><script src="wallet-client.js"></script>  
-<script src="transactions-client.js"></script> 
-<script src="data-client.js"></script> 
-<script src="electricity-client.js"></script> 
-<script src="tv-client.js"></script> 
+</script><script src="wallet-client.js"></script>
+<script src="transactions-client.js"></script>  
 </body>
 </html> 
-
