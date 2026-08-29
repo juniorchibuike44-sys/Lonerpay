@@ -123,17 +123,32 @@ export default async function handler(req, res) {
 
   async function refundWallet(reason) {
     if (!debitCompleted || !user || !requestId) {
-      return;
+      return { success: false, message: "No completed debit to refund" };
     }
 
     try {
-      await callRpc("refund_wallet", {
+      const refund = await callRpc("refund_wallet", {
         p_user_id: user.id,
         p_request_id: requestId,
         p_reason: reason
       });
+
+      if (refund?.success === false) {
+        throw new Error(refund.message || "Wallet refund was rejected");
+      }
+
+      debitCompleted = false;
+      return {
+        success: true,
+        balance: Number(refund?.new_balance),
+        transaction_id: refund?.transaction_id || null
+      };
     } catch (refundError) {
       console.error("WALLET REFUND ERROR:", refundError);
+      return {
+        success: false,
+        message: refundError.message
+      };
     }
   }
 
@@ -219,7 +234,7 @@ export default async function handler(req, res) {
       (providerCode === "000" || providerCode === "099");
 
     if (!providerAccepted) {
-      await refundWallet(
+      const refund = await refundWallet(
         vtpassData.response_description ||
         vtpassData.message ||
         "VTpass rejected the payment"
@@ -231,7 +246,11 @@ export default async function handler(req, res) {
           vtpassData.message ||
           "Provider payment failed",
         request_id: requestId,
-        refunded: true
+        refunded: refund.success,
+        refund_error: refund.success ? null : refund.message,
+        wallet: Number.isFinite(refund.balance)
+          ? { balance: refund.balance }
+          : undefined
       });
     }
 
@@ -244,13 +263,17 @@ export default async function handler(req, res) {
       }
     });
   } catch (error) {
-    await refundWallet(error.message);
+    const refund = await refundWallet(error.message);
 
     return res.status(500).json({
       error: "Secure payment failed",
       message: error.message,
       request_id: requestId || null,
-      refunded: debitCompleted
+      refunded: refund.success,
+      refund_error: refund.success ? null : refund.message,
+      wallet: Number.isFinite(refund.balance)
+        ? { balance: refund.balance }
+        : undefined
     });
   }
 }
