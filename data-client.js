@@ -75,10 +75,6 @@
 
       const serviceID = serviceIDs[network.value];
 
-      if (!/^\d{4}$/.test(pin.value)) {
-        alert("Enter your 4-digit payment PIN.");
-        return;
-      }
       if (!serviceID) {
         plan.innerHTML = '<option value="">Select a network first</option>';
         return;
@@ -122,6 +118,11 @@
       const selectedPlan = plan.selectedOptions[0];
       const amount = Number(selectedPlan?.dataset.amount);
       const serviceID = serviceIDs[network.value];
+
+      if (!/^\d{4}$/.test(pin.value)) {
+        alert("Enter your 4-digit payment PIN.");
+        return;
+      }
 
       if (!/^\d{11,12}$/.test(phoneNumber)) {
         alert("Enter a valid phone number.");
