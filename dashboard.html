@@ -519,6 +519,11 @@ function buyAirtime() {
         <p><strong>Phone Number</strong><br>${phone}</p>
         <p><strong>Amount</strong><br>₦${amount.toFixed(2)}</p>
 
+        <label style="display:block;margin:14px 0 6px;"><strong>Payment PIN</strong></label>
+        <input id="airtimePin" type="password" inputmode="numeric" maxlength="4" autocomplete="off"
+          placeholder="••••" style="width:100%;padding:13px;margin-bottom:16px;box-sizing:border-box;
+          border:1px solid #ccc;border-radius:10px;text-align:center;font-size:18px;letter-spacing:8px;">
+
         <button id="confirmAirtime"
           style="
             width:100%;
@@ -553,6 +558,12 @@ function buyAirtime() {
     }
 overlay.querySelector("#confirmAirtime").onclick = async () => {
   const confirmButton = overlay.querySelector("#confirmAirtime");
+  const paymentPin = overlay.querySelector("#airtimePin").value;
+
+  if (!/^\d{4}$/.test(paymentPin)) {
+    alert("Enter your 4-digit payment PIN.");
+    return;
+  }
 
   if (confirmButton.disabled) {
     return;
@@ -579,7 +590,8 @@ overlay.querySelector("#confirmAirtime").onclick = async () => {
                 variation_code: "",
                 amount: Number(amount),
                 phone: phone,
-                email: "sandbox@sandbox.com"
+                email: "sandbox@sandbox.com",
+                pin: paymentPin
             })
         });
 

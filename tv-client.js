@@ -50,6 +50,11 @@
           <input id="secureTvPhone" inputmode="numeric" placeholder="08011111111"
             style="width:100%;padding:13px;border:1px solid #ccc;border-radius:10px;box-sizing:border-box;">
 
+          <label style="display:block;margin:12px 0 6px;">Payment PIN</label>
+          <input id="secureTvPin" type="password" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="••••"
+            style="width:100%;padding:13px;border:1px solid #ccc;border-radius:10px;box-sizing:border-box;
+            text-align:center;font-size:18px;letter-spacing:8px;">
+
           <button id="secureTvConfirm" disabled style="width:100%;padding:15px;margin-top:18px;border:0;border-radius:12px;
             background:#111827;color:white;font-size:16px;font-weight:bold;opacity:.55;">Confirm Payment</button>
         </div>
@@ -65,6 +70,7 @@
     const fields = overlay.querySelector("#secureTvPaymentFields");
     const plan = overlay.querySelector("#secureTvPlan");
     const phone = overlay.querySelector("#secureTvPhone");
+    const pin = overlay.querySelector("#secureTvPin");
     const confirm = overlay.querySelector("#secureTvConfirm");
     const accessToken = localStorage.getItem("lonerpay_access_token");
     let verifiedDetails = null;
@@ -149,6 +155,7 @@
       const paymentAmount = Number(selectedPlan?.dataset.amount);
 
       if (!/^\d{11,12}$/.test(phoneNumber)) return alert("Enter a valid phone number.");
+      if (!/^\d{4}$/.test(pin.value)) return alert("Enter your 4-digit payment PIN.");
       if (!plan.value || !Number.isFinite(paymentAmount) || paymentAmount <= 0) {
         return alert("Select a valid bouquet.");
       }
@@ -169,7 +176,8 @@
             phone: phoneNumber,
             email: "sandbox@sandbox.com",
             subscription_type: "change",
-            quantity: 1
+            quantity: 1,
+            pin: pin.value
           })
         });
         const data = await response.json();

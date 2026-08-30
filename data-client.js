@@ -42,6 +42,11 @@
           <option value="">Select a network first</option>
         </select>
 
+        <label style="display:block;margin:14px 0 6px;">Payment PIN</label>
+        <input id="secureDataPin" type="password" inputmode="numeric" maxlength="4" autocomplete="off"
+          placeholder="••••" style="width:100%;padding:13px;border:1px solid #ccc;border-radius:10px;
+          box-sizing:border-box;text-align:center;font-size:18px;letter-spacing:8px;">
+
         <button id="secureDataConfirm" disabled style="width:100%;padding:15px;margin-top:18px;
           border:0;border-radius:12px;background:#111827;color:white;font-size:16px;font-weight:bold;opacity:.55;">
           Confirm Payment
@@ -57,6 +62,7 @@
     const phone = overlay.querySelector("#secureDataPhone");
     const plan = overlay.querySelector("#secureDataPlan");
     const confirm = overlay.querySelector("#secureDataConfirm");
+    const pin = overlay.querySelector("#secureDataPin");
     const accessToken = localStorage.getItem("lonerpay_access_token");
 
     overlay.querySelector("#secureDataCancel").onclick = () => overlay.remove();
@@ -68,6 +74,11 @@
       plan.innerHTML = '<option value="">Loading plans...</option>';
 
       const serviceID = serviceIDs[network.value];
+
+      if (!/^\d{4}$/.test(pin.value)) {
+        alert("Enter your 4-digit payment PIN.");
+        return;
+      }
       if (!serviceID) {
         plan.innerHTML = '<option value="">Select a network first</option>';
         return;
@@ -139,7 +150,8 @@
             variation_code: plan.value,
             amount,
             phone: phoneNumber,
-            email: "sandbox@sandbox.com"
+            email: "sandbox@sandbox.com",
+            pin: pin.value
           })
         });
         const data = await response.json();

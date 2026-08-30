@@ -65,6 +65,10 @@
           <label style="display:block;margin:12px 0 6px;">Amount (₦)</label>
           <input id="electricAmount" inputmode="decimal" type="number" min="1" placeholder="100"
             style="width:100%;padding:13px;border:1px solid #ccc;border-radius:10px;box-sizing:border-box;">
+          <label style="display:block;margin:12px 0 6px;">Payment PIN</label>
+          <input id="electricPin" type="password" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="••••"
+            style="width:100%;padding:13px;border:1px solid #ccc;border-radius:10px;box-sizing:border-box;
+            text-align:center;font-size:18px;letter-spacing:8px;">
           <button id="electricConfirm" style="width:100%;padding:15px;margin-top:18px;border:0;border-radius:12px;
             background:#111827;color:white;font-size:16px;font-weight:bold;">Confirm Payment</button>
         </div>
@@ -80,6 +84,7 @@
     const fields = overlay.querySelector("#electricPaymentFields");
     const phone = overlay.querySelector("#electricPhone");
     const amount = overlay.querySelector("#electricAmount");
+    const pin = overlay.querySelector("#electricPin");
     const confirm = overlay.querySelector("#electricConfirm");
     const accessToken = localStorage.getItem("lonerpay_access_token");
     let verifiedDetails = null;
@@ -131,6 +136,7 @@
       const paymentAmount = Number(amount.value);
       if (!/^\d{11,12}$/.test(phoneNumber)) return alert("Enter a valid phone number.");
       if (!Number.isFinite(paymentAmount) || paymentAmount <= 0) return alert("Enter a valid amount.");
+      if (!/^\d{4}$/.test(pin.value)) return alert("Enter your 4-digit payment PIN.");
       if (verifiedDetails.minimumAmount && paymentAmount < verifiedDetails.minimumAmount) {
         return alert(`Minimum payment is ₦${Number(verifiedDetails.minimumAmount).toFixed(2)}.`);
       }
@@ -147,7 +153,8 @@
             variation_code: verifiedDetails.type,
             amount: paymentAmount,
             phone: phoneNumber,
-            email: "sandbox@sandbox.com"
+            email: "sandbox@sandbox.com",
+            pin: pin.value
           })
         });
         const data = await response.json();
