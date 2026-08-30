@@ -1,3 +1,19 @@
+import { pbkdf2Sync, timingSafeEqual } from "node:crypto";
+
+function verifyStoredPin(pin, storedHash) {
+  try {
+    const [algorithm, iterationsText, salt, expectedHex] = String(storedHash).split("$");
+    if (algorithm !== "pbkdf2_sha256" || !salt || !expectedHex) return false;
+    const iterations = Number(iterationsText);
+    if (!Number.isSafeInteger(iterations) || iterations < 100000) return false;
+    const actual = pbkdf2Sync(pin, salt, iterations, 32, "sha256");
+    const expected = Buffer.from(expectedHex, "hex");
+    return expected.length === actual.length && timingSafeEqual(expected, actual);
+  } catch {
+    return false;
+  }
+}
+
 function createRequestId() {
   const parts = new Intl.DateTimeFormat("en-CA", {
     timeZone: "Africa/Lagos",
@@ -88,7 +104,8 @@ export default async function handler(req, res) {
     phone,
     email,
     subscription_type,
-    quantity
+    quantity,
+    pin
   } = req.body || {};
 
   const paymentAmount = Number(amount);
@@ -208,6 +225,68 @@ export default async function handler(req, res) {
     }
 
     user = await userResponse.json();
+
+    if (!/^\d{4}$/.test(String(pin || ""))) {
+      return res.status(400).json({ error: "Enter your 4-digit payment PIN" });
+    }
+
+    const pinTableUrl = `${supabaseUrl}/rest/v1/payment_pins`;
+    const pinHeaders = {
+      apikey: secretKey,
+      Authorization: `Bearer ${secretKey}`,
+      "Content-Type": "application/json"
+    };
+    const pinResponse = await fetch(
+      `${pinTableUrl}?user_id=eq.${encodeURIComponent(user.id)}&select=pin_hash,failed_attempts,locked_until`,
+      { headers: pinHeaders, cache: "no-store" }
+    );
+    if (!pinResponse.ok) {
+      return res.status(500).json({ error: "Could not verify payment PIN" });
+    }
+    const pinRecords = await pinResponse.json();
+    const pinRecord = pinRecords[0];
+    if (!pinRecord) {
+      return res.status(403).json({ error: "Create a payment PIN in My Profile first" });
+    }
+
+    const lockedUntil = pinRecord.locked_until ? new Date(pinRecord.locked_until) : null;
+    if (lockedUntil && lockedUntil > new Date()) {
+      return res.status(423).json({ error: "PIN is temporarily locked. Try again later." });
+    }
+
+    if (!verifyStoredPin(String(pin), pinRecord.pin_hash)) {
+      const failedAttempts = Number(pinRecord.failed_attempts || 0) + 1;
+      const shouldLock = failedAttempts >= 5;
+      await fetch(`${pinTableUrl}?user_id=eq.${encodeURIComponent(user.id)}`, {
+        method: "PATCH",
+        headers: pinHeaders,
+        body: JSON.stringify({
+          failed_attempts: shouldLock ? 0 : failedAttempts,
+          locked_until: shouldLock
+            ? new Date(Date.now() + 15 * 60 * 1000).toISOString()
+            : null,
+          updated_at: new Date().toISOString()
+        })
+      });
+      return res.status(401).json({
+        error: shouldLock
+          ? "Too many incorrect attempts. PIN locked for 15 minutes."
+          : "Incorrect payment PIN"
+      });
+    }
+
+    if (pinRecord.failed_attempts || pinRecord.locked_until) {
+      await fetch(`${pinTableUrl}?user_id=eq.${encodeURIComponent(user.id)}`, {
+        method: "PATCH",
+        headers: pinHeaders,
+        body: JSON.stringify({
+          failed_attempts: 0,
+          locked_until: null,
+          updated_at: new Date().toISOString()
+        })
+      });
+    }
+
     requestId = createRequestId();
 
     if (electricityServices.has(serviceID)) {
