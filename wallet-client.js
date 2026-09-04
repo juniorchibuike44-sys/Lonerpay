@@ -2,7 +2,7 @@ async function refreshSecureWallet() {
   const balanceElement = document.querySelector(".balance h2");
   let accessToken = localStorage.getItem("lonerpay_access_token");
 const refreshToken = localStorage.getItem("lonerpay_refresh_token"); 
-
+accessToken = "test-expired-token"; 
   const demoButton = Array.from(document.querySelectorAll("button")).find(
     button => button.textContent.includes("Add Demo Funds")
   );
