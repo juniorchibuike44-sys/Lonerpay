@@ -207,39 +207,103 @@
         localStorage.removeItem("lonerpay_refresh_token");
         window.location.href = "index.html";
       }
-    }    function loadProfile() {
-      const savedName =
-        localStorage.getItem("lonerpayProfileName") || "LonerPay User";
+    }    
+async function loadProfile() {
+  const accessToken = localStorage.getItem("lonerpay_access_token");
 
-      const savedPhone =
-        localStorage.getItem("lonerpayProfilePhone") ||
-        "Manage your account and security";
+  if (!accessToken) {
+    window.location.href = "index.html";
+    return;
+  }
 
-      document.querySelector(".profile-card h2").textContent = savedName;
-      document.querySelector(".profile-card p").textContent = savedPhone;
-      document.querySelector(".avatar").textContent =
-        savedName.charAt(0).toUpperCase();
+  try {
+    const response = await fetch("/api/profile", {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${accessToken}`
+      },
+      cache: "no-store"
+    });
+
+    const data = await response.json();
+
+    if (response.status === 401) {
+      localStorage.removeItem("lonerpay_access_token");
+      localStorage.removeItem("lonerpay_refresh_token");
+      window.location.href = "index.html";
+      return;
     }
 
-    function editProfile() {
-      const currentName =
-        localStorage.getItem("lonerpayProfileName") || "";
-
-      const currentPhone =
-        localStorage.getItem("lonerpayProfilePhone") || "";
-
-      const name = prompt("Enter your full name:", currentName);
-      if (name === null || name.trim() === "") return;
-
-      const phone = prompt("Enter your phone number:", currentPhone);
-      if (phone === null || phone.trim() === "") return;
-
-      localStorage.setItem("lonerpayProfileName", name.trim());
-      localStorage.setItem("lonerpayProfilePhone", phone.trim());
-
-      loadProfile();
-      alert("Personal information saved successfully.");
+    if (!response.ok) {
+      throw new Error(data.error || "Could not load profile");
     }
+
+    const name = data.name || "LonerPay User";
+    const phone = data.phone || "Manage your account and security";
+
+    document.querySelector(".profile-card h2").textContent = name;
+    document.querySelector(".profile-card p").textContent = phone;
+    document.querySelector(".avatar").textContent =
+      name.charAt(0).toUpperCase();
+
+  } catch (error) {
+    console.error("Profile load error:", error);
+  }
+} 
+    async function editProfile() {
+  const accessToken = localStorage.getItem("lonerpay_access_token");
+
+  if (!accessToken) {
+    window.location.href = "index.html";
+    return;
+  }
+
+  const currentName =
+    document.querySelector(".profile-card h2").textContent;
+
+  const currentPhone =
+    document.querySelector(".profile-card p").textContent;
+
+  const name = prompt("Enter your full name:", currentName);
+  if (name === null || name.trim() === "") return;
+
+  const phone = prompt("Enter your phone number:", currentPhone);
+  if (phone === null || phone.trim() === "") return;
+
+  try {
+    const response = await fetch("/api/profile", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`
+      },
+      body: JSON.stringify({
+        name: name.trim(),
+        phone: phone.trim()
+      })
+    });
+
+    const data = await response.json();
+
+    if (response.status === 401) {
+      localStorage.removeItem("lonerpay_access_token");
+      localStorage.removeItem("lonerpay_refresh_token");
+      window.location.href = "index.html";
+      return;
+    }
+
+    if (!response.ok) {
+      alert(data.error || "Could not save profile");
+      return;
+    }
+
+    await loadProfile();
+    alert("Personal information saved successfully.");
+
+  } catch (error) {
+    alert("Could not save profile. Please try again.");
+  }
+    } 
 
     document.querySelector(".menu button").onclick = editProfile;
     loadProfile();
