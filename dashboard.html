@@ -944,16 +944,54 @@ function updateWalletDisplay() {
 } 
 updateWalletDisplay(); 
 
-function addDemoFunds() {
-  const amount = prompt("Enter demo wallet amount:");
-  if (!amount || isNaN(amount) || Number(amount) <= 0) return;
+async function addDemoFunds() { 
+  const amount = Number(prompt("Enter funding amount (minimum ₦100):"));
 
-  walletBalance += Number(amount);
-  localStorage.setItem("lonerpay_balance", walletBalance);
-  updateWalletDisplay();
+if (!Number.isFinite(amount) || amount < 100) {
+  alert("Enter a valid funding amount of at least ₦100.");
+  return;
+}
 
-  alert("Wallet funded successfully!\n\nBalance: ₦" + walletBalance.toFixed(2));
-}function processWalletPayment(service, amount, details) { 
+const accessToken = localStorage.getItem("lonerpay_access_token");
+
+if (!accessToken) {
+  alert("Please log in again before funding your wallet.");
+  return;
+}
+
+try {
+  const response = await fetch("/api/fund-wallet/initialize", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${accessToken}`
+    },
+    body: JSON.stringify({ amount })
+  });
+
+  const data = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    throw new Error(
+      data.error || data.message || "Wallet funding is not connected yet."
+    );
+  }
+
+  const paymentUrl =
+    data.authorization_url ||
+    data.checkout_url ||
+    data.payment_url;
+
+  if (!paymentUrl) {
+    throw new Error("Payment provider did not return a checkout link.");
+  }
+
+  window.location.href = paymentUrl;
+} catch (error) {
+  alert(error.message || "Could not start wallet funding.");
+} 
+}
+  function processWalletPayment(service, amount, details) { 
   amount = Number(amount);
 
   if (!Number.isFinite(amount) || amount <= 0) {
@@ -1080,7 +1118,7 @@ document.addEventListener("DOMContentLoaded", function () {
   updateWalletDisplay();
 
   const walletButton = document.createElement("button");
-  walletButton.textContent = "＋ Add Demo Funds";
+  walletButton.textContent = "+ Fund Wallet"; 
   walletButton.onclick = addDemoFunds;
   walletButton.style.cssText =
     "margin-top:10px;padding:12px 18px;border:0;border-radius:10px;background:#111827;color:white;font-size:16px;";
