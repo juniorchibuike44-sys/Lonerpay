@@ -11,9 +11,7 @@ const refreshToken = localStorage.getItem("lonerpay_refresh_token");
     demoButton.style.display = "none";
   }
 
-  window.addDemoFunds = function () {
-    alert("Demo wallet funding has been disabled.");
-  };
+  
 
   localStorage.removeItem("lonerpay_balance");
 
