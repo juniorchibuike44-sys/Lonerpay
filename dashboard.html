@@ -794,7 +794,7 @@ function openTransfer() {
         placeholder="₦ Amount"
         style="width:100%; box-sizing:border-box; padding:14px; margin:8px 0 20px; border:1px solid #ddd; border-radius:10px;">
 
-      <button type="button"
+      <button type="button" onclick="continueTransfer()" 
         style="width:100%; padding:15px; border:0; border-radius:10px; background:#0b5; color:white; font-weight:bold;">
         Continue
       </button>
@@ -809,7 +809,36 @@ function openTransfer() {
   document.body.appendChild(overlay);
 } 
     
-    
+function continueTransfer() {
+  const bank = document.getElementById("transferBank");
+  const account = document.getElementById("transferAccount").value.trim();
+  const amount = document.getElementById("transferAmount").value.trim();
+
+  if (!bank.value) {
+    alert("Please select a bank.");
+    return;
+  }
+
+  if (!/^\d{10}$/.test(account)) {
+    alert("Please enter a valid 10-digit account number.");
+    return;
+  }
+
+  if (!amount || Number(amount) <= 0) {
+    alert("Please enter a valid transfer amount.");
+    return;
+  }
+
+  const bankName = bank.options[bank.selectedIndex].text;
+
+  const confirmed = confirm(
+    `Confirm Transfer\n\nBank: ${bankName}\nAccount: ${account}\nAmount: ₦${Number(amount).toLocaleString()}\n\nThis is still a test and will not send money.`
+  );
+
+  if (confirmed) {
+    alert("Transfer test confirmed. No money was sent.");
+  }
+  }     
     
     
   
