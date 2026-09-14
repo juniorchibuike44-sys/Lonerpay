@@ -749,8 +749,53 @@ if (data.code === "000" && vtStatus === "delivered") {
   
     
 function openTransfer() {
-  alert("Transfer feature is being prepared.");
-  }     
+  const overlay = document.createElement("div");
+  overlay.id = "transferOverlay";
+  overlay.style.cssText = `
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.55);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    padding: 20px;
+  `;
+
+  overlay.innerHTML = `
+    <div style="background:white; width:100%; max-width:420px; border-radius:20px; padding:24px;">
+      <h2 style="margin-top:0;">Bank Transfer</h2>
+      <p style="color:#666;">Send money to a Nigerian bank account</p>
+
+      <label>Bank</label>
+      <select id="transferBank" style="width:100%; padding:14px; margin:8px 0 16px; border:1px solid #ddd; border-radius:10px;">
+        <option value="">Select bank</option>
+      </select>
+
+      <label>Account Number</label>
+      <input id="transferAccount" type="tel" maxlength="10"
+        placeholder="Enter 10-digit account number"
+        style="width:100%; box-sizing:border-box; padding:14px; margin:8px 0 16px; border:1px solid #ddd; border-radius:10px;">
+
+      <label>Amount</label>
+      <input id="transferAmount" type="number" min="1"
+        placeholder="₦ Amount"
+        style="width:100%; box-sizing:border-box; padding:14px; margin:8px 0 20px; border:1px solid #ddd; border-radius:10px;">
+
+      <button type="button"
+        style="width:100%; padding:15px; border:0; border-radius:10px; background:#0b5; color:white; font-weight:bold;">
+        Continue
+      </button>
+
+      <button type="button" onclick="document.getElementById('transferOverlay').remove()"
+        style="width:100%; padding:13px; margin-top:10px; border:0; background:transparent;">
+        Cancel
+      </button>
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
+} 
     
     
     
