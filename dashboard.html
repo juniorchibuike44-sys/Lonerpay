@@ -832,7 +832,7 @@ async function continueTransfer() {
   }
 const accountNameBox = document.getElementById("transferAccountName");
 accountNameBox.textContent = "Verifying account...";
-
+let verifiedAccountName = ""; 
 try {
   const verifyResponse = await fetch("/api/verify-account", {
     method: "POST",
@@ -854,7 +854,7 @@ try {
   }
 
   accountNameBox.textContent = verifyData.account_name;
-
+verifiedAccountName = verifyData.account_name; 
 } catch (error) {
   accountNameBox.textContent = "";
   alert("Account verification failed. Please try again.");
@@ -876,7 +876,7 @@ try {
       body: JSON.stringify({
         account_number: account,
         bank_code: bank.value,
-        account_name: verifyData.account_name,
+        account_name: verifiedAccountName, 
         amount: amount
       })
     });
