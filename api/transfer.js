@@ -58,7 +58,7 @@ export default async function handler(req, res) {
           type: "nuban",
           name: account_name,
           account_number,
-          bank_code,
+          bank_code: bank_code === "001" ? "057" : bank_code, 
           currency: "NGN"
         })
       }
