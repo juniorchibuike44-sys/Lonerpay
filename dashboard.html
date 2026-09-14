@@ -867,8 +867,33 @@ try {
   );
 
   if (confirmed) {
-    alert("Transfer test confirmed. No money was sent.");
+  try {
+    const transferResponse = await fetch("/api/transfer", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        account_number: account,
+        bank_code: bank.value,
+        account_name: verifyData.account_name,
+        amount: amount
+      })
+    });
+
+    const transferData = await transferResponse.json();
+
+    if (!transferResponse.ok || !transferData.status) {
+      alert(transferData.message || "Unable to prepare transfer.");
+      return;
+    }
+
+    alert("Test transfer recipient created successfully. No money was sent.");
+
+  } catch (error) {
+    alert("Transfer preparation failed. Please try again.");
   }
+  } 
   }     
     
     
