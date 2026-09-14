@@ -811,7 +811,7 @@ function openTransfer() {
   document.body.appendChild(overlay);
 } 
     
-function continueTransfer() {
+async function continueTransfer() { 
   const bank = document.getElementById("transferBank");
   const account = document.getElementById("transferAccount").value.trim();
   const amount = document.getElementById("transferAmount").value.trim();
@@ -830,7 +830,36 @@ function continueTransfer() {
     alert("Please enter a valid transfer amount.");
     return;
   }
+const accountNameBox = document.getElementById("transferAccountName");
+accountNameBox.textContent = "Verifying account...";
 
+try {
+  const verifyResponse = await fetch("/api/verify-account", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      account_number: account,
+      bank_code: bank.value
+    })
+  });
+
+  const verifyData = await verifyResponse.json();
+
+  if (!verifyResponse.ok || !verifyData.status) {
+    accountNameBox.textContent = "";
+    alert(verifyData.message || "Unable to verify account.");
+    return;
+  }
+
+  accountNameBox.textContent = verifyData.account_name;
+
+} catch (error) {
+  accountNameBox.textContent = "";
+  alert("Account verification failed. Please try again.");
+  return;
+  } 
   const bankName = bank.options[bank.selectedIndex].text;
 
   const confirmed = confirm(
