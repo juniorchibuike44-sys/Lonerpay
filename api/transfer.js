@@ -75,12 +75,37 @@ export default async function handler(req, res) {
       });
     }
 
-    return res.status(200).json({
-      status: true,
-      message: "Test recipient created successfully",
-      recipient_code: recipientData.data.recipient_code,
-      amount: amountNaira
-    });
+   const transferResponse = await fetch("https://api.paystack.co/transfer", {
+  method: "POST",
+  headers: {
+    Authorization: `Bearer ${secretKey}`,
+    "Content-Type": "application/json"
+  },
+  body: JSON.stringify({
+    source: "balance",
+    amount: Math.round(amountNaira * 100),
+    recipient: recipientData.data.recipient_code,
+    reason: "LonerPay test transfer"
+  })
+});
+
+const transferData = await transferResponse.json();
+
+if (!transferResponse.ok || !transferData.status) {
+  return res.status(transferResponse.status || 400).json({
+    status: false,
+    message: transferData.message || "Unable to initiate test transfer"
+  });
+}
+
+return res.status(200).json({
+  status: true,
+  message: "Test transfer initiated successfully",
+  transfer_code: transferData.data?.transfer_code,
+  reference: transferData.data?.reference
+}); 
+
+    
 
   } catch (error) {
     console.error("Transfer preparation error:", error);
