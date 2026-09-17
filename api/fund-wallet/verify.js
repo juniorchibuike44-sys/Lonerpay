@@ -115,7 +115,7 @@ export default async function handler(req, res) {
         body: JSON.stringify({
           p_user_id: user.id,
           p_amount: walletAmount,
-          p_reference: reference
+          p_request_id: reference 
         })
       }
     );
