@@ -153,10 +153,134 @@
 
     .pin-primary { background: #111827; color: white; font-weight: bold; }
     .pin-cancel { margin-top: 7px; background: transparent; }
+    
+    /* Professional LonerPay popup + notification */
+.lp-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(17, 24, 39, 0.55);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    z-index: 9999;
+}
+
+.lp-modal {
+    width: 100%;
+    max-width: 420px;
+    background: #ffffff;
+    border-radius: 22px;
+    padding: 24px;
+    box-shadow: 0 20px 60px rgba(0,0,0,.25);
+}
+
+.lp-modal h2 {
+    margin: 0 0 8px;
+    color: #111827;
+    font-size: 24px;
+}
+
+.lp-modal p {
+    margin: 0 0 20px;
+    color: #6b7280;
+    line-height: 1.5;
+}
+
+.lp-modal label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
+    color: #111827;
+}
+
+.lp-modal input {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 15px;
+    border: 1px solid #d1d5db;
+    border-radius: 12px;
+    font-size: 16px;
+    outline: none;
+}
+
+.lp-modal input:focus {
+    border-color: #0b8f45;
+}
+
+.lp-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.lp-actions button {
+    flex: 1;
+    padding: 14px;
+    border: 0;
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.lp-cancel {
+    background: #f3f4f6;
+    color: #374151;
+}
+
+.lp-save {
+    background: #0b8f45;
+    color: white;
+}
+
+.lp-toast {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translate(-50%, -120px);
+    width: calc(100% - 40px);
+    max-width: 420px;
+    background: #111827;
+    color: white;
+    padding: 16px 18px;
+    border-radius: 14px;
+    box-shadow: 0 12px 30px rgba(0,0,0,.25);
+    z-index: 10000;
+    opacity: 0;
+    transition: .3s ease;
+}
+
+.lp-toast.show {
+    transform: translate(-50%, 0);
+    opacity: 1;
+} 
   </style>
 </head>
 
 <body>
+  <!-- LonerPay Professional Modal -->
+<div id="lpOverlay" class="lp-overlay">
+  <div class="lp-modal">
+    <h2 id="lpModalTitle">LonerPay</h2>
+    <p id="lpModalText"></p>
+
+    <div id="lpModalInputArea" style="display:none;">
+      <label id="lpModalLabel" for="lpModalInput">Information</label>
+      <input id="lpModalInput" type="text" autocomplete="off">
+    </div>
+
+    <div class="lp-actions">
+      <button type="button" class="lp-cancel" onclick="closeLpModal()">
+        Cancel
+      </button>
+      <button type="button" class="lp-save" id="lpModalSave">
+        Save
+      </button>
+    </div>
+  </div>
+</div>
+
+<div id="lpToast" class="lp-toast"></div> 
   <div class="header">
     <a class="back" href="dashboard.html">←</a>
     <h1>My Profile</h1>
@@ -194,10 +318,50 @@
     <p class="version">LonerPay Version 1.0</p>
   </main>
 
-  <script>
-    function showMessage(message) {
-      alert(message);
+  function showMessage(message) {
+    const toast = document.getElementById("lpToast");
+    toast.textContent = message;
+    toast.classList.add("show");
+
+    setTimeout(() => {
+        toast.classList.remove("show");
+    }, 3000);
+}
+
+function closeLpModal() {
+    document.getElementById("lpOverlay").style.display = "none";
+}
+
+function openLpModal(title, text, label, value, onSave) {
+    const overlay = document.getElementById("lpOverlay");
+    const titleEl = document.getElementById("lpModalTitle");
+    const textEl = document.getElementById("lpModalText");
+    const inputArea = document.getElementById("lpModalInputArea");
+    const labelEl = document.getElementById("lpModalLabel");
+    const input = document.getElementById("lpModalInput");
+    const saveBtn = document.getElementById("lpModalSave");
+
+    titleEl.textContent = title;
+    textEl.textContent = text || "";
+    labelEl.textContent = label || "";
+    input.value = value || "";
+
+    inputArea.style.display = label ? "block" : "none";
+    saveBtn.textContent = "Save";
+
+    saveBtn.onclick = function () {
+        if (onSave) {
+            onSave(input.value.trim());
+        }
+    };
+
+    overlay.style.display = "flex";
+
+    if (label) {
+        setTimeout(() => input.focus(), 100);
     }
+} 
+    
 
     function logout() {
       const confirmed = confirm("Are you sure you want to log out?");
@@ -264,11 +428,21 @@ async function loadProfile() {
   const currentPhone =
     document.querySelector(".profile-card p").textContent;
 
-  const name = prompt("Enter your full name:", currentName);
-  if (name === null || name.trim() === "") return;
+  openLpModal(
+  "Personal Information",
+  "Update your LonerPay profile details.",
+  "Full name",
+  "",
+  async function(name) {
+    if (!name) return;
 
-  const phone = prompt("Enter your phone number:", currentPhone);
-  if (phone === null || phone.trim() === "") return;
+    openLpModal(
+      "Phone Number",
+      "Enter the phone number linked to your LonerPay account.",
+      "Phone number",
+      "",
+      async function(phone) {
+        if (!phone) return; 
 
   try {
     const response = await fetch("/api/profile", {
@@ -303,6 +477,8 @@ async function loadProfile() {
   } catch (error) {
     alert("Could not save profile. Please try again.");
   }
+
+  
     } 
 
     document.querySelector(".menu button").onclick = editProfile;
