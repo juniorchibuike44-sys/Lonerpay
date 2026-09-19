@@ -214,6 +214,17 @@
   <h3>Transfer</h3>
   <p>Send money</p>
       </div> 
+      <div class="service" onclick="openBetFunding()">
+  <div>🎯</div>
+  <h3>Bet Funding</h3>
+  <p>Fund betting account</p>
+      </div> 
+<div class="service" onclick="openGiftCards()">
+  <div>🎁</div>
+  <h3>Gift Cards</h3>
+  <p>Buy & Sell gift cards</p>
+</div> 
+      
 
     </div>
 
@@ -1387,6 +1398,262 @@ function showPaymentSuccess(service, amount, details) {
         overlay.remove();
     };
 } 
+function openBetFunding() {
+  const overlay = document.createElement("div");
+
+  overlay.style.cssText = `
+    position:fixed;
+    inset:0;
+    background:rgba(0,0,0,.55);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    z-index:9999;
+    padding:20px;
+  `;
+
+  overlay.innerHTML = `
+    <div style="
+      background:white;
+      width:100%;
+      max-width:420px;
+      border-radius:20px;
+      padding:24px;
+    ">
+      <h2 style="margin-top:0;">Bet Funding</h2>
+      <p>Fund your betting account</p>
+
+      <label>Betting Platform</label>
+      <select id="betPlatform" style="
+        width:100%;
+        padding:14px;
+        margin:8px 0 16px;
+        border-radius:10px;
+      ">
+        <option value="">Select platform</option>
+        <option value="1xbet">1xBet</option>
+        <option value="bet9ja">Bet9ja</option>
+      </select>
+
+      <label>User / Betting ID</label>
+      <input
+        id="betUserId"
+        type="text"
+        placeholder="Enter betting ID"
+        style="
+          width:100%;
+          box-sizing:border-box;
+          padding:14px;
+          margin:8px 0 16px;
+          border:1px solid #ccc;
+          border-radius:10px;
+        "
+      >
+
+      <label>Amount (₦)</label>
+      <input
+        id="betAmount"
+        type="number"
+        min="100"
+        placeholder="Enter amount"
+        style="
+          width:100%;
+          box-sizing:border-box;
+          padding:14px;
+          margin:8px 0 20px;
+          border:1px solid #ccc;
+          border-radius:10px;
+        "
+      >
+
+      <button id="betContinue" style="
+        width:100%;
+        padding:15px;
+        border:0;
+        border-radius:10px;
+        background:#00c853;
+        color:white;
+        font-weight:bold;
+        font-size:16px;
+      ">Continue</button>
+
+      <button id="betCancel" style="
+        width:100%;
+        padding:14px;
+        margin-top:8px;
+        border:0;
+        background:transparent;
+        font-size:16px;
+      ">Cancel</button>
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
+
+  overlay.querySelector("#betCancel").onclick = function () {
+    overlay.remove();
+  };
+
+  overlay.querySelector("#betContinue").onclick = function () {
+    const platform = overlay.querySelector("#betPlatform").value;
+    const userId = overlay.querySelector("#betUserId").value.trim();
+    const amount = Number(overlay.querySelector("#betAmount").value);
+
+    if (!platform) {
+      alert("Please select a betting platform.");
+      return;
+    }
+
+    if (!userId) {
+      alert("Please enter your betting ID.");
+      return;
+    }
+
+    if (!amount || amount < 100) {
+      alert("Please enter an amount of at least ₦100.");
+      return;
+    }
+
+    alert(
+      `Bet Funding\nPlatform: ${platform}\nBetting ID: ${userId}\nAmount: ₦${amount.toLocaleString()}`
+    );
+  };
+} 
+  function openGiftCards() {
+  const overlay = document.createElement("div");
+
+  overlay.style.cssText = `
+    position:fixed;
+    inset:0;
+    background:rgba(0,0,0,.55);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    z-index:9999;
+    padding:20px;
+  `;
+
+  overlay.innerHTML = `
+    <div style="
+      background:white;
+      width:100%;
+      max-width:420px;
+      border-radius:24px;
+      padding:24px;
+      box-sizing:border-box;
+    ">
+      <h2 style="margin-top:0;">🎁 Gift Cards</h2>
+      <p>Buy or sell gift cards.</p>
+
+      <label>Transaction Type</label>
+      <select id="giftAction" style="
+        width:100%;
+        padding:14px;
+        margin:8px 0 16px;
+        border-radius:10px;
+      ">
+        <option value="">Select Buy or Sell</option>
+        <option value="buy">Buy Gift Card</option>
+        <option value="sell">Sell Gift Card</option>
+      </select>
+
+      <label>Gift Card</label>
+      <select id="giftCard" style="
+        width:100%;
+        padding:14px;
+        margin:8px 0 16px;
+        border-radius:10px;
+      ">
+        <option value="">Select Gift Card</option>
+        <option value="amazon">Amazon</option>
+        <option value="apple">Apple</option>
+        <option value="google-play">Google Play</option>
+        <option value="steam">Steam</option>
+      </select>
+<label>Country / Region</label>
+<select id="giftRegion" style="
+  width:100%;
+  padding:14px;
+  margin:8px 0 16px;
+  border-radius:10px;
+">
+  <option value="">Select Country / Region</option>
+  <option value="usa">USA</option>
+  <option value="uk">United Kingdom</option>
+  <option value="canada">Canada</option>
+  <option value="europe">Europe</option>
+</select> 
+      <label>Amount</label>
+      <input id="giftAmount" type="number"
+        placeholder="Enter amount"
+        style="
+          width:100%;
+          padding:14px;
+          margin:8px 0 18px;
+          border:1px solid #ccc;
+          border-radius:10px;
+          box-sizing:border-box;
+        ">
+
+      <button id="giftContinue" style="
+        width:100%;
+        padding:15px;
+        border:0;
+        border-radius:12px;
+        background:#00c853;
+        color:white;
+        font-weight:bold;
+        font-size:16px;
+      ">Continue</button>
+
+      <button id="giftCancel" style="
+        width:100%;
+        padding:14px;
+        margin-top:8px;
+        border:0;
+        background:transparent;
+        font-size:16px;
+      ">Cancel</button>
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
+
+  overlay.querySelector("#giftCancel").onclick = () => {
+    overlay.remove();
+  };
+
+  overlay.querySelector("#giftContinue").onclick = () => {
+    const action = overlay.querySelector("#giftAction").value;
+    const card = overlay.querySelector("#giftCard").value;
+    const region = overlay.querySelector("#giftRegion").value; 
+    const amount = Number(
+      overlay.querySelector("#giftAmount").value
+    );
+
+    if (!action) {
+      alert("Please select Buy or Sell.");
+      return;
+    }
+
+    if (!card) {
+      alert("Please select a gift card.");
+      return;
+    }
+if (!region) {
+  alert("Please select a Country / Region.");
+  return;
+} 
+    if (!amount || amount <= 0) {
+      alert("Please enter a valid amount.");
+      return;
+    }
+
+    alert(
+      `\nCard: ${card}\nRegion: ${region}\nAmount: ${amount} 
+    );
+  };
+  } 
 document.addEventListener("DOMContentLoaded", function () {
   updateWalletDisplay();
 
