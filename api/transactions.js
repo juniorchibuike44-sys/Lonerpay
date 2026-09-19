@@ -34,7 +34,7 @@ export default async function handler(req, res) {
     const user = await userResponse.json();
     const query = new URLSearchParams({
       user_id: `eq.${user.id}`,
-      transaction_type: "eq.debit",
+      
       select: "request_id,service,amount,status,details,created_at",
       order: "created_at.desc",
       limit: "50"
