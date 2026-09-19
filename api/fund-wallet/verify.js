@@ -101,24 +101,24 @@ export default async function handler(req, res) {
       });
     }
 
-    // Secure atomic wallet credit.
-    // We will create this Supabase function next.
-    const creditResponse = await fetch(
-      `${supabaseUrl}/rest/v1/rpc/credit_wallet_from_paystack`,
-      {
-        method: "POST",
-        headers: {
-          apikey: supabaseSecretKey,
-          Authorization: `Bearer ${supabaseSecretKey}`,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          p_user_id: user.id,
-          p_amount: walletAmount,
-          p_request_id: reference 
-        })
-      }
-    );
+        // Direct wallet credit - no RPC needed
+    const profileRes = await fetch(`${supabaseUrl}/rest/v1/profiles?id=eq.${user.id}`, {
+      headers: { apikey: supabaseSecretKey, Authorization: `Bearer ${supabaseSecretKey}` }
+    });
+    const profileData = await profileRes.json();
+    const currentBalance = Number(profileData?.[0]?.wallet_balance || 0);
+    const newBalance = currentBalance + walletAmount;
+
+    const creditResponse = await fetch(`${supabaseUrl}/rest/v1/profiles?id=eq.${user.id}`, {
+      method: "PATCH",
+      headers: {
+        apikey: supabaseSecretKey,
+        Authorization: `Bearer ${supabaseSecretKey}`,
+        "Content-Type": "application/json",
+        Prefer: "return=representation"
+      },
+      body: JSON.stringify({ wallet_balance: newBalance })
+    }); 
 
     const creditText = await creditResponse.text();
 
