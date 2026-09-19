@@ -124,7 +124,8 @@ export default async function handler(req, res) {
 
     if (!creditResponse.ok) {
       return res.status(500).json({
-        error: "Payment verified but wallet could not be credited",
+        error: "Payment verified but wallet could not be credited: " + creditText, 
+
         message: creditText
       });
     }
