@@ -50,10 +50,15 @@ async function refreshSecureTransactions() {
     transactions.forEach(transaction => {
       const details = transaction.details || {};
       const phone = details.phone || details.billersCode || "";
-      const service = String(transaction.service || "Payment");
-      const serviceName = service.toLowerCase() === "mtn"
-        ? "MTN Airtime"
-        : service;
+      const service = String(transaction.service || "");
+const serviceLower = service.toLowerCase();
+
+const serviceName =
+  serviceLower === "mtn"
+    ? "MTN Airtime"
+    : serviceLower === "paystack_wallet_funding"
+    ? "Wallet Funding"
+    : service; 
       const detailText = phone ? `Phone: ${phone}` : "Secure wallet payment";
 
       transactionsBox.insertAdjacentHTML(
