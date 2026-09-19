@@ -67,6 +67,7 @@ export default async function handler(req, res) {
           email: user.email,
           amount: String(Math.round(amount * 100)),
           reference,
+                  callback_url: `${req.headers.origin}/dashboard.html`, 
           metadata: JSON.stringify({
             user_id: user.id,
             wallet_amount: amount
