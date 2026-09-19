@@ -475,13 +475,17 @@ async function loadProfile() {
     alert("Personal information saved successfully.");
 
   } catch (error) {
-    alert("Could not save profile. Please try again.");
+  alert("Could not save profile. Please try again.");
+}
+
+      }
+    );
   }
+);
+}
 
+document.querySelector(".menu button").onclick = editProfile; 
   
-    } 
-
-    document.querySelector(".menu button").onclick = editProfile;
     loadProfile();
 
     async function securitySettings() {
