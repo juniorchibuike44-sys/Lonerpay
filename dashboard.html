@@ -1520,6 +1520,35 @@ function openBetFunding() {
     }
 
     try {
+  // Step 1: Verify the betting account
+  const verifyResponse = await fetch("/api/bet-verify", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      provider_id: platform,
+      customer_id: userId
+    })
+  });
+
+  const verifyData = await verifyResponse.json();
+
+  if (!verifyResponse.ok || !verifyData.success) {
+    alert(verifyData.message || "Betting account verification failed.");
+    return;
+  }
+
+  const customerName =
+    verifyData.customer_name || "Verified Customer";
+
+  const confirmed = confirm(
+    `Account verified\n\nName: ${customerName}\nBetting ID: ${userId}\nAmount: ₦${amount}\n\nContinue with funding?`
+  );
+
+  if (!confirmed) return;
+
+  // Step 2: Fund after verification
   const response = await fetch("/api/bet-funding", {
     method: "POST",
     headers: {
@@ -1528,7 +1557,8 @@ function openBetFunding() {
     body: JSON.stringify({
       provider_id: platform,
       customer_id: userId,
-      amount: amount
+      amount: amount,
+      recipient_name: customerName
     })
   });
 
