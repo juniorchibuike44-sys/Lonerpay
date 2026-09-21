@@ -1,3 +1,32 @@
+import { pbkdf2Sync, timingSafeEqual } from "crypto"; 
+function verifyStoredPin(pin, storedHash) {
+  try {
+    const [algorithm, iterationsText, salt, expectedHex] =
+      String(storedHash || "").split("$");
+
+    if (algorithm !== "pbkdf2_sha256") return false;
+
+    const iterations = Number(iterationsText);
+    if (!Number.isSafeInteger(iterations) || iterations <= 0) return false;
+
+    const actual = pbkdf2Sync(
+      String(pin),
+      salt,
+      iterations,
+      32,
+      "sha256"
+    );
+
+    const expected = Buffer.from(expectedHex, "hex");
+
+    return (
+      expected.length === actual.length &&
+      timingSafeEqual(expected, actual)
+    );
+  } catch {
+    return false;
+  }
+} 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({
@@ -7,9 +36,9 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { provider_id, amount, customer_id, recipient_name } = req.body;
+    const { provider_id, amount, customer_id, recipient_name, pin } = req.body; 
 
-    if (!provider_id || !amount || !customer_id) {
+   if (!provider_id || !amount || !customer_id || !pin) { 
       return res.status(400).json({
         success: false,
         message: "Provider, amount and customer ID are required"
@@ -24,7 +53,41 @@ export default async function handler(req, res) {
         message: "Minimum betting funding amount is ₦50"
       });
     }
+const supabaseUrl = process.env.SUPABASE_URL;
+const secretKey = process.env.SUPABASE_SECRET_KEY;
+const authorization = req.headers.authorization;
 
+if (!supabaseUrl || !secretKey) {
+  return res.status(500).json({
+    success: false,
+    message: "Server authentication configuration is missing"
+  });
+}
+
+if (!authorization?.startsWith("Bearer ")) {
+  return res.status(401).json({
+    success: false,
+    message: "Login required"
+  });
+} 
+    const userResponse = await fetch(
+  `${supabaseUrl}/auth/v1/user`,
+  {
+    headers: {
+      apikey: secretKey,
+      Authorization: authorization
+    }
+  }
+);
+
+if (!userResponse.ok) {
+  return res.status(401).json({
+    success: false,
+    message: "Invalid or expired login"
+  });
+}
+
+const user = await userResponse.json(); 
     const apiKey = process.env.PAIRGATE_API_KEY;
 
     if (!apiKey) {
