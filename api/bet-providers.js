@@ -28,7 +28,8 @@ export default async function handler(req, res) {
     );
 
     const data = await response.json();
-
+console.log("Pairgate status:", response.status);
+console.log("Pairgate response:", JSON.stringify(data)); 
     if (!response.ok || data?.status !== "success") {
       return res.status(response.status || 400).json({
         success: false,
