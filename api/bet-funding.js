@@ -89,7 +89,7 @@ if (!userResponse.ok) {
 
 const user = await userResponse.json(); 
 const pinResponse = await fetch(
-  `${supabaseUrl}/rest/v1/user_pins?user_id=eq.${encodeURIComponent(user.id)}&select=pin_hash&limit=1`,
+  `${supabaseUrl}/rest/v1/payment_pins?user_id=eq.${encodeURIComponent(user.id)}&select=pin_hash&limit=1`,
   {
     headers: {
       apikey: secretKey,
