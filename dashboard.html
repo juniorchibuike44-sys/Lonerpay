@@ -1470,7 +1470,22 @@ function openBetFunding() {
           border-radius:10px;
         "
       >
-
+<label>Payment PIN</label>
+<input
+  id="betPin"
+  type="password"
+  inputmode="numeric"
+  maxlength="4"
+  placeholder="Enter 4-digit PIN"
+  style="
+    width:100%;
+    box-sizing:border-box;
+    padding:14px;
+    margin:8px 0 20px;
+    border:1px solid #ccc;
+    border-radius:10px;
+  "
+> 
       <button id="betContinue" style="
         width:100%;
         padding:15px;
@@ -1503,7 +1518,12 @@ function openBetFunding() {
     const platform = overlay.querySelector("#betPlatform").value;
     const userId = overlay.querySelector("#betUserId").value.trim();
     const amount = Number(overlay.querySelector("#betAmount").value);
+const pin = overlay.querySelector("#betPin").value.trim();
 
+if (!/^\d{4}$/.test(pin)) {
+  alert("Please enter your 4-digit payment PIN.");
+  return;
+} 
     if (!platform) {
       alert("Please select a betting platform.");
       return;
@@ -1552,13 +1572,15 @@ function openBetFunding() {
   const response = await fetch("/api/bet-funding", {
     method: "POST",
     headers: {
-      "Content-Type": "application/json"
-    },
+  "Content-Type": "application/json",
+  "Authorization": `Bearer ${localStorage.getItem("lonerpay_access_token")}`
+}, 
     body: JSON.stringify({
       provider_id: platform,
       customer_id: userId,
       amount: amount,
-      recipient_name: customerName
+      recipient_name: customerName,
+pin: pin 
     })
   });
 
