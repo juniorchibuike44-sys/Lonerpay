@@ -88,6 +88,34 @@ if (!userResponse.ok) {
 }
 
 const user = await userResponse.json(); 
+const pinResponse = await fetch(
+  `${supabaseUrl}/rest/v1/user_pins?user_id=eq.${encodeURIComponent(user.id)}&select=pin_hash&limit=1`,
+  {
+    headers: {
+      apikey: secretKey,
+      Authorization: `Bearer ${secretKey}`
+    },
+    cache: "no-store"
+  }
+);
+
+if (!pinResponse.ok) {
+  return res.status(500).json({
+    success: false,
+    message: "Unable to verify payment PIN"
+  });
+}
+
+const pinRows = await pinResponse.json();
+const storedPinHash = pinRows?.[0]?.pin_hash;
+
+if (!storedPinHash || !verifyStoredPin(String(pin), storedPinHash)) {
+  return res.status(401).json({
+    success: false,
+    message: "Invalid payment PIN"
+  });
+} 
+    
     const apiKey = process.env.PAIRGATE_API_KEY;
 
     if (!apiKey) {
