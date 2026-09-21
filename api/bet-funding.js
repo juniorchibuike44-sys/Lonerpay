@@ -128,7 +128,28 @@ if (!storedPinHash || !verifyStoredPin(String(pin), storedPinHash)) {
     const reference =
       "lonerbet-" + Date.now() + "-" +
       Math.random().toString(36).slice(2, 8);
+    let debitCompleted = false; 
+const debit = await callRpc("debit_wallet", {
+  p_user_id: user.id,
+  p_amount: numericAmount,
+  p_request_id: reference,
+  p_service: "bet-funding",
+  p_details: {
+    provider_id: provider_id,
+    customer_id: String(customer_id),
+    recipient_name: recipient_name || ""
+  }
+});
 
+if (!debit?.success) {
+  return res.status(402).json({
+    success: false,
+    message: debit?.message || "Wallet debit failed",
+    balance: Number(debit?.new_balance || 0)
+  });
+}
+
+debitCompleted = true; 
     // TEST endpoint first — no real Pairgate balance is deducted.
     const response = await fetch(
       "https://pairgate.com/api/v1/test/bet/purchase",
@@ -151,6 +172,14 @@ if (!storedPinHash || !verifyStoredPin(String(pin), storedPinHash)) {
     const data = await response.json();
 
     if (!response.ok || data.status !== "success") {
+      if (debitCompleted) {
+  await callRpc("refund_wallet", {
+    p_user_id: user.id,
+    p_request_id: reference,
+    p_reason: data.message || "Bet funding failed"
+  });
+  debitCompleted = false;
+      } 
       return res.status(response.status || 400).json({
         success: false,
         message: data.message || "Bet funding request failed",
@@ -168,7 +197,18 @@ if (!storedPinHash || !verifyStoredPin(String(pin), storedPinHash)) {
 
   } catch (error) {
     console.error("Bet funding error:", error);
-
+if (debitCompleted) {
+  try {
+    await callRpc("refund_wallet", {
+      p_user_id: user.id,
+      p_request_id: reference,
+      p_reason: error?.message || "Bet funding request failed"
+    });
+    debitCompleted = false;
+  } catch (refundError) {
+    console.error("Bet funding refund error:", refundError);
+  }
+} 
     return res.status(500).json({
       success: false,
       message: "Unable to process bet funding"
