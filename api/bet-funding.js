@@ -51,7 +51,7 @@ async function callRpc(name, params) {
     throw new Error(data?.message || "Wallet operation failed");
   }
 
-  return data;
+  return Array.isArray(data) ? data[0] : data; 
 } 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
@@ -154,7 +154,7 @@ if (!storedPinHash || !verifyStoredPin(String(pin), storedPinHash)) {
     const reference =
       "lonerbet-" + Date.now() + "-" +
       Math.random().toString(36).slice(2, 8);
-    let debitCompleted = false; 
+    
 const debit = await callRpc("debit_wallet", {
   p_user_id: user.id,
   p_amount: numericAmount,
