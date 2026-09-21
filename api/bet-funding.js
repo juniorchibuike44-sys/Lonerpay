@@ -27,6 +27,32 @@ function verifyStoredPin(pin, storedHash) {
     return false;
   }
 } 
+async function callRpc(name, params) {
+  const supabaseUrl = process.env.SUPABASE_URL;
+  const supabaseKey = process.env.SUPABASE_SECRET_KEY;
+
+  if (!supabaseUrl || !supabaseKey) {
+    throw new Error("Supabase configuration is missing");
+  }
+
+  const response = await fetch(`${supabaseUrl}/rest/v1/rpc/${name}`, {
+    method: "POST",
+    headers: {
+      apikey: supabaseKey,
+      Authorization: `Bearer ${supabaseKey}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(params)
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data?.message || "Wallet operation failed");
+  }
+
+  return data;
+} 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({
@@ -34,7 +60,7 @@ export default async function handler(req, res) {
       message: "Method not allowed"
     });
   }
-
+let debitCompleted = false; 
   try {
     const { provider_id, amount, customer_id, recipient_name, pin } = req.body; 
 
