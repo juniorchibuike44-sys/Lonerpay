@@ -17,7 +17,7 @@ export default async function handler(req, res) {
     }
 
     const response = await fetch(
-      "https://pairgate.com/api/v1/test/providers/betting", 
+     "https://pairgate.com/api/v1/providers/betting", 
       {
         method: "GET",
         headers: {
