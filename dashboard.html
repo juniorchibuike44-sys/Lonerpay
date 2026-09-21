@@ -1541,7 +1541,7 @@ if (!/^\d{4}$/.test(pin)) {
 
     try {
   // Step 1: Verify the betting account
-  const verifyResponse = await fetch("/api/bet-verify", {
+  const verifyResponse = await fetch("/api/verify-bet-account", { 
     method: "POST",
     headers: {
       "Content-Type": "application/json"
