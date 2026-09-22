@@ -61,6 +61,8 @@ export default async function handler(req, res) {
     });
   }
 let debitCompleted = false; 
+  let user = null;
+let reference = null; 
   try {
     const { provider_id, amount, customer_id, recipient_name, pin } = req.body; 
 
@@ -113,7 +115,7 @@ if (!userResponse.ok) {
   });
 }
 
-const user = await userResponse.json(); 
+ user = await userResponse.json(); 
 const pinResponse = await fetch(
   `${supabaseUrl}/rest/v1/payment_pins?user_id=eq.${encodeURIComponent(user.id)}&select=pin_hash&limit=1`,
   {
@@ -151,7 +153,7 @@ if (!storedPinHash || !verifyStoredPin(String(pin), storedPinHash)) {
       });
     }
 
-    const reference =
+    reference =
       "lonerbet-" + Date.now() + "-" +
       Math.random().toString(36).slice(2, 8);
     
