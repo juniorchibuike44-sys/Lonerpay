@@ -27,7 +27,7 @@ export default async function handler(req, res) {
 
     // Pairgate TEST verification endpoint
     const response = await fetch(
-      https://pairgate.com/api/v1/bet/verify 
+      "https://pairgate.com/api/v1/bet/verify", 
       {
         method: "POST",
         headers: {
