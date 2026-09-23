@@ -178,9 +178,9 @@ if (!debit?.success) {
 }
 
 debitCompleted = true; 
-    // TEST endpoint first — no real Pairgate balance is deducted.
+    // Pairgate live betting wallet funding endpoint. 
     const response = await fetch(
-      "https://pairgate.com/api/v1/test/bet/purchase",
+      "https://pairgate.com/api/v1/bet/purchase", 
       {
         method: "POST",
         headers: {
@@ -214,23 +214,13 @@ debitCompleted = true;
         pairgate: data
       });
     }
-// Pairgate TEST mode: return the wallet debit
-if (debitCompleted) {
-  await callRpc("refund_wallet", {
-    p_user_id: user.id,
-    p_request_id: reference,
-    p_reason: "Pairgate test mode - automatic refund"
-  });
 
-  debitCompleted = false;
-} 
     return res.status(200).json({
-      success: true,
-      test_mode: true,
-      message: "Bet funding test successful",
-      reference,
-      data: data.data
-    });
+  success: true,
+  message: "Bet funding successful",
+  reference,
+  data: data.data
+}); 
 
   } catch (error) {
     console.error("Bet funding error:", error);
