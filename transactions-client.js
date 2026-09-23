@@ -48,6 +48,8 @@ async function refreshSecureTransactions() {
     }
 
     transactions.forEach(transaction => {
+      const requestId = String(transaction.request_id || "");
+if (requestId.endsWith(":refund")) return; 
       const details = transaction.details || {};
       const phone = details.phone || details.billersCode || "";
       const service = String(transaction.service || "");
