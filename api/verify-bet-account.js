@@ -27,7 +27,7 @@ export default async function handler(req, res) {
 
     // Pairgate TEST verification endpoint
     const response = await fetch(
-      "https://pairgate.com/api/v1/test/bet/verify",
+      https://pairgate.com/api/v1/bet/verify 
       {
         method: "POST",
         headers: {
@@ -56,7 +56,7 @@ export default async function handler(req, res) {
 
     return res.status(200).json({
       success: true,
-      test_mode: true,
+      test_mode: false, 
       customer_name: data?.data?.customer_name || "",
       message: "Betting account verified"
     });
