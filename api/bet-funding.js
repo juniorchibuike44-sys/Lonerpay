@@ -63,6 +63,7 @@ export default async function handler(req, res) {
 let debitCompleted = false; 
   let user = null;
 let reference = null; 
+  let pairgateSubmitted = false; 
   try {
     const { provider_id, amount, customer_id, recipient_name, pin } = req.body; 
 
@@ -198,6 +199,7 @@ debitCompleted = true;
     );
 
     const data = await response.json();
+    pairgateSubmitted = response.ok && data.status === "success"; 
 
     if (!response.ok || data.status !== "success") {
       if (debitCompleted) {
@@ -215,6 +217,54 @@ debitCompleted = true;
       });
     }
 
+   const pairgateReference = data.data?.reference_code;  
+    if (!pairgateReference) {
+  throw new Error("Pairgate reference code missing");
+    } 
+    const statusResponse = await fetch(
+  `https://pairgate.com/api/v1/transaction/status?reference_code=${encodeURIComponent(pairgateReference)}`,
+  {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${pairgateKey}`,
+      Accept: "application/json"
+    }
+  }
+);
+
+const statusData = await statusResponse.json(); 
+    if (!statusResponse.ok) {
+  throw new Error("Could not verify Pairgate transaction status");
+    } 
+    const finalStatus = statusData.data?.status || statusData.status;
+
+if (finalStatus === "failed") {
+  await callRpc("refund_wallet", {
+    p_user_id: user.id,
+    p_request_id: reference,
+    p_reason: "Pairgate transaction failed"
+  });
+  debitCompleted = false;
+
+  return res.status(400).json({
+    success: false,
+    message: "Bet funding failed. Money refunded to wallet.",
+    reference,
+    pairgate_reference: pairgateReference
+  });
+} 
+    if (finalStatus === "processing" || finalStatus === "pending") {
+  return res.status(202).json({
+    success: false,
+    pending: true,
+    message: "Bet funding is still processing.",
+    reference,
+    pairgate_reference: pairgateReference
+  });
+    } 
+    if (finalStatus !== "successful") {
+  throw new Error(`Unexpected Pairgate status: ${finalStatus || "unknown"}`);
+    } 
     return res.status(200).json({
   success: true,
   message: "Bet funding successful",
@@ -224,7 +274,7 @@ debitCompleted = true;
 
   } catch (error) {
     console.error("Bet funding error:", error);
-if (debitCompleted) {
+if (debitCompleted && !pairgateSubmitted) { 
   try {
     await callRpc("refund_wallet", {
       p_user_id: user.id,
