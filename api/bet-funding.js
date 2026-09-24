@@ -65,7 +65,7 @@ let debitCompleted = false;
 let reference = null; 
   let pairgateSubmitted = false; 
   try {
-    const { provider_id, amount, customer_id, recipient_name, pin } = req.body; 
+    const { provider_id, amount, customer_id, recipient_name, pin, request_id } = req.body; 
 
    if (!provider_id || !amount || !customer_id || !pin) { 
       return res.status(400).json({
@@ -154,9 +154,7 @@ if (!storedPinHash || !verifyStoredPin(String(pin), storedPinHash)) {
       });
     }
 
-    reference =
-      "lonerbet-" + Date.now() + "-" +
-      Math.random().toString(36).slice(2, 8);
+reference = request_id; 
     
 const debit = await callRpc("debit_wallet", {
   p_user_id: user.id,
