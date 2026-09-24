@@ -231,6 +231,7 @@ debitCompleted = true;
 );
 
 const statusData = await statusResponse.json(); 
+    console.log("Pairgate status response:", JSON.stringify(statusData)); 
     if (!statusResponse.ok) {
   throw new Error("Could not verify Pairgate transaction status");
     } 
