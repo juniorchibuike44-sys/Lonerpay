@@ -224,7 +224,7 @@ debitCompleted = true;
   {
     method: "GET",
     headers: {
-      Authorization: `Bearer ${pairgateKey}`,
+    Authorization: `Bearer ${apiKey}`, 
       Accept: "application/json"
     }
   }
