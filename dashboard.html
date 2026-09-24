@@ -1575,6 +1575,9 @@ betButton.style.opacity = "0.65";
   if (!confirmed) return;
 
   // Step 2: Fund after verification
+      const requestId =
+  "lonerbet-" + Date.now() + "-" +
+  Math.random().toString(36).slice(2, 8); 
   const response = await fetch("/api/bet-funding", {
     method: "POST",
     headers: {
@@ -1586,7 +1589,8 @@ betButton.style.opacity = "0.65";
       customer_id: userId,
       amount: amount,
       recipient_name: customerName,
-pin: pin 
+pin: pin,
+request_id: requestId 
     })
   });
 
