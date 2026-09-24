@@ -1515,6 +1515,10 @@ function openBetFunding() {
   };
 
   overlay.querySelector("#betContinue").onclick = async function () { 
+    const betButton = overlay.querySelector("#betContinue");
+
+if (betButton.disabled) return;
+
     const platform = overlay.querySelector("#betPlatform").value;
     const userId = overlay.querySelector("#betUserId").value.trim();
     const amount = Number(overlay.querySelector("#betAmount").value);
@@ -1538,7 +1542,9 @@ if (!/^\d{4}$/.test(pin)) {
       alert("Please enter an amount of at least ₦100.");
       return;
     }
-
+betButton.disabled = true;
+betButton.textContent = "Processing...";
+betButton.style.opacity = "0.65"; 
     try {
   // Step 1: Verify the betting account
   const verifyResponse = await fetch("/api/verify-bet-account", { 
@@ -1597,8 +1603,13 @@ pin: pin
 } catch (error) {
   console.error("Bet funding error:", error);
   alert("Unable to process bet funding. Please try again.");
-    } 
-  };
+    } finally {
+  betButton.disabled = false;
+  betButton.textContent = "Continue";
+  betButton.style.opacity = "1";
+}
+}; 
+  
 } 
   function openGiftCards() {
   const overlay = document.createElement("div");
