@@ -33,7 +33,10 @@ export default async function handler(req, res) {
 
     const timestamp = req.headers["x-pairgate-timestamp"];
     const providedSignature = req.headers["x-pairgate-signature"];
-
+console.log("Pairgate webhook headers:", {
+  hasTimestamp: !!timestamp,
+  hasSignature: !!providedSignature
+}); 
     if (!timestamp || !providedSignature) {
       return res.status(401).json({
         success: false,
