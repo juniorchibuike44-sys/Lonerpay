@@ -235,7 +235,10 @@ const statusData = await statusResponse.json();
     if (!statusResponse.ok) {
   throw new Error("Could not verify Pairgate transaction status");
     } 
-    const finalStatus = (statusData.data?.status || statusData.status || statusData.data?.data?.status || '').toString().toLowerCase().trim();
+    console.log("FULL Pairgate Response:", JSON.stringify(statusData, null, 2));
+const rawStatus = statusData.data?.status || statusData.status || statusData.data?.data?.status;
+const finalStatus = (rawStatus || '').toString().toLowerCase().trim();
+console.log("Extracted finalStatus:", finalStatus, "rawStatus:", rawStatus); 
 console.log("Pairgate finalStatus normalized:", finalStatus, "raw:", statusData);
 
 if (finalStatus === "failed" || finalStatus === "failure") {
