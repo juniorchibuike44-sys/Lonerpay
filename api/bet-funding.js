@@ -235,41 +235,46 @@ const statusData = await statusResponse.json();
     if (!statusResponse.ok) {
   throw new Error("Could not verify Pairgate transaction status");
     } 
-    const finalStatus = statusData.data?.status || statusData.status;
+    const finalStatus = (statusData.data?.status || statusData.status || statusData.data?.data?.status || '').toString().toLowerCase().trim();
+console.log("Pairgate finalStatus normalized:", finalStatus, "raw:", statusData);
 
-if (finalStatus === "failed") {
+if (finalStatus === "failed" || finalStatus === "failure") {
   await callRpc("refund_wallet", {
     p_user_id: user.id,
     p_request_id: reference,
     p_reason: "Pairgate transaction failed"
   });
   debitCompleted = false;
-
   return res.status(400).json({
     success: false,
-    message: "Bet funding failed. Money refunded to wallet.",
+    message: "Bet funding failed. Money refunded",
     reference,
     pairgate_reference: pairgateReference
   });
-} 
-    if (finalStatus === "processing" || finalStatus === "pending") {
+}
+
+if (finalStatus === "processing" || finalStatus === "pending" || finalStatus === "queued") {
   return res.status(202).json({
     success: false,
     pending: true,
-    message: "Bet funding is still processing.",
+    message: "Bet funding is still processing",
     reference,
     pairgate_reference: pairgateReference
   });
-    } 
-    if (finalStatus !== "successful") {
-  throw new Error(`Unexpected Pairgate status: ${finalStatus || "unknown"}`);
-    } 
-    return res.status(200).json({
-  success: true,
-  message: "Bet funding successful",
-  reference,
-  data: data.data
-}); 
+}
+
+// Accept ANY success variant - this fixes your bug
+if (finalStatus === "successful" || finalStatus === "success" || finalStatus === "completed" || finalStatus === "paid" || finalStatus === "approved") {
+  return res.status(200).json({
+    success: true,
+    message: "Bet funding successful",
+    reference,
+    data: data.data
+  });
+}
+
+// Only throw if truly unknown
+throw new Error(`Unexpected Pairgate status: ${finalStatus}`); 
 
   } catch (error) {
     console.error("Bet funding error:", error);
