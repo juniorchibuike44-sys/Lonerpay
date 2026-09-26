@@ -62,7 +62,11 @@ console.log("Pairgate webhook headers:", {
       .createHmac("sha256", secret)
       .update(signedPayload)
       .digest("hex");
-
+console.log("Pairgate signature check:", {
+  expectedLength: expectedSignature.length,
+  providedLength: String(providedSignature).length,
+  signaturesMatch: expectedSignature === String(providedSignature)
+}); 
     const expectedBuffer = Buffer.from(expectedSignature, "utf8");
     const providedBuffer = Buffer.from(
       String(providedSignature),
