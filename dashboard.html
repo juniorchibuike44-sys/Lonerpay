@@ -1568,9 +1568,12 @@ betButton.style.opacity = "0.65";
   const customerName =
     verifyData.customer_name || "Verified Customer";
 
-  const confirmed = confirm(
-    `Account verified\n\nName: ${customerName}\nBetting ID: ${userId}\nAmount: ₦${amount}\n\nContinue with funding?`
-  );
+  const confirmed = await showBetConfirmation({
+  platform: platform,
+  customerName: customerName,
+  userId: userId,
+  amount: amount
+}); 
 
   if (!confirmed) return;
 
@@ -1620,7 +1623,7 @@ const betTransaction = {
 
 localStorage.setItem("lonerpay_last_receipt", JSON.stringify(betTransaction));
 
-alert("Bet funding successful! Receipt is ready.");
+showBetReceipt(betTransaction); 
 overlay.remove();  
 
 } catch (error) {
@@ -1792,7 +1795,123 @@ document.addEventListener("DOMContentLoaded", function () {
       if (balanceBox) {
         balanceBox.appendChild(profileButton);
       } 
-});  
+});
+function showBetConfirmation({ platform, customerName, userId, amount }) {
+  return new Promise((resolve) => {
+    const modal = document.createElement("div");
+
+    modal.style.cssText = `
+      position:fixed;
+      inset:0;
+      background:rgba(0,0,0,.55);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:20px;
+      z-index:99999;
+    `;
+
+    modal.innerHTML = `
+      <div style="
+        width:100%;
+        max-width:420px;
+        background:#fff;
+        border-radius:24px;
+        padding:26px 22px;
+        box-shadow:0 20px 60px rgba(0,0,0,.25);
+        font-family:inherit;
+      ">
+        <div style="text-align:center;margin-bottom:22px;">
+          <div style="
+            width:56px;
+            height:56px;
+            margin:0 auto 12px;
+            border-radius:50%;
+            background:#e8fff1;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            font-size:28px;
+          ">✓</div>
+
+          <h2 style="margin:0;color:#111827;font-size:22px;">
+            Confirm Bet Funding
+          </h2>
+
+          <p style="margin:7px 0 0;color:#6b7280;font-size:14px;">
+            Please confirm the details before payment
+          </p>
+        </div>
+
+        <div style="
+          background:#f7f8fa;
+          border-radius:16px;
+          padding:16px;
+        ">
+          <div style="margin-bottom:13px;">
+            <div style="font-size:12px;color:#6b7280;">Betting Platform</div>
+            <div style="font-weight:600;color:#111827;">${platform}</div>
+          </div>
+
+          <div style="margin-bottom:13px;">
+            <div style="font-size:12px;color:#6b7280;">Account Name</div>
+            <div style="font-weight:600;color:#111827;">${customerName}</div>
+          </div>
+
+          <div style="margin-bottom:13px;">
+            <div style="font-size:12px;color:#6b7280;">Betting ID</div>
+            <div style="font-weight:600;color:#111827;">${userId}</div>
+          </div>
+
+          <div>
+            <div style="font-size:12px;color:#6b7280;">Amount</div>
+            <div style="font-size:24px;font-weight:700;color:#111827;">
+              ₦${Number(amount).toLocaleString("en-NG", {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+              })}
+            </div>
+          </div>
+        </div>
+
+        <button id="betConfirmYes" style="
+          width:100%;
+          margin-top:20px;
+          border:0;
+          border-radius:14px;
+          padding:15px;
+          background:#00c853;
+          color:white;
+          font-size:16px;
+          font-weight:700;
+        ">Confirm Payment</button>
+
+        <button id="betConfirmNo" style="
+          width:100%;
+          margin-top:8px;
+          border:0;
+          background:transparent;
+          padding:13px;
+          color:#374151;
+          font-size:15px;
+        ">Cancel</button>
+      </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    modal.querySelector("#betConfirmYes").onclick = () => {
+      modal.remove();
+      resolve(true);
+    };
+
+    modal.querySelector("#betConfirmNo").onclick = () => {
+      modal.remove();
+      resolve(false);
+    };
+  });
+                          } 
+  
 </script>
 <script src="data-client.js"></script>
 <script src="electricity-client.js"></script>
