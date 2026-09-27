@@ -1596,13 +1596,32 @@ request_id: requestId
 
   const data = await response.json();
 
-  if (!response.ok || !data.success) {
-    alert(data.message || "Bet funding failed.");
-    return;
-  }
+ if (response.status === 202 || data.pending) {
+  alert(data.message || "Bet funding is still processing. We will confirm it shortly.");
+  return;
+}
 
-  alert(data.message || "Bet funding successful!");
-  overlay.remove();
+if (!response.ok || !data.success) {
+  alert(data.message || "Bet funding failed.");
+  return;
+}
+
+const betTransaction = {
+  type: "Bet Funding",
+  provider: platform,
+  recipient: userId,
+  customerName: customerName,
+  amount: amount,
+  reference: data.reference || requestId,
+  providerReference: data.pairgate_reference || "",
+  status: "successful",
+  date: new Date().toISOString()
+};
+
+localStorage.setItem("lonerpay_last_receipt", JSON.stringify(betTransaction));
+
+alert("Bet funding successful! Receipt is ready.");
+overlay.remove();  
 
 } catch (error) {
   console.error("Bet funding error:", error);
