@@ -237,7 +237,7 @@ const statusData = await statusResponse.json();
     } 
     console.log("FULL Pairgate Response:", JSON.stringify(statusData, null, 2));
 const rawStatus = statusData.data?.status || statusData.status || statusData.data?.data?.status;
-const finalStatus = (rawStatus || '').toString().toLowerCase().trim();
+let  finalStatus = (rawStatus || '').toString().toLowerCase().trim();
 console.log("Extracted finalStatus:", finalStatus, "rawStatus:", rawStatus); 
 console.log("Pairgate finalStatus normalized:", finalStatus, "raw:", statusData);
 
@@ -257,14 +257,41 @@ if (finalStatus === "failed" || finalStatus === "failure") {
 }
 
 if (finalStatus === "processing" || finalStatus === "pending" || finalStatus === "queued") {
-  return res.status(202).json({
-    success: false,
-    pending: true,
-    message: "Bet funding is still processing",
-    reference,
-    pairgate_reference: pairgateReference
-  });
-}
+  // Give Pairgate a few seconds to finish, then check again.
+  await new Promise(resolve => setTimeout(resolve, 3000));
+
+  const retryResponse = await fetch(
+    `https://pairgate.com/api/v1/transaction/status?reference_code=${encodeURIComponent(pairgateReference)}`,
+    {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        Accept: "application/json"
+      }
+    }
+  );
+
+  if (retryResponse.ok) {
+    const retryData = await retryResponse.json();
+    const retryRawStatus =
+      retryData.data?.status ||
+      retryData.data?.data?.status ||
+      retryData.status ||
+      "";
+
+    finalStatus = String(retryRawStatus).toLowerCase().trim();
+  }
+
+  if (finalStatus === "processing" || finalStatus === "pending" || finalStatus === "queued") {
+    return res.status(202).json({
+      success: false,
+      pending: true,
+      message: "Bet funding is still processing",
+      reference,
+      pairgate_reference: pairgateReference
+    });
+  }
+} 
 
 // Accept ANY success variant - this fixes your bug
 if (finalStatus === "successful" || finalStatus === "success" || finalStatus === "completed" || finalStatus === "paid" || finalStatus === "approved") {
