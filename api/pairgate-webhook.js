@@ -54,7 +54,11 @@ console.log("Pairgate webhook headers:", {
     }
 
     const rawBody = await getRawBody(req);
-
+console.log("Pairgate raw body diagnostic:", {
+  byteLength: rawBody.length,
+  firstByte: rawBody.length ? rawBody[0] : null,
+  lastByte: rawBody.length ? rawBody[rawBody.length - 1] : null
+}); 
     const signedPayload =
       String(timestamp) + "." + rawBody.toString("utf8");
 
