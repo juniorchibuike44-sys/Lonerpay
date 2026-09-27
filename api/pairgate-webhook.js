@@ -28,37 +28,41 @@ export default async function handler(req, res) {
     const secret = process.env.PAIRGATE_WEBHOOK_SECRET;
 
     if (!secret) {
-      throw new Error("Pairgate webhook secret is missing");
+      console.error("PAIRGATE_WEBHOOK_SECRET is missing");
+
+      return res.status(500).json({
+        success: false,
+        message: "Webhook configuration missing",
+      });
     }
 
     const timestamp = req.headers["x-pairgate-timestamp"];
-    const providedSignature = req.headers["x-pairgate-signature"];
-console.log("Pairgate webhook headers:", {
-  hasTimestamp: !!timestamp,
-  hasSignature: !!providedSignature
-}); 
-    if (!timestamp || !providedSignature) {
+    const signatureHeader = req.headers["x-pairgate-signature"];
+
+    if (!timestamp || !signatureHeader) {
+      console.error("Pairgate webhook signature headers missing");
+
       return res.status(401).json({
         success: false,
         message: "Missing webhook signature",
       });
     }
 
+    const timestampNumber = Number(timestamp);
     const now = Math.floor(Date.now() / 1000);
 
-    if (Math.abs(now - Number(timestamp)) > 300) {
+    if (
+      !Number.isFinite(timestampNumber) ||
+      Math.abs(now - timestampNumber) > 300
+    ) {
       return res.status(400).json({
         success: false,
-        message: "Webhook expired",
+        message: "Webhook timestamp invalid or expired",
       });
     }
 
     const rawBody = await getRawBody(req);
-console.log("Pairgate raw body diagnostic:", {
-  byteLength: rawBody.length,
-  firstByte: rawBody.length ? rawBody[0] : null,
-  lastByte: rawBody.length ? rawBody[rawBody.length - 1] : null
-}); 
+
     const signedPayload =
       String(timestamp) + "." + rawBody.toString("utf8");
 
@@ -66,41 +70,60 @@ console.log("Pairgate raw body diagnostic:", {
       .createHmac("sha256", secret)
       .update(signedPayload)
       .digest("hex");
-console.log("Pairgate signature check:", {
-  expectedLength: expectedSignature.length,
-  providedLength: String(providedSignature).length,
-  signaturesMatch: expectedSignature === String(providedSignature)
-}); 
-    const expectedBuffer = Buffer.from(expectedSignature, "utf8");
+
+    const providedSignature = String(signatureHeader)
+      .trim()
+      .toLowerCase();
+
+    const expectedBuffer = Buffer.from(
+      expectedSignature,
+      "hex"
+    );
+
     const providedBuffer = Buffer.from(
-      String(providedSignature),
-      "utf8"
+      providedSignature,
+      "hex"
     );
 
     if (
+      providedSignature.length !== 64 ||
       expectedBuffer.length !== providedBuffer.length ||
       !crypto.timingSafeEqual(expectedBuffer, providedBuffer)
     ) {
+      console.error("Pairgate webhook signature mismatch", {
+        rawBodyLength: rawBody.length,
+        providedSignatureLength: providedSignature.length,
+      });
+
       return res.status(401).json({
         success: false,
         message: "Invalid webhook signature",
       });
     }
 
-    const event = JSON.parse(rawBody.toString("utf8"));
+    let event;
 
-    console.log("Verified Pairgate webhook:", {
+    try {
+      event = JSON.parse(rawBody.toString("utf8"));
+    } catch {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid webhook body",
+      });
+    }
+
+    console.log("Verified Pairgate webhook", {
       event: event.event,
       reference: event.reference,
       reference_code: event.reference_code,
       status: event.status,
     });
-    // Handle a final failed Pairgate transaction.
-    // refund_wallet is idempotent, so repeated webhooks cannot refund twice.
-    if (
-      String(event.status || "").toLowerCase() === "failed" &&
-      event.reference
-    ) {
+
+    const status = String(event.status || "")
+      .toLowerCase()
+      .trim();
+
+    if (status === "failed" && event.reference) {
       const supabaseUrl = process.env.SUPABASE_URL;
       const supabaseKey = process.env.SUPABASE_SECRET_KEY;
 
@@ -108,7 +131,6 @@ console.log("Pairgate signature check:", {
         throw new Error("Supabase configuration missing");
       }
 
-      // Find the original LonerPay debit using Pairgate's client reference.
       const transactionResponse = await fetch(
         `${supabaseUrl}/rest/v1/wallet_transactions?request_id=eq.${encodeURIComponent(
           event.reference
@@ -122,14 +144,20 @@ console.log("Pairgate signature check:", {
       );
 
       if (!transactionResponse.ok) {
-        throw new Error("Could not find original wallet transaction");
+        throw new Error(
+          "Could not find original wallet transaction"
+        );
       }
 
-      const transactions = await transactionResponse.json();
+      const transactions =
+        await transactionResponse.json();
+
       const originalTransaction = transactions[0];
 
       if (!originalTransaction?.user_id) {
-        throw new Error("Original wallet transaction not found");
+        throw new Error(
+          "Original wallet transaction not found"
+        );
       }
 
       const refundResponse = await fetch(
@@ -144,26 +172,43 @@ console.log("Pairgate signature check:", {
           body: JSON.stringify({
             p_user_id: originalTransaction.user_id,
             p_request_id: event.reference,
-            p_reason: event.message || "Pairgate reported transaction failed",
+            p_reason:
+              event.message ||
+              "Pairgate reported transaction failed",
           }),
         }
       );
 
       if (!refundResponse.ok) {
+        const refundError =
+          await refundResponse.text();
+
+        console.error(
+          "refund_wallet failed:",
+          refundError
+        );
+
         throw new Error("Wallet refund failed");
       }
 
-      console.log("Pairgate failed transaction processed:", {
-        reference: event.reference,
-        reference_code: event.reference_code,
-      });
-  } 
+      console.log(
+        "Pairgate failed transaction refunded",
+        {
+          reference: event.reference,
+          reference_code: event.reference_code,
+        }
+      );
+    }
+
     return res.status(200).json({
       success: true,
       message: "Webhook received",
     });
   } catch (error) {
-    console.error("Pairgate webhook error:", error);
+    console.error(
+      "Pairgate webhook processing error:",
+      error
+    );
 
     return res.status(500).json({
       success: false,
