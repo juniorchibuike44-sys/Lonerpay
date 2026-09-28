@@ -102,6 +102,180 @@
       font-weight: bold;
       cursor: pointer;
     }
+    /* ===== LONERPAY PROFESSIONAL DASHBOARD ===== */
+
+body {
+  background: #f5f7fb;
+  color: #0f172a;
+  font-family: Arial, sans-serif;
+}
+
+.header {
+  background: linear-gradient(135deg, #07162f, #10264b);
+  padding: 28px 20px 30px;
+  color: #ffffff;
+}
+
+.header h1 {
+  font-size: 30px;
+  font-weight: 800;
+  margin: 0 0 6px;
+  letter-spacing: -0.5px;
+}
+
+.header div {
+  color: #d8e0ec;
+  font-size: 14px;
+}
+
+.container {
+  max-width: 700px;
+  margin: auto;
+  padding: 18px;
+}
+
+/* Wallet */
+
+.balance {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(135deg, #082b65, #0757c9);
+  color: white;
+  padding: 25px;
+  border-radius: 22px;
+  margin-bottom: 28px;
+  box-shadow: 0 12px 28px rgba(8, 43, 101, 0.20);
+}
+
+.balance::after {
+  content: "";
+  position: absolute;
+  width: 150px;
+  height: 150px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.07);
+  right: -45px;
+  top: -60px;
+}
+
+.balance small {
+  font-size: 14px;
+  opacity: 0.85;
+}
+
+.balance h2 {
+  font-size: 38px;
+  margin: 10px 0 5px;
+  letter-spacing: -1px;
+}
+
+/* Section titles */
+
+.container > h2 {
+  font-size: 24px;
+  margin: 8px 0 18px;
+  color: #0f172a;
+}
+
+/* Services */
+
+.services {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px;
+}
+
+.service {
+  background: #ffffff;
+  padding: 22px 12px;
+  min-height: 125px;
+  border-radius: 18px;
+  text-align: center;
+  border: 1px solid #eef1f6;
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
+  cursor: pointer;
+  transition: transform .2s ease, box-shadow .2s ease;
+}
+
+.service:active {
+  transform: scale(0.97);
+}
+
+.service > div:first-child {
+  font-size: 32px;
+  margin-bottom: 10px;
+}
+
+.service h3 {
+  margin: 5px 0;
+  font-size: 18px;
+  color: #111827;
+}
+
+.service p {
+  margin: 5px 0 0;
+  font-size: 13px;
+  line-height: 1.4;
+  color: #6b7280;
+}
+
+/* Buttons */
+
+button {
+  border: 0;
+  border-radius: 12px;
+  font-weight: 700;
+  transition: transform .15s ease;
+}
+
+button:active {
+  transform: scale(0.98);
+}
+
+/* Transaction area */
+
+.transactions {
+  background: #ffffff;
+  margin-top: 28px;
+  padding: 20px;
+  border-radius: 20px;
+  border: 1px solid #eef1f6;
+  box-shadow: 0 6px 18px rgba(15,23,42,0.05);
+}
+
+.transactions h2 {
+  margin-top: 0;
+  font-size: 22px;
+}
+
+/* Mobile */
+
+@media (max-width: 480px) {
+  .header {
+    padding: 25px 18px;
+  }
+
+  .container {
+    padding: 16px;
+  }
+
+  .balance {
+    padding: 23px 20px;
+  }
+
+  .balance h2 {
+    font-size: 36px;
+  }
+
+  .services {
+    gap: 12px;
+  }
+
+  .service {
+    padding: 20px 10px;
+    min-height: 120px;
+  }
+} 
   </style>
 </head>
 
@@ -115,9 +289,36 @@
   <div class="container">
 
     <div class="balance">
-      <small>Wallet Balance</small>
-      <h2>₦0.00</h2> 
-    </div>
+  <small>Available Balance</small>
+  <h2>₦0.00</h2>
+
+  <div style="
+    display:flex;
+    gap:12px;
+    margin-top:20px;
+    position:relative;
+    z-index:2;
+  ">
+    <button onclick="openFundWallet()" style="
+      flex:1;
+      padding:12px;
+      background:#ffffff;
+      color:#0757c9;
+    ">
+      ＋ Fund Wallet
+    </button>
+
+    <button onclick="openProfile()" style="
+      flex:1;
+      padding:12px;
+      background:rgba(255,255,255,0.14);
+      color:#ffffff;
+      border:1px solid rgba(255,255,255,0.25);
+    ">
+      👤 My Profile
+    </button>
+  </div>
+    </div> 
 <script>
 (function () {
   const key = "lonerpay_balance";
