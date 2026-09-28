@@ -2190,14 +2190,56 @@ ${data.statistics && data.statistics.length
         line-height:1.5;
       ">
         <strong>💡 Smart Insight</strong><br>
-        Compare possession, shots on target and attacking activity
-        to understand how both teams performed in this match.
+        ${(() => {
+  const teams = data.statistics || [];
+  if (teams.length < 2) return "Not enough match data for a detailed insight.";
+
+  const getValue = (team, type) =>
+    (team.statistics || []).find(s => s.type === type)?.value ?? 0;
+
+  const home = teams[0];
+  const away = teams[1];
+
+  const homeShots = Number(getValue(home, "Shots on Goal")) || 0;
+  const awayShots = Number(getValue(away, "Shots on Goal")) || 0;
+
+  const homePoss = parseFloat(getValue(home, "Ball Possession")) || 0;
+  const awayPoss = parseFloat(getValue(away, "Ball Possession")) || 0;
+const homeShotsRaw = getValue(home, "Shots on Goal");
+const awayShotsRaw = getValue(away, "Shots on Goal");
+const homePossRaw = getValue(home, "Ball Possession");
+const awayPossRaw = getValue(away, "Ball Possession");
+
+const hasShots = homeShotsRaw != null || awayShotsRaw != null;
+const hasPossession = homePossRaw != null || awayPossRaw != null;
+
+if (!hasShots && !hasPossession) {
+  return "Detailed performance data is not available for this match.";
+} 
+  if (homeShots > awayShots && homePoss > awayPoss) {
+    return `${home.team.name} had more possession and created more shots on target, showing stronger attacking control.`;
+  }
+
+  if (awayShots > homeShots && awayPoss > homePoss) {
+    return `${away.team.name} had more possession and created more shots on target, showing stronger attacking control.`;
+  }
+
+  if (homeShots > awayShots) {
+    return `${home.team.name} created more shots on target despite not clearly controlling possession.`;
+  }
+
+  if (awayShots > homeShots) {
+    return `${away.team.name} created more shots on target despite not clearly controlling possession.`;
+  }
+
+  return `The teams produced similar attacking numbers, with no clear advantage in shots on target.`;
+})()} 
       </div>
     </div>
   `
   : `
     <div style="margin-top:10px;">
-      Match statistics are not available for this match.
+      Detailed statistics are not available for this match yet. Match information shown above is still available. 
     </div>
   `
 } 
