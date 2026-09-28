@@ -13,7 +13,7 @@ export default async function handler(req, res) {
 
   try {
     const response = await fetch(
-      "https://v3.football.api-sports.io/fixtures?next=10",
+      `https://v3.football.api-sports.io/fixtures?date=${new Date().toISOString().split("T")[0]}`, 
       {
         headers: {
           "x-apisports-key": apiKey
