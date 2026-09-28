@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>LonerPay — Everyday Payments</title> 
   <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.105.0/dist/umd/supabase.js"></script>
 </head>
 <body>
   <header class="nav">
@@ -96,6 +97,13 @@
   <button type="submit" class="primary full">
     Continue
   </button>
+
+  <button type="button" id="passkeyLoginButton" class="outline full" style="margin-top:10px;display:none;">
+    🔐 Log in with fingerprint / face
+  </button>
+  <p id="passkeyHelp" style="display:none;font-size:12px;opacity:.75;margin-top:8px;">
+    Uses your phone's passkey security. LonerPay never receives your fingerprint or face data.
+  </p>
       </form> 
   </div>
   <script src="script.js"></script>
