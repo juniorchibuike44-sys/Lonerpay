@@ -51,7 +51,21 @@ export default async function handler(req, res) {
         error: "Match information not found"
       });
     }
+const statsResponse = await fetch(
+  `https://v3.football.api-sports.io/fixtures/statistics?fixture=${fixture}`,
+  {
+    headers: {
+      "x-apisports-key": apiKey
+    }
+  }
+);
 
+const statsData = await statsResponse.json();
+
+const statistics =
+  statsResponse.ok && Array.isArray(statsData.response)
+    ? statsData.response
+    : []; 
     return res.status(200).json({
       fixture: {
         id: match.fixture.id,
@@ -76,8 +90,9 @@ export default async function handler(req, res) {
         logo: match.teams.away.logo
       },
 
-      status: match.fixture.status?.long || "Scheduled"
-    });
+  status: match.fixture.status?.long || "Scheduled",
+statistics: statistics
+}); 
   } catch (error) {
     console.error("Football analysis error:", error);
 
