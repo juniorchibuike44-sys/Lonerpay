@@ -2374,5 +2374,178 @@ function openAITips() {
   <button class="lp-nav-item" type="button" onclick="openAITips()"><span>⚙</span>AI Tips</button>
   <button class="lp-nav-item" type="button" onclick="openProfile()"><span>♙</span>Profile</button>
 </nav>
+
+<script id="lonerpay-transaction-receipt-fix">
+(function () {
+  function makeTransactionFromRow(row) {
+    const text = (row.innerText || row.textContent || "").trim();
+    const lines = text.split(/\n+/).map(s => s.trim()).filter(Boolean);
+
+    let type = lines[0] || "Transaction";
+    let amount = 0;
+    let details = "";
+    let status = "Successful";
+
+    for (const line of lines) {
+      const amountMatch = line.match(/₦\s*([\d,]+(?:\.\d+)?)/);
+      if (amountMatch && !amount) {
+        amount = Number(amountMatch[1].replace(/,/g, "")) || 0;
+      }
+      if (/^status\s*:/i.test(line)) {
+        status = line.replace(/^status\s*:\s*/i, "") || "Successful";
+      }
+    }
+
+    const detailLines = lines.filter(line =>
+      line !== type &&
+      !/^₦\s*[\d,]+(?:\.\d+)?$/.test(line) &&
+      !/^status\s*:/i.test(line) &&
+      !/view receipt/i.test(line)
+    );
+    details = detailLines.join(" | ") || "LonerPay transaction";
+
+    return {
+      type,
+      amount,
+      details,
+      status,
+      date: row.dataset.transactionDate || new Date().toISOString(),
+      receiptId: row.dataset.receiptId || makeReceiptId()
+    };
+  }
+
+  function wireTransactionRow(row) {
+    if (!row || row.dataset.receiptReady === "1") return;
+    if (/no transactions yet/i.test(row.textContent || "")) return;
+
+    row.dataset.receiptReady = "1";
+    row.style.cursor = "pointer";
+    row.setAttribute("role", "button");
+    row.setAttribute("tabindex", "0");
+
+    const open = function () {
+      showDigitalReceipt(makeTransactionFromRow(row));
+    };
+
+    row.addEventListener("click", function (event) {
+      if (event.target.closest("button,a,input,select,textarea")) return;
+      open();
+    });
+
+    row.addEventListener("keydown", function (event) {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        open();
+      }
+    });
+  }
+
+  function ensureSeeAll() {
+    const box = document.querySelector(".transactions");
+    if (!box) return;
+
+    let heading = box.querySelector("h2");
+    if (!heading) {
+      heading = document.createElement("h2");
+      heading.textContent = "Recent Transactions";
+      box.prepend(heading);
+    }
+
+    heading.style.display = "flex";
+    heading.style.justifyContent = "space-between";
+    heading.style.alignItems = "center";
+
+    if (!heading.querySelector(".lp-see-all")) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "lp-see-all";
+      button.textContent = "See all";
+      button.style.cssText =
+        "border:0;background:transparent;font-size:12px;color:#0863d8;font-weight:700;cursor:pointer;padding:8px;";
+      button.onclick = function (event) {
+        event.stopPropagation();
+        openTransactionHistory();
+      };
+      heading.appendChild(button);
+    }
+
+    box.querySelectorAll(".transaction").forEach(wireTransactionRow);
+  }
+
+  window.openTransactionHistory = function () {
+    const local = JSON.parse(localStorage.getItem("lonerPayTransactions") || "[]");
+    const visibleRows = Array.from(document.querySelectorAll(".transactions .transaction"))
+      .filter(row => !/no transactions yet/i.test(row.textContent || ""))
+      .map(makeTransactionFromRow);
+
+    const seen = new Set();
+    const combined = [...visibleRows, ...local].filter(item => {
+      const key = [
+        item.receiptId || "",
+        item.type || "",
+        Number(item.amount || 0),
+        item.details || "",
+        item.date || ""
+      ].join("|");
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+
+    const overlay = document.createElement("div");
+    overlay.style.cssText =
+      "position:fixed;inset:0;background:#f5f8fc;z-index:17000;overflow:auto;font-family:Arial,sans-serif;";
+
+    const rows = combined.length ? combined.map((t, index) => `
+      <button type="button" data-index="${index}" class="lp-history-row" style="
+        width:100%;text-align:left;border:0;background:#fff;padding:16px;margin-bottom:10px;
+        border-radius:14px;box-shadow:0 3px 12px rgba(15,23,42,.06);cursor:pointer;">
+        <div style="display:flex;justify-content:space-between;gap:12px;">
+          <strong>${escapeReceiptText(t.type || "Transaction")}</strong>
+          <strong>₦${Number(t.amount || 0).toFixed(2)}</strong>
+        </div>
+        <div style="font-size:12px;color:#6b7280;margin-top:6px;">
+          ${escapeReceiptText(t.details || "")}
+        </div>
+        <div style="font-size:12px;color:#15803d;margin-top:5px;font-weight:700;">
+          Status: ${escapeReceiptText(t.status || "Successful")}
+        </div>
+      </button>`).join("") :
+      '<div style="background:#fff;padding:24px;border-radius:16px;text-align:center;color:#6b7280;">No transactions yet.</div>';
+
+    overlay.innerHTML = `
+      <div style="max-width:700px;margin:auto;padding:18px 16px 90px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;">
+          <div>
+            <div style="font-size:12px;color:#0863d8;font-weight:800;">LONERPAY</div>
+            <h2 style="margin:4px 0 0;">Transaction History</h2>
+          </div>
+          <button id="lpHistoryClose" type="button"
+            style="width:40px;height:40px;border:0;border-radius:50%;background:#e9eef6;font-size:22px;">×</button>
+        </div>
+        ${rows}
+      </div>`;
+
+    document.body.appendChild(overlay);
+    overlay.querySelector("#lpHistoryClose").onclick = () => overlay.remove();
+    overlay.querySelectorAll(".lp-history-row").forEach(button => {
+      button.onclick = () => showDigitalReceipt(combined[Number(button.dataset.index)]);
+    });
+  };
+
+  ensureSeeAll();
+
+  const box = document.querySelector(".transactions");
+  if (box) {
+    new MutationObserver(function () {
+      ensureSeeAll();
+    }).observe(box, { childList: true, subtree: true });
+  }
+
+  setTimeout(ensureSeeAll, 500);
+  setTimeout(ensureSeeAll, 1500);
+})();
+</script>
+
 </body>
 </html> 
