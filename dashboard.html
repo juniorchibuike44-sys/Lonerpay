@@ -2140,8 +2140,16 @@ async function loadFootballMatches() {
           line-height:1.5;
         ">
           🤖 <strong>AI Match Insight</strong><br>
-          Match data loaded successfully. Detailed team-form
-          analysis and statistics will appear here.
+          ${data.statistics && data.statistics.length
+  ? data.statistics.map(team => `
+      <div style="margin-top:10px;">
+        <strong>${team.team?.name || "Team"} Statistics</strong>
+        ${(team.statistics || []).map(stat => `
+          <div>${stat.type}: ${stat.value ?? "N/A"}</div>
+        `).join("")}
+      </div>
+    `).join("")
+  : "Match statistics are not available for this fixture."} 
         </div>
 
       </div>
