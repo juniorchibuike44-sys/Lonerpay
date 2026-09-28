@@ -77,8 +77,23 @@
     <div class="modal-card">
       <button class="close" onclick="closeModal()">×</button>
       <h2 id="modalTitle">Welcome to LonerPay</h2>
-      <p id="modalText">This demo shows the customer entry point. Production authentication and payment APIs will be connected during backend development.</p>
+      <p id="modalText">Create your LonerPay account to get started.</p> 
       <form id="authForm">
+        <div id="signupNameFields">
+  <input
+    type="text"
+    name="firstName"
+    placeholder="First Name"
+    autocomplete="given-name"
+  >
+
+  <input
+    type="text"
+    name="lastName"
+    placeholder="Last Name"
+    autocomplete="family-name"
+  >
+        </div> 
   <input
     type="email"
     name="email"
@@ -97,7 +112,47 @@
   <button type="submit" class="primary full">
     Continue
   </button>
+<div id="signupExtraFields" style="display:none;">
+  <input
+    type="text"
+    name="country"
+    placeholder="Country"
+    autocomplete="country-name"
+  >
 
+  <input
+    type="tel"
+    name="phone"
+    placeholder="Phone Number"
+    autocomplete="tel"
+  >
+
+  <input
+    type="text"
+    name="referralCode"
+    placeholder="Referral Code (Optional)"
+  >
+</div>
+   <div id="emailVerificationStep" style="display:none;">
+  <h2>Email Verification</h2>
+  <p>
+    To verify your email, please enter the code we sent to
+    <strong id="verificationEmail"></strong>
+  </p>
+
+  <input
+    type="text"
+    name="verificationCode"
+    id="verificationCode"
+    placeholder="Enter verification code"
+    inputmode="numeric"
+    autocomplete="one-time-code"
+  >
+
+  <button type="button" id="verifyEmailButton" class="primary full">
+    Verify Email
+  </button>
+   </div>      
   <button type="button" id="passkeyLoginButton" class="outline full" style="margin-top:10px;display:none;">
     🔐 Log in with fingerprint / face
   </button>
