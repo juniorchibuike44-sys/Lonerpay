@@ -2139,17 +2139,68 @@ async function loadFootballMatches() {
           font-size:13px;
           line-height:1.5;
         ">
-          🤖 <strong>AI Match Insight</strong><br>
-          ${data.statistics && data.statistics.length
-  ? data.statistics.map(team => `
-      <div style="margin-top:10px;">
-        <strong>${team.team?.name || "Team"} Statistics</strong>
-        ${(team.statistics || []).map(stat => `
-          <div>${stat.type}: ${stat.value ?? "N/A"}</div>
-        `).join("")}
+        🤖 <strong>AI Match Insight</strong>
+
+${data.statistics && data.statistics.length
+  ? `
+    <div style="margin-top:12px;">
+      ${data.statistics.map(team => {
+        const stats = team.statistics || [];
+
+        const getStat = (name) =>
+          stats.find(s => s.type === name)?.value ?? "—";
+
+        return `
+          <div style="
+            background:#ffffff;
+            border:1px solid #e5e7eb;
+            border-radius:10px;
+            padding:12px;
+            margin-bottom:10px;
+          ">
+            <strong style="font-size:14px;">
+              ${team.team?.name || "Team"}
+            </strong>
+
+            <div style="
+              display:grid;
+              grid-template-columns:1fr 1fr;
+              gap:8px;
+              margin-top:10px;
+              font-size:12px;
+            ">
+              <div>⚽ Shots: <strong>${getStat("Total Shots")}</strong></div>
+              <div>🎯 On Target: <strong>${getStat("Shots on Goal")}</strong></div>
+              <div>📊 Possession: <strong>${getStat("Ball Possession")}</strong></div>
+              <div>🚩 Corners: <strong>${getStat("Corner Kicks")}</strong></div>
+              <div>🟨 Yellow: <strong>${getStat("Yellow Cards")}</strong></div>
+              <div>🟥 Red: <strong>${getStat("Red Cards")}</strong></div>
+            </div>
+          </div>
+        `;
+      }).join("")}
+
+      <div style="
+        margin-top:12px;
+        padding:10px;
+        background:#eef7f1;
+        border-radius:8px;
+        color:#166534;
+        font-size:12px;
+        line-height:1.5;
+      ">
+        <strong>💡 Smart Insight</strong><br>
+        Compare possession, shots on target and attacking activity
+        to understand how both teams performed in this match.
       </div>
-    `).join("")
-  : "Match statistics are not available for this fixture."} 
+    </div>
+  `
+  : `
+    <div style="margin-top:10px;">
+      Match statistics are not available for this match.
+    </div>
+  `
+} 
         </div>
 
       </div>
