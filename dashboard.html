@@ -277,6 +277,11 @@ button:active {
   }
 } 
   </style>
+
+<style id="lonerpay-2026-ui-upgrade">
+:root{--navy:#06244d;--blue:#0863d8;--ink:#10213b;--muted:#6b7280;--bg:#f5f8fc}
+*{box-sizing:border-box} body{background:var(--bg)!important;padding-bottom:82px} .header{background:var(--navy)!important;padding:18px 20px!important;display:flex;align-items:center;justify-content:space-between}.header h1{font-size:24px!important;margin:0!important}.header>div{font-size:12px!important}.container{padding:14px!important;max-width:700px!important}.balance{background:linear-gradient(135deg,#0c4aa0,#0870df)!important;border-radius:18px!important;padding:22px!important;margin-bottom:16px!important}.balance small{font-size:14px!important}.balance h2{font-size:38px!important;margin:8px 0!important}.container>h2{font-size:20px!important;margin:16px 0 12px!important}.services{grid-template-columns:repeat(4,1fr)!important;gap:9px!important}.service{min-height:112px!important;padding:15px 5px!important;border-radius:15px!important;display:flex;flex-direction:column;justify-content:center}.service>div:first-child{font-size:26px!important;margin-bottom:5px!important}.service h3{font-size:13px!important;margin:4px 0!important}.service p{font-size:10px!important}.transactions{margin-top:18px!important;padding:16px!important;border-radius:16px!important}.transactions h2{font-size:18px!important}.transaction{font-size:13px}.lp-bottom-nav{position:fixed;left:0;right:0;bottom:0;height:66px;background:#fff;border-top:1px solid #e7edf5;display:grid;grid-template-columns:repeat(4,1fr);z-index:8000;box-shadow:0 -4px 18px rgba(15,23,42,.06)}.lp-nav-item{border:0;background:transparent;color:#738097;font-size:10px;font-weight:700;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px}.lp-nav-item span{font-size:20px}.lp-nav-item.active{color:#0863d8}@media(max-width:480px){.header{padding:16px!important}.container{padding:12px!important}.balance{padding:20px!important}.balance h2{font-size:36px!important}.services{grid-template-columns:repeat(4,1fr)!important;gap:7px!important}.service{min-height:105px!important;padding:12px 3px!important}.service h3{font-size:12px!important}.service p{font-size:9px!important}}
+</style>
 </head>
 
 <body>
@@ -308,14 +313,14 @@ button:active {
       ＋ Fund Wallet
     </button>
 
-    <button onclick="openProfile()" style="
+    <button onclick="openTransfer()" style="
       flex:1;
       padding:12px;
       background:rgba(255,255,255,0.14);
       color:#ffffff;
       border:1px solid rgba(255,255,255,0.25);
     ">
-      👤 My Profile
+      ↗ Send Money
     </button>
   </div>
     </div> 
@@ -434,7 +439,7 @@ button:active {
     </div>
 
     <div class="transactions">
-      <h2>Recent Transactions</h2>
+      <h2 style="display:flex;justify-content:space-between;align-items:center;">Recent Transactions <button type="button" onclick="openTransactionHistory()" style="border:0;background:transparent;font-size:12px;color:#0863d8;font-weight:700;cursor:pointer;">See all</button></h2>
 
       <div class="transaction">
         No transactions yet.
@@ -533,8 +538,27 @@ if (save) {
     "<small><strong>Status: " + escapeReceiptText(status) + "</strong></small><br>" +
     "<button type=\"button\" class=\"receipt-button\">View Receipt</button>";
 
-  transaction.querySelector(".receipt-button").onclick = () => {
-    showDigitalReceipt(transactionData);
+  transaction.style.cursor = "pointer";
+  transaction.setAttribute("role", "button");
+  transaction.setAttribute("tabindex", "0");
+
+  const openReceipt = () => showDigitalReceipt(transactionData);
+
+  transaction.onclick = (event) => {
+    if (event.target.closest(".receipt-button")) return;
+    openReceipt();
+  };
+
+  transaction.onkeydown = (event) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      openReceipt();
+    }
+  };
+
+  transaction.querySelector(".receipt-button").onclick = (event) => {
+    event.stopPropagation();
+    openReceipt();
   };
 
   transactionsBox.appendChild(transaction);
@@ -2097,367 +2121,244 @@ function showBetConfirmation({ platform, customerName, userId, amount }) {
     };
   });
                           } 
-function openAITips() {
+function openTransactionHistory() {
+  const saved = JSON.parse(localStorage.getItem("lonerPayTransactions") || "[]");
   const overlay = document.createElement("div");
+  overlay.style.cssText = "position:fixed;inset:0;background:#f5f8fc;z-index:15000;overflow:auto;font-family:Arial,sans-serif;";
 
-overlay.style.cssText = `
-  position:fixed;
-  inset:0;
-  background:rgba(0,0,0,.55);
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  z-index:9999;
-  padding:20px;
-`;
-
-overlay.innerHTML = `
-  <div style="
-    background:white;
-    width:100%;
-    max-width:420px;
-    border-radius:20px;
-    padding:24px;
-  ">
-    <h2 style="margin-top:0;">🤖 AI Tips</h2>
-    <p>Smart football match insights powered by AI.</p>
-
-    <div style="
-      background:#f4f7f5;
-      padding:16px;
-      border-radius:12px;
-      margin:18px 0;
-    ">
-      <strong>Match Analysis</strong>
-
-<select id="aiMatchSelect" style="
-  width:100%;
-  margin-top:12px;
-  padding:12px;
-  border:1px solid #ddd;
-  border-radius:8px;
-  font-size:16px;
-">
-  <option value="">Select a match</option>
-  <option value="match1">Manchester City vs Arsenal</option>
-  <option value="match2">Liverpool vs Chelsea</option>
-  <option value="match3">Barcelona vs Real Madrid</option>
-</select>
-
-<div id="aiMatchAnalysis" style="margin-top:14px;">
-  Select a match to view AI-powered statistics and insights.
-</div>
-    </div>
-
-    <p style="font-size:13px;color:#666;">
-      AI insights are informational only and do not guarantee any betting outcome.
-    </p>
-
-    <button id="aiTipsClose" style="
-      width:100%;
-      padding:14px;
-      border:0;
-      border-radius:10px;
-      background:#176b3a;
-      color:white;
-      font-weight:bold;
-    ">Close</button>
-  </div>
-`;
-
-document.body.appendChild(overlay);
-  const matchSelect = overlay.querySelector("#aiMatchSelect");
-const analysisBox = overlay.querySelector("#aiMatchAnalysis");
-
-async function loadFootballMatches() {
-  analysisBox.textContent = "Loading upcoming matches...";
-
-  try {
-    const response = await fetch("/api/football");
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(data.error || "Unable to load matches");
-    }
-
-    const fixtures = data.response || [];
-
-    matchSelect.innerHTML = '<option value="">Select a match</option>';
-
-    fixtures.forEach((item, index) => {
-      const option = document.createElement("option");
-      option.value = index;
-      option.textContent =
-        item.teams.home.name + " vs " + item.teams.away.name;
-      matchSelect.appendChild(option);
-    });
-
-    analysisBox.textContent = fixtures.length
-      ? "Select a match to view match information."
-      : "No upcoming matches available.";
-
-    matchSelect.onchange = async () => {
-  if (matchSelect.value === "") {
-    analysisBox.textContent =
-      "Select a match to view match information.";
-    return;
-  }
-
-  const match = fixtures[Number(matchSelect.value)];
-
-  analysisBox.innerHTML = `
-    <div style="text-align:center;padding:14px;">
-      <div style="font-size:14px;color:#666;">
-        Loading match analysis...
+  const rows = saved.length ? saved.map((t, index) => `
+    <button type="button" data-index="${index}" class="history-row" style="
+      width:100%;text-align:left;border:0;background:#fff;padding:16px;margin-bottom:10px;
+      border-radius:14px;box-shadow:0 3px 12px rgba(15,23,42,.06);cursor:pointer;">
+      <div style="display:flex;justify-content:space-between;gap:12px;">
+        <strong>${escapeReceiptText(t.type || "Transaction")}</strong>
+        <strong>₦${Number(t.amount || 0).toFixed(2)}</strong>
       </div>
-    </div>
-  `;
+      <div style="font-size:12px;color:#6b7280;margin-top:6px;">${escapeReceiptText(t.details || "")}</div>
+      <div style="font-size:12px;color:#15803d;margin-top:5px;font-weight:700;">${escapeReceiptText(t.status || "Successful")}</div>
+    </button>`).join("") :
+    '<div style="background:#fff;padding:24px;border-radius:16px;text-align:center;color:#6b7280;">No transactions yet.</div>';
 
-  try {
-    const response = await fetch(
-      `/api/football-analysis?fixture=${match.fixture.id}`
-    );
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(data.error || "Unable to load analysis");
-    }
-
-    analysisBox.innerHTML = `
-      <div style="
-        background:#ffffff;
-        border:1px solid #e8e8e8;
-        border-radius:14px;
-        padding:18px;
-        margin-top:14px;
-      ">
-
-        <div style="
-          text-align:center;
-          font-size:13px;
-          color:#666;
-          margin-bottom:16px;
-        ">
-          ${data.league.name} • ${data.league.country}
-        </div>
-
-        <div style="
-          display:flex;
-          align-items:center;
-          justify-content:space-between;
-          gap:12px;
-        ">
-
-          <div style="flex:1;text-align:center;">
-            <img
-              src="${data.home.logo}"
-              alt=""
-              style="width:52px;height:52px;object-fit:contain;"
-            >
-            <div style="
-              margin-top:8px;
-              font-weight:700;
-              font-size:14px;
-            ">
-              ${data.home.name}
-            </div>
-          </div>
-
-          <div style="
-            font-size:13px;
-            font-weight:700;
-            color:#777;
-          ">
-            VS
-          </div>
-
-          <div style="flex:1;text-align:center;">
-            <img
-              src="${data.away.logo}"
-              alt=""
-              style="width:52px;height:52px;object-fit:contain;"
-            >
-            <div style="
-              margin-top:8px;
-              font-weight:700;
-              font-size:14px;
-            ">
-              ${data.away.name}
-            </div>
-          </div>
-
-        </div>
-
-        <div style="
-          border-top:1px solid #eee;
-          margin-top:18px;
-          padding-top:14px;
-          font-size:14px;
-          line-height:1.7;
-          color:#444;
-        ">
-          <div>
-            <strong>Kickoff:</strong>
-            ${new Date(data.fixture.date).toLocaleString()}
-          </div>
-
-          <div>
-            <strong>Venue:</strong>
-            ${data.fixture.venue}
-          </div>
-
-          <div>
-            <strong>Status:</strong>
-            ${data.status}
-          </div>
-        </div>
-
-        <div style="
-          margin-top:14px;
-          padding:12px;
-          background:#f5f8f6;
-          border-radius:10px;
-          font-size:13px;
-          line-height:1.5;
-        ">
-        🤖 <strong>AI Match Insight</strong>
-
-${data.statistics && data.statistics.length
-  ? `
-    <div style="margin-top:12px;">
-      ${data.statistics.map(team => {
-        const stats = team.statistics || [];
-
-        const getStat = (name) =>
-          stats.find(s => s.type === name)?.value ?? "—";
-
-        return `
-          <div style="
-            background:#ffffff;
-            border:1px solid #e5e7eb;
-            border-radius:10px;
-            padding:12px;
-            margin-bottom:10px;
-          ">
-            <strong style="font-size:14px;">
-              ${team.team?.name || "Team"}
-            </strong>
-
-            <div style="
-              display:grid;
-              grid-template-columns:1fr 1fr;
-              gap:8px;
-              margin-top:10px;
-              font-size:12px;
-            ">
-              <div>⚽ Shots: <strong>${getStat("Total Shots")}</strong></div>
-              <div>🎯 On Target: <strong>${getStat("Shots on Goal")}</strong></div>
-              <div>📊 Possession: <strong>${getStat("Ball Possession")}</strong></div>
-              <div>🚩 Corners: <strong>${getStat("Corner Kicks")}</strong></div>
-              <div>🟨 Yellow: <strong>${getStat("Yellow Cards")}</strong></div>
-              <div>🟥 Red: <strong>${getStat("Red Cards")}</strong></div>
-            </div>
-          </div>
-        `;
-      }).join("")}
-
-      <div style="
-        margin-top:12px;
-        padding:10px;
-        background:#eef7f1;
-        border-radius:8px;
-        color:#166534;
-        font-size:12px;
-        line-height:1.5;
-      ">
-        <strong>💡 Smart Insight</strong><br>
-        ${(() => {
-  const teams = data.statistics || [];
-  if (teams.length < 2) return "Not enough match data for a detailed insight.";
-
-  const getValue = (team, type) =>
-    (team.statistics || []).find(s => s.type === type)?.value ?? 0;
-
-  const home = teams[0];
-  const away = teams[1];
-
-  const homeShots = Number(getValue(home, "Shots on Goal")) || 0;
-  const awayShots = Number(getValue(away, "Shots on Goal")) || 0;
-
-  const homePoss = parseFloat(getValue(home, "Ball Possession")) || 0;
-  const awayPoss = parseFloat(getValue(away, "Ball Possession")) || 0;
-const homeShotsRaw = getValue(home, "Shots on Goal");
-const awayShotsRaw = getValue(away, "Shots on Goal");
-const homePossRaw = getValue(home, "Ball Possession");
-const awayPossRaw = getValue(away, "Ball Possession");
-
-const hasShots = homeShotsRaw != null || awayShotsRaw != null;
-const hasPossession = homePossRaw != null || awayPossRaw != null;
-
-if (!hasShots && !hasPossession) {
-  return "Detailed performance data is not available for this match.";
-} 
-  if (homeShots > awayShots && homePoss > awayPoss) {
-    return `${home.team.name} had more possession and created more shots on target, showing stronger attacking control.`;
-  }
-
-  if (awayShots > homeShots && awayPoss > homePoss) {
-    return `${away.team.name} had more possession and created more shots on target, showing stronger attacking control.`;
-  }
-
-  if (homeShots > awayShots) {
-    return `${home.team.name} created more shots on target despite not clearly controlling possession.`;
-  }
-
-  if (awayShots > homeShots) {
-    return `${away.team.name} created more shots on target despite not clearly controlling possession.`;
-  }
-
-  return `The teams produced similar attacking numbers, with no clear advantage in shots on target.`;
-})()} 
+  overlay.innerHTML = `
+    <div style="max-width:700px;margin:auto;padding:18px 16px 90px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;">
+        <div><div style="font-size:12px;color:#0863d8;font-weight:800;">LONERPAY</div>
+        <h2 style="margin:4px 0 0;">Transaction History</h2></div>
+        <button id="historyClose" type="button" style="width:40px;height:40px;border:0;border-radius:50%;background:#e9eef6;font-size:22px;">×</button>
       </div>
-    </div>
-  `
-  : `
-    <div style="margin-top:10px;">
-      Detailed statistics are not available for this match yet. Match information shown above is still available. 
-    </div>
-  `
-} 
-        </div>
+      ${rows}
+    </div>`;
 
-      </div>
-    `;
-
-  } catch (error) {
-    console.error("Football analysis error:", error);
-
-    analysisBox.innerHTML = `
-      <div style="
-        padding:14px;
-        margin-top:12px;
-        border-radius:10px;
-        background:#fff5f5;
-      ">
-        Unable to load match analysis. Please try again.
-      </div>
-    `;
-  }
-}; 
-
-  } catch (error) {
-    console.error("Football matches error:", error);
-    analysisBox.textContent = "Unable to load football matches.";
-  }
+  document.body.appendChild(overlay);
+  overlay.querySelector("#historyClose").onclick = () => overlay.remove();
+  overlay.querySelectorAll(".history-row").forEach(button => {
+    button.onclick = () => showDigitalReceipt(saved[Number(button.dataset.index)]);
+  });
 }
 
-loadFootballMatches(); 
+function openProfile() {
+  window.location.href = "profile.html";
+}
 
-overlay.querySelector("#aiTipsClose").onclick = () => {
-  overlay.remove();
-}; 
-  } 
+function openFundWallet() {
+  if (typeof addDemoFunds === "function") {
+    addDemoFunds();
+    return;
+  }
+  alert("Wallet funding is temporarily unavailable.");
+}
+
+function openAITips() {
+  const overlay = document.createElement("div");
+  overlay.style.cssText = `
+    position:fixed;inset:0;background:#f4f7fb;z-index:16000;
+    overflow:auto;font-family:Arial,sans-serif;color:#10213b;
+  `;
+
+  overlay.innerHTML = `
+    <div style="max-width:700px;margin:auto;min-height:100vh;background:#f4f7fb;padding-bottom:90px;">
+      <div style="background:linear-gradient(135deg,#06244d,#0b5fc7);color:white;padding:20px 16px 24px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <div>
+            <div style="font-size:12px;opacity:.8;font-weight:800;letter-spacing:.6px;">LONERPAY AI</div>
+            <h2 style="margin:5px 0 3px;font-size:25px;">⚽ AI Match Centre</h2>
+            <div style="font-size:13px;opacity:.85;">Live statistics and smart match insights</div>
+          </div>
+          <button id="aiTipsClose" type="button" aria-label="Close" style="
+            width:40px;height:40px;border:1px solid rgba(255,255,255,.25);border-radius:50%;
+            background:rgba(255,255,255,.12);color:white;font-size:22px;">×</button>
+        </div>
+      </div>
+
+      <div style="padding:14px;">
+        <div id="aiTabs" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;background:#e8eef6;padding:5px;border-radius:14px;">
+          <button class="ai-tab" data-tab="live" type="button">🔴 Live</button>
+          <button class="ai-tab active" data-tab="upcoming" type="button">Upcoming</button>
+          <button class="ai-tab" data-tab="finished" type="button">Finished</button>
+        </div>
+
+        <div id="aiMatchList" style="margin-top:14px;">
+          <div style="background:white;padding:22px;border-radius:16px;text-align:center;color:#6b7280;">Loading matches...</div>
+        </div>
+
+        <div id="aiMatchAnalysis" style="margin-top:14px;"></div>
+
+        <div style="margin-top:16px;background:#fff8e8;border:1px solid #f6dfad;border-radius:14px;padding:13px;font-size:12px;line-height:1.5;color:#755314;">
+          AI insights are informational only. They do not guarantee a match or betting outcome.
+        </div>
+      </div>
+    </div>
+
+    <style>
+      #aiTabs .ai-tab{border:0;background:transparent;padding:11px 5px;border-radius:10px;font-weight:800;color:#68758a}
+      #aiTabs .ai-tab.active{background:#fff;color:#0863d8;box-shadow:0 2px 8px rgba(15,23,42,.08)}
+      .ai-match-card{width:100%;border:1px solid #e8edf4;background:#fff;border-radius:17px;padding:15px;margin-bottom:10px;text-align:left;cursor:pointer}
+      .ai-match-card:active{transform:scale(.99)}
+    </style>
+  `;
+
+  document.body.appendChild(overlay);
+  const list = overlay.querySelector("#aiMatchList");
+  const analysis = overlay.querySelector("#aiMatchAnalysis");
+  const tabs = [...overlay.querySelectorAll(".ai-tab")];
+  let fixtures = [];
+  let currentTab = "upcoming";
+
+  const esc = (value) => escapeReceiptText(value ?? "—");
+  const statusGroup = (fixture) => {
+    const short = fixture?.fixture?.status?.short || "";
+    if (["1H","HT","2H","ET","BT","P","SUSP","INT","LIVE"].includes(short)) return "live";
+    if (["FT","AET","PEN"].includes(short)) return "finished";
+    return "upcoming";
+  };
+
+  function renderList() {
+    const filtered = fixtures.filter(item => statusGroup(item) === currentTab);
+    analysis.innerHTML = "";
+
+    if (!filtered.length) {
+      list.innerHTML = `<div style="background:white;padding:24px;border-radius:16px;text-align:center;color:#6b7280;">
+        No ${currentTab} matches available right now.
+      </div>`;
+      return;
+    }
+
+    list.innerHTML = filtered.map((item, index) => {
+      const date = new Date(item.fixture?.date || Date.now());
+      const home = item.teams?.home || {};
+      const away = item.teams?.away || {};
+      return `<button type="button" class="ai-match-card" data-id="${item.fixture?.id}" data-index="${index}">
+        <div style="font-size:11px;color:#718096;font-weight:700;margin-bottom:12px;">${esc(item.league?.name || "Football")} • ${date.toLocaleString()}</div>
+        <div style="display:grid;grid-template-columns:1fr 42px 1fr;align-items:center;gap:8px;">
+          <div style="text-align:center;">
+            ${home.logo ? `<img src="${esc(home.logo)}" alt="" style="width:46px;height:46px;object-fit:contain;">` : ""}
+            <div style="font-weight:800;font-size:13px;margin-top:5px;">${esc(home.name)}</div>
+          </div>
+          <div style="text-align:center;font-size:12px;font-weight:900;color:#8792a5;">VS</div>
+          <div style="text-align:center;">
+            ${away.logo ? `<img src="${esc(away.logo)}" alt="" style="width:46px;height:46px;object-fit:contain;">` : ""}
+            <div style="font-weight:800;font-size:13px;margin-top:5px;">${esc(away.name)}</div>
+          </div>
+        </div>
+      </button>`;
+    }).join("");
+
+    overlay.querySelectorAll(".ai-match-card").forEach(card => {
+      card.onclick = () => loadAnalysis(card.dataset.id);
+    });
+  }
+
+  async function loadAnalysis(fixtureId) {
+    analysis.innerHTML = `<div style="background:white;padding:22px;border-radius:16px;text-align:center;color:#6b7280;">Loading match statistics...</div>`;
+    analysis.scrollIntoView({behavior:"smooth",block:"start"});
+
+    try {
+      const response = await fetch(`/api/football-analysis?fixture=${encodeURIComponent(fixtureId)}`);
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Unable to load analysis");
+
+      const teams = data.statistics || [];
+      const getStat = (team, name) => (team?.statistics || []).find(s => s.type === name)?.value ?? "—";
+      const statRows = [
+        ["Total Shots","Shots"],["Shots on Goal","On Target"],["Ball Possession","Possession"],
+        ["Corner Kicks","Corners"],["Yellow Cards","Yellow Cards"],["Red Cards","Red Cards"]
+      ];
+
+      const homeStats = teams[0] || {};
+      const awayStats = teams[1] || {};
+
+      const smartInsight = (() => {
+        if (teams.length < 2) return "Detailed performance data is not available yet.";
+        const num = (team, type) => parseFloat(String(getStat(team,type)).replace("%","")) || 0;
+        const hs = num(homeStats,"Shots on Goal"), as = num(awayStats,"Shots on Goal");
+        const hp = num(homeStats,"Ball Possession"), ap = num(awayStats,"Ball Possession");
+        if (hs === 0 && as === 0 && hp === 0 && ap === 0) return "Detailed performance data is not available for this match yet.";
+        if (hs > as && hp > ap) return `${homeStats.team?.name || "The home team"} has shown stronger attacking control in the available statistics.`;
+        if (as > hs && ap > hp) return `${awayStats.team?.name || "The away team"} has shown stronger attacking control in the available statistics.`;
+        if (hs > as) return `${homeStats.team?.name || "The home team"} has produced more shots on target.`;
+        if (as > hs) return `${awayStats.team?.name || "The away team"} has produced more shots on target.`;
+        return "The available attacking numbers are closely matched.";
+      })();
+
+      analysis.innerHTML = `
+        <div style="background:white;border-radius:18px;padding:17px;box-shadow:0 5px 18px rgba(15,23,42,.06);">
+          <div style="text-align:center;font-size:12px;color:#6b7280;font-weight:700;">${esc(data.league?.name)} • ${esc(data.league?.country)}</div>
+          <div style="display:grid;grid-template-columns:1fr 44px 1fr;align-items:center;margin:18px 0;">
+            <div style="text-align:center;">${data.home?.logo ? `<img src="${esc(data.home.logo)}" alt="" style="width:58px;height:58px;object-fit:contain;">` : ""}
+              <div style="font-weight:900;font-size:14px;margin-top:7px;">${esc(data.home?.name)}</div></div>
+            <div style="text-align:center;font-weight:900;color:#8792a5;">VS</div>
+            <div style="text-align:center;">${data.away?.logo ? `<img src="${esc(data.away.logo)}" alt="" style="width:58px;height:58px;object-fit:contain;">` : ""}
+              <div style="font-weight:900;font-size:14px;margin-top:7px;">${esc(data.away?.name)}</div></div>
+          </div>
+          <div style="background:#f7f9fc;border-radius:13px;padding:12px;font-size:13px;line-height:1.7;">
+            <div><strong>Kickoff:</strong> ${data.fixture?.date ? new Date(data.fixture.date).toLocaleString() : "—"}</div>
+            <div><strong>Venue:</strong> ${esc(data.fixture?.venue)}</div>
+            <div><strong>Status:</strong> ${esc(data.status)}</div>
+          </div>
+
+          <h3 style="margin:20px 0 10px;">Match Statistics</h3>
+          <div style="border:1px solid #e8edf4;border-radius:14px;overflow:hidden;">
+            <div style="display:grid;grid-template-columns:1fr 1.1fr 1fr;background:#f7f9fc;padding:10px;font-size:11px;font-weight:800;text-align:center;">
+              <span>${esc(homeStats.team?.name || data.home?.name)}</span><span>STAT</span><span>${esc(awayStats.team?.name || data.away?.name)}</span>
+            </div>
+            ${statRows.map(([key,label]) => `<div style="display:grid;grid-template-columns:1fr 1.1fr 1fr;padding:10px;border-top:1px solid #eef2f7;font-size:12px;text-align:center;">
+              <strong>${esc(getStat(homeStats,key))}</strong><span style="color:#6b7280;">${label}</span><strong>${esc(getStat(awayStats,key))}</strong>
+            </div>`).join("")}
+          </div>
+
+          <div style="margin-top:14px;background:#edf8f1;border:1px solid #d5efdd;border-radius:14px;padding:14px;color:#17663b;font-size:13px;line-height:1.55;">
+            <strong>🤖 Smart Insight</strong><br>${esc(smartInsight)}
+          </div>
+        </div>`;
+    } catch (error) {
+      console.error("Football analysis error:", error);
+      analysis.innerHTML = `<div style="background:#fff1f2;border:1px solid #fecdd3;padding:16px;border-radius:14px;color:#9f1239;">Unable to load match analysis. Please try again.</div>`;
+    }
+  }
+
+  tabs.forEach(tab => {
+    tab.onclick = () => {
+      currentTab = tab.dataset.tab;
+      tabs.forEach(t => t.classList.toggle("active", t === tab));
+      renderList();
+    };
+  });
+
+  overlay.querySelector("#aiTipsClose").onclick = () => overlay.remove();
+
+  (async () => {
+    try {
+      const response = await fetch("/api/football");
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Unable to load matches");
+      fixtures = Array.isArray(data.response) ? data.response : [];
+      renderList();
+    } catch (error) {
+      console.error("Football matches error:", error);
+      list.innerHTML = `<div style="background:#fff1f2;border:1px solid #fecdd3;padding:18px;border-radius:14px;color:#9f1239;">Unable to load football matches. Please try again.</div>`;
+    }
+  })();
+}
   
   
 </script>
@@ -2466,5 +2367,12 @@ overlay.querySelector("#aiTipsClose").onclick = () => {
 <script src="tv-client.js"></script>
 <script src="wallet-client.js"></script>
 <script src="transactions-client.js"></script>  
+
+<nav class="lp-bottom-nav" aria-label="Main navigation">
+  <button class="lp-nav-item active" type="button" onclick="window.scrollTo({top:0,behavior:'smooth'})"><span>⌂</span>Home</button>
+  <button class="lp-nav-item" type="button" onclick="document.querySelector('.transactions')?.scrollIntoView({behavior:'smooth'})"><span>▤</span>Transactions</button>
+  <button class="lp-nav-item" type="button" onclick="openAITips()"><span>⚙</span>AI Tips</button>
+  <button class="lp-nav-item" type="button" onclick="openProfile()"><span>♙</span>Profile</button>
+</nav>
 </body>
 </html> 
