@@ -224,7 +224,11 @@
   <h3>Gift Cards</h3>
   <p>Buy & Sell gift cards</p>
 </div> 
-      
+    <div class="service" onclick="openAITips()">
+  <div>🤖</div>
+  <h3>AI Tips</h3>
+  <p>Smart match insights</p>
+    </div>   
 
     </div>
 
@@ -1911,6 +1915,66 @@ function showBetConfirmation({ platform, customerName, userId, amount }) {
     };
   });
                           } 
+function openAITips() {
+  const overlay = document.createElement("div");
+
+overlay.style.cssText = `
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,.55);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  z-index:9999;
+  padding:20px;
+`;
+
+overlay.innerHTML = `
+  <div style="
+    background:white;
+    width:100%;
+    max-width:420px;
+    border-radius:20px;
+    padding:24px;
+  ">
+    <h2 style="margin-top:0;">🤖 AI Tips</h2>
+    <p>Smart football match insights powered by AI.</p>
+
+    <div style="
+      background:#f4f7f5;
+      padding:16px;
+      border-radius:12px;
+      margin:18px 0;
+    ">
+      <strong>Match Analysis</strong>
+      <p style="margin-bottom:0;">
+        Select a match to view AI-powered statistics and insights.
+      </p>
+    </div>
+
+    <p style="font-size:13px;color:#666;">
+      AI insights are informational only and do not guarantee any betting outcome.
+    </p>
+
+    <button id="aiTipsClose" style="
+      width:100%;
+      padding:14px;
+      border:0;
+      border-radius:10px;
+      background:#176b3a;
+      color:white;
+      font-weight:bold;
+    ">Close</button>
+  </div>
+`;
+
+document.body.appendChild(overlay);
+
+overlay.querySelector("#aiTipsClose").onclick = () => {
+  overlay.remove();
+}; 
+  } 
+  
   
 </script>
 <script src="data-client.js"></script>
