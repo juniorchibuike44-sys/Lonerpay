@@ -1987,17 +1987,57 @@ document.body.appendChild(overlay);
   const matchSelect = overlay.querySelector("#aiMatchSelect");
 const analysisBox = overlay.querySelector("#aiMatchAnalysis");
 
-matchSelect.onchange = () => {
-  const analyses = {
-    match1: "Manchester City vs Arsenal — AI analysis will appear here.",
-    match2: "Liverpool vs Chelsea — AI analysis will appear here.",
-    match3: "Barcelona vs Real Madrid — AI analysis will appear here."
-  };
+async function loadFootballMatches() {
+  analysisBox.textContent = "Loading upcoming matches...";
 
-  analysisBox.textContent =
-    analyses[matchSelect.value] ||
-    "Select a match to view AI-powered statistics and insights.";
-}; 
+  try {
+    const response = await fetch("/api/football");
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || "Unable to load matches");
+    }
+
+    const fixtures = data.response || [];
+
+    matchSelect.innerHTML = '<option value="">Select a match</option>';
+
+    fixtures.forEach((item, index) => {
+      const option = document.createElement("option");
+      option.value = index;
+      option.textContent =
+        item.teams.home.name + " vs " + item.teams.away.name;
+      matchSelect.appendChild(option);
+    });
+
+    analysisBox.textContent = fixtures.length
+      ? "Select a match to view match information."
+      : "No upcoming matches available.";
+
+    matchSelect.onchange = () => {
+      if (matchSelect.value === "") {
+        analysisBox.textContent =
+          "Select a match to view match information.";
+        return;
+      }
+
+      const match = fixtures[Number(matchSelect.value)];
+
+      analysisBox.textContent =
+        match.teams.home.name +
+        " vs " +
+        match.teams.away.name +
+        " — " +
+        new Date(match.fixture.date).toLocaleString();
+    };
+
+  } catch (error) {
+    console.error("Football matches error:", error);
+    analysisBox.textContent = "Unable to load football matches.";
+  }
+}
+
+loadFootballMatches(); 
 
 overlay.querySelector("#aiTipsClose").onclick = () => {
   overlay.remove();
