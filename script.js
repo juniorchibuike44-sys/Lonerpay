@@ -3,7 +3,13 @@ document.addEventListener("DOMContentLoaded", function () {
   const form = document.getElementById("authForm");
   const passkeyLoginButton = document.getElementById("passkeyLoginButton");
   const passkeyHelp = document.getElementById("passkeyHelp");
+const signupNameFields = document.getElementById("signupNameFields");
+const signupExtraFields = document.getElementById("signupExtraFields");
+const emailVerificationStep = document.getElementById("emailVerificationStep");
+const verificationEmail = document.getElementById("verificationEmail");
+const verifyEmailButton = document.getElementById("verifyEmailButton");
 
+let signupStep = 1; 
   let configPromise;
   let supabaseClientPromise;
 
@@ -70,7 +76,17 @@ document.addEventListener("DOMContentLoaded", function () {
     const text = modal.querySelector("#modalText");
     const email = modal.querySelector("input[name='email']");
     const password = modal.querySelector("input[name='password']");
+if (email) email.style.display = "";
+if (password) password.style.display = "";
 
+const submitButton =
+    form.querySelector("button[type='submit']");
+
+if (submitButton) {
+    submitButton.style.display = "";
+    submitButton.disabled = false;
+    submitButton.textContent = "Continue";
+} 
     if (type === "login") {
       if (title) title.textContent = "Log in to LonerPay";
       if (text) text.textContent = "Enter your email and password, or use your fingerprint / face passkey.";
@@ -80,7 +96,20 @@ document.addEventListener("DOMContentLoaded", function () {
       if (text) text.textContent = "Enter your email address and create a password.";
       if (password) password.autocomplete = "new-password";
     }
+signupStep = 1;
 
+if (signupNameFields) {
+  signupNameFields.style.display =
+    type === "signup" ? "block" : "none";
+}
+
+if (signupExtraFields) {
+  signupExtraFields.style.display = "none";
+}
+
+if (emailVerificationStep) {
+  emailVerificationStep.style.display = "none";
+} 
     updatePasskeyUI(type);
     if (email) email.focus();
   };
@@ -142,7 +171,51 @@ document.addEventListener("DOMContentLoaded", function () {
     const password = form.querySelector("input[name='password']").value;
     const mode = modal.dataset.authMode || "signup";
     const submitButton = form.querySelector("button[type='submit']");
+if (mode === "signup" && signupStep === 1) {
+  const firstName =
+    form.querySelector("input[name='firstName']").value.trim();
+  const lastName =
+    form.querySelector("input[name='lastName']").value.trim();
 
+  if (!firstName || !lastName || !email || !password) {
+    alert("Please complete your first name, last name, email and password.");
+    return;
+  }
+
+  if (password.length < 6) {
+    alert("Password must contain at least 6 characters.");
+    return;
+  }
+
+  signupStep = 2;
+
+  if (signupNameFields) signupNameFields.style.display = "none";
+  if (signupExtraFields) signupExtraFields.style.display = "block";
+
+  form.querySelector("input[name='email']").style.display = "none";
+  form.querySelector("input[name='password']").style.display = "none";
+
+  const title = modal.querySelector("#modalTitle");
+  const text = modal.querySelector("#modalText");
+
+  if (title) title.textContent = "You're Almost There";
+  if (text) text.textContent =
+    "Complete your details to finish creating your LonerPay account.";
+
+  submitButton.textContent = "Sign Up";
+  return;
+} 
+    if (mode === "signup" && signupStep === 2) {
+  const country =
+    form.querySelector("input[name='country']").value.trim();
+  const phone =
+    form.querySelector("input[name='phone']").value.trim();
+
+  if (!country || !phone) {
+    alert("Please enter your country and phone number.");
+    return;
+  }
+    } 
     if (!email || !password) {
       alert("Please enter your email and password.");
       return;
@@ -164,8 +237,22 @@ document.addEventListener("DOMContentLoaded", function () {
           "Content-Type": "application/json",
           apikey: config.supabasePublishableKey
         },
-        body: JSON.stringify({ email, password })
-      });
+        body: JSON.stringify(
+  mode === "signup"
+    ? {
+        email,
+        password,
+        data: {
+          first_name: form.querySelector("input[name='firstName']").value.trim(),
+          last_name: form.querySelector("input[name='lastName']").value.trim(),
+          country: form.querySelector("input[name='country']").value.trim(),
+          phone: form.querySelector("input[name='phone']").value.trim(),
+          referral_code: form.querySelector("input[name='referralCode']").value.trim()
+        }
+      }
+    : { email, password }
+)
+}); 
 
       const data = await response.json();
       if (!response.ok) {
@@ -205,14 +292,40 @@ document.addEventListener("DOMContentLoaded", function () {
         return;
       }
 
-      alert("Account created. Check your email and confirm your account, then log in.");
-      form.reset();
-      closeModal();
+      if (mode === "signup" && emailVerificationStep) {
+    signupStep = 3;
+
+    if (signupNameFields) signupNameFields.style.display = "none";
+    if (signupExtraFields) signupExtraFields.style.display = "none";
+
+    form.querySelector("input[name='email']").style.display = "none";
+    form.querySelector("input[name='password']").style.display = "none";
+    submitButton.style.display = "none";
+
+    if (verificationEmail) {
+        verificationEmail.textContent = email;
+    }
+
+    emailVerificationStep.style.display = "block";
+
+    const title = modal.querySelector("#modalTitle");
+    const text = modal.querySelector("#modalText");
+
+    if (title) title.textContent = "Verify Your Email";
+    if (text) {
+        text.textContent = "Check your email for the verification message from LonerPay.";
+    }
+
+    return;
+      } 
     } catch (error) {
       alert(error.message);
     } finally {
       submitButton.disabled = false;
-      submitButton.textContent = "Continue";
+
+if (signupStep !== 3) {
+    submitButton.textContent = "Continue";
+} 
     }
   });
 });
