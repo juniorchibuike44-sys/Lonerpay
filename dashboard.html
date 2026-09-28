@@ -1947,9 +1947,24 @@ overlay.innerHTML = `
       margin:18px 0;
     ">
       <strong>Match Analysis</strong>
-      <p style="margin-bottom:0;">
-        Select a match to view AI-powered statistics and insights.
-      </p>
+
+<select id="aiMatchSelect" style="
+  width:100%;
+  margin-top:12px;
+  padding:12px;
+  border:1px solid #ddd;
+  border-radius:8px;
+  font-size:16px;
+">
+  <option value="">Select a match</option>
+  <option value="match1">Manchester City vs Arsenal</option>
+  <option value="match2">Liverpool vs Chelsea</option>
+  <option value="match3">Barcelona vs Real Madrid</option>
+</select>
+
+<div id="aiMatchAnalysis" style="margin-top:14px;">
+  Select a match to view AI-powered statistics and insights.
+</div>
     </div>
 
     <p style="font-size:13px;color:#666;">
@@ -1969,6 +1984,20 @@ overlay.innerHTML = `
 `;
 
 document.body.appendChild(overlay);
+  const matchSelect = overlay.querySelector("#aiMatchSelect");
+const analysisBox = overlay.querySelector("#aiMatchAnalysis");
+
+matchSelect.onchange = () => {
+  const analyses = {
+    match1: "Manchester City vs Arsenal — AI analysis will appear here.",
+    match2: "Liverpool vs Chelsea — AI analysis will appear here.",
+    match3: "Barcelona vs Real Madrid — AI analysis will appear here."
+  };
+
+  analysisBox.textContent =
+    analyses[matchSelect.value] ||
+    "Select a match to view AI-powered statistics and insights.";
+}; 
 
 overlay.querySelector("#aiTipsClose").onclick = () => {
   overlay.remove();
