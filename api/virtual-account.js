@@ -6,8 +6,51 @@ export default async function handler(req, res) {
     });
   }
 
-  return res.status(200).json({
-    success: true,
-    message: "LonerPay virtual account endpoint is ready"
-  });
+  try {
+    const { email, first_name, last_name, phone } = req.body || {};
+
+    if (!email || !first_name || !last_name || !phone) {
+      return res.status(400).json({
+        success: false,
+        message: "Email, first name, last name and phone are required"
+      });
+    }
+
+    const secretKey = process.env.PAYSTACK_SECRET_KEY;
+
+    if (!secretKey) {
+      return res.status(500).json({
+        success: false,
+        message: "Paystack secret key is not configured"
+      });
+    }
+
+    const response = await fetch(
+      "https://api.paystack.co/dedicated_account/assign",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${secretKey}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          email,
+          first_name,
+          last_name,
+          phone,
+          preferred_bank: "test-bank",
+          country: "NG"
+        })
+      }
+    );
+
+    const data = await response.json();
+
+    return res.status(response.ok ? 200 : 400).json(data);
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: "Unable to create virtual account"
+    });
+  }
 } 
