@@ -8,11 +8,32 @@ const signupExtraFields = document.getElementById("signupExtraFields");
 const emailVerificationStep = document.getElementById("emailVerificationStep");
 const verificationEmail = document.getElementById("verificationEmail");
 const verifyEmailButton = document.getElementById("verifyEmailButton");
-
+const biometricModal = document.getElementById("biometricModal");
+const enableBiometricButton = document.getElementById("enableBiometricButton");
+const skipBiometricButton = document.getElementById("skipBiometricButton"); 
 let signupStep = 1; 
   let configPromise;
   let supabaseClientPromise;
+function askForBiometricSetup() {
+  return new Promise((resolve) => {
+    if (!biometricModal || !enableBiometricButton || !skipBiometricButton) {
+      resolve(false);
+      return;
+    }
 
+    biometricModal.style.display = "flex";
+
+    enableBiometricButton.onclick = function () {
+      biometricModal.style.display = "none";
+      resolve(true);
+    };
+
+    skipBiometricButton.onclick = function () {
+      biometricModal.style.display = "none";
+      resolve(false);
+    };
+  });
+} 
   function getConfig() {
     if (!configPromise) {
       configPromise = fetch("/api/config").then(async (response) => {
@@ -265,9 +286,7 @@ if (mode === "signup" && signupStep === 1) {
         // A passkey must be registered while the user already has an authenticated session.
         // Offer registration after a normal password login; cancelling does not affect login.
         if (mode === "login" && window.PublicKeyCredential) {
-          const wantsPasskey = confirm(
-            "Would you like to set up fingerprint / face login on this device for future LonerPay logins?"
-          );
+          const wantsPasskey = await askForBiometricSetup(); 
           if (wantsPasskey) {
             try {
               const client = await getSupabaseClient();
