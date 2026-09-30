@@ -5,17 +5,63 @@ export default async function handler(req, res) {
       message: "Method not allowed"
     });
   }
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const authorization = req.headers.authorization;
 
+if (!supabaseUrl || !supabaseKey) {
+  return res.status(500).json({
+    success: false,
+    message: "Server authentication is not configured"
+  });
+}
+
+if (!authorization?.startsWith("Bearer ")) {
+  return res.status(401).json({
+    success: false,
+    message: "Login required"
+  });
+} 
   try {
-    const { email, first_name, last_name, phone } = req.body || {};
+  const token = authorization.slice(7);
 
-    if (!email || !first_name || !last_name || !phone) {
-      return res.status(400).json({
-        success: false,
-        message: "Email, first name, last name and phone are required"
-      });
-    }
+const userResponse = await fetch(`${supabaseUrl}/auth/v1/user`, {
+  headers: {
+    apikey: supabaseKey,
+    Authorization: `Bearer ${token}`
+  }
+});
 
+if (!userResponse.ok) {
+  return res.status(401).json({
+    success: false,
+    message: "Invalid or expired login"
+  });
+}
+
+const user = await userResponse.json();
+
+const email = user.email;
+const first_name =
+  user.user_metadata?.first_name ||
+  user.user_metadata?.name?.split(" ")[0] ||
+  "LonerPay";
+
+const last_name =
+  user.user_metadata?.last_name ||
+  user.user_metadata?.name?.split(" ").slice(1).join(" ") ||
+  "Customer";
+
+const phone =
+  user.user_metadata?.phone ||
+  user.phone ||
+  ""; 
+if (!phone) {
+  return res.status(400).json({
+    success: false,
+    message: "Please add your phone number to your LonerPay profile first"
+  });
+} 
   const secretKey = process.env.PAYSTACK_TEST_SECRET_KEY; 
 
     if (!secretKey) {
