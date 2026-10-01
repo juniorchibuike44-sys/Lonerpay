@@ -15,7 +15,11 @@ export default async function handler(req, res) {
       error: "Wallet funding configuration is missing"
     });
   }
-
+if (!paystackSecretKey.startsWith("sk_live_")) {
+  return res.status(500).json({
+    error: "Paystack is not using a Live Secret Key"
+  });
+} 
   if (!authorization?.startsWith("Bearer ")) {
     return res.status(401).json({
       error: "Login required"
