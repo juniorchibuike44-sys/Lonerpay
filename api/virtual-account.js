@@ -153,7 +153,7 @@ if (!pendingResponse.ok) {
 
   return res.status(500).json({
     success: false,
-    message: "Could not prepare virtual account request",
+    message: `Could not prepare virtual account request: ${pendingError}`, 
     details: pendingError
   });
 } 
