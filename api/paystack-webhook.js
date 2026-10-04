@@ -42,7 +42,18 @@ async function updateVirtualAccount(
     }
   );
 
-  return response.ok;
+  if (!response.ok) {
+  const errorText = await response.text();
+
+  console.error("Virtual account Supabase update failed:", {
+    status: response.status,
+    error: errorText
+  });
+
+  return false;
+}
+
+return true; 
 }
 
 export default async function handler(req, res) {
