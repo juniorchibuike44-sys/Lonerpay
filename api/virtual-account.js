@@ -129,7 +129,34 @@ const last_name =
         message: "Select the bank linked to this account"
       });
     }
+const pendingResponse = await fetch(
+  `${supabaseUrl}/rest/v1/virtual_accounts?on_conflict=user_id`,
+  {
+    method: "POST",
+    headers: {
+      apikey: supabaseSecretKey,
+      Authorization: `Bearer ${supabaseSecretKey}`,
+      "Content-Type": "application/json",
+      Prefer: "resolution=merge-duplicates"
+    },
+    body: JSON.stringify({
+      user_id: user.id,
+      customer_email: email,
+      assignment_status: "pending",
+      updated_at: new Date().toISOString()
+    })
+  }
+);
 
+if (!pendingResponse.ok) {
+  const pendingError = await pendingResponse.text();
+
+  return res.status(500).json({
+    success: false,
+    message: "Could not prepare virtual account request",
+    details: pendingError
+  });
+} 
     const response = await fetch(
       "https://api.paystack.co/dedicated_account/assign",
       {
