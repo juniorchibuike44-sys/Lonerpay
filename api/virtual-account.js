@@ -142,6 +142,7 @@ const pendingResponse = await fetch(
     body: JSON.stringify({
       user_id: user.id,
       customer_email: email,
+      provider: "paystack", 
       assignment_status: "pending",
       updated_at: new Date().toISOString()
     })
