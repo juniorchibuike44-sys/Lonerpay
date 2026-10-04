@@ -134,8 +134,8 @@ const pendingResponse = await fetch(
   {
     method: "POST",
     headers: {
-      apikey: supabaseSecretKey,
-      Authorization: `Bearer ${supabaseSecretKey}`,
+      apikey: supabaseKey, 
+      Authorization: `Bearer ${supabaseKey}`, 
       "Content-Type": "application/json",
       Prefer: "resolution=merge-duplicates"
     },
