@@ -55,15 +55,22 @@ export default async function handler(req, res) {
 
     const email = user.email;
 
-    const first_name =
-      user.user_metadata?.first_name ||
-      user.user_metadata?.name?.split(" ")[0] ||
-      "";
+    const fullName =
+  user.user_metadata?.full_name ||
+  user.user_metadata?.name ||
+  "";
 
-    const last_name =
-      user.user_metadata?.last_name ||
-      user.user_metadata?.name?.split(" ").slice(1).join(" ") ||
-      "";
+const nameParts = fullName.trim().split(/\s+/);
+
+const first_name =
+  user.user_metadata?.first_name ||
+  nameParts[0] ||
+  "";
+
+const last_name =
+  user.user_metadata?.last_name ||
+  nameParts.slice(1).join(" ") ||
+  ""; 
 
     const phone =
       user.user_metadata?.phone ||
