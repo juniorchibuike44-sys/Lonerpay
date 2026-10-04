@@ -99,7 +99,7 @@ export default async function handler(req, res) {
     const event = JSON.parse(rawBody.toString("utf8"));
     const eventType = event.event;
     const eventData = event.data || {};
-
+console.log("Paystack webhook event:", eventType); 
     // -----------------------------------------
     // CUSTOMER IDENTIFICATION
     // -----------------------------------------
