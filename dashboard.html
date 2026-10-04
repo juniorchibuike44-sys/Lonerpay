@@ -434,6 +434,11 @@ button:active {
   <h3>Transfer</h3>
   <p>Send money</p>
       </div> 
+      <div class="service" onclick="openVirtualAccount()">
+  <div>🏦</div>
+  <h3>Virtual Account</h3>
+  <p>Receive money</p>
+      </div> 
       <div class="service" onclick="openBetFunding()">
   <div>🎯</div>
   <h3>Bet Funding</h3>
@@ -2559,6 +2564,192 @@ function openAITips() {
   setTimeout(ensureSeeAll, 500);
   setTimeout(ensureSeeAll, 1500);
 })();
+</script>
+
+
+<script id="lonerpay-virtual-account-customer-flow">
+function openVirtualAccount() {
+  const old = document.getElementById("virtualAccountOverlay");
+  if (old) old.remove();
+
+  const overlay = document.createElement("div");
+  overlay.id = "virtualAccountOverlay";
+  overlay.style.cssText = `
+    position:fixed;inset:0;background:rgba(17,24,39,.68);display:flex;
+    align-items:center;justify-content:center;z-index:18000;padding:18px;
+    box-sizing:border-box;overflow:auto;
+  `;
+
+  overlay.innerHTML = `
+    <div style="background:#fff;width:100%;max-width:440px;border-radius:22px;padding:22px;
+      box-sizing:border-box;font-family:Arial,sans-serif;box-shadow:0 20px 60px rgba(0,0,0,.25);">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+        <div>
+          <div style="font-size:12px;color:#0863d8;font-weight:800;letter-spacing:.5px;">LONERPAY</div>
+          <h2 style="margin:5px 0 0;color:#111827;">Virtual Account</h2>
+        </div>
+        <button id="vaClose" type="button" aria-label="Close"
+          style="width:38px;height:38px;border:0;border-radius:50%;background:#f3f4f6;font-size:22px;">×</button>
+      </div>
+
+      <p style="color:#6b7280;line-height:1.5;font-size:14px;">
+        Verify your identity once to request your personal LonerPay virtual account for receiving bank transfers.
+      </p>
+
+      <label style="display:block;font-weight:700;margin:14px 0 6px;">BVN</label>
+      <input id="vaBvn" type="password" inputmode="numeric" maxlength="11" autocomplete="off"
+        placeholder="11-digit BVN"
+        style="width:100%;padding:14px;border:1px solid #d1d5db;border-radius:11px;box-sizing:border-box;">
+
+      <label style="display:block;font-weight:700;margin:14px 0 6px;">Bank linked to your BVN</label>
+      <select id="vaBank"
+        style="width:100%;padding:14px;border:1px solid #d1d5db;border-radius:11px;box-sizing:border-box;background:white;">
+        <option value="">Select bank</option>
+        <option value="044">Access Bank</option>
+        <option value="058">GTBank</option>
+        <option value="033">United Bank for Africa (UBA)</option>
+        <option value="011">First Bank of Nigeria</option>
+        <option value="057">Zenith Bank</option>
+        <option value="032">Union Bank</option>
+        <option value="035">Wema Bank</option>
+        <option value="221">Stanbic IBTC Bank</option>
+        <option value="232">Sterling Bank</option>
+        <option value="214">First City Monument Bank (FCMB)</option>
+        <option value="50515">Moniepoint MFB</option>
+        <option value="999992">OPay</option>
+        <option value="999991">PalmPay</option>
+      </select>
+
+      <label style="display:block;font-weight:700;margin:14px 0 6px;">Account Number</label>
+      <input id="vaAccountNumber" type="tel" inputmode="numeric" maxlength="10" autocomplete="off"
+        placeholder="10-digit account number"
+        style="width:100%;padding:14px;border:1px solid #d1d5db;border-radius:11px;box-sizing:border-box;">
+
+      <label style="display:flex;gap:10px;align-items:flex-start;margin:17px 0 8px;font-size:13px;line-height:1.45;color:#374151;">
+        <input id="vaConsent" type="checkbox" style="margin-top:3px;">
+        <span>I consent to LonerPay sending these identity details securely to Paystack for customer verification and creation of my dedicated virtual account.</span>
+      </label>
+
+      <div id="vaError" style="min-height:20px;color:#b91c1c;font-size:13px;margin:8px 0;"></div>
+
+      <button id="vaCreate" type="button"
+        style="width:100%;padding:15px;border:0;border-radius:12px;background:#0863d8;color:white;font-size:15px;font-weight:800;">
+        Verify & Create Account
+      </button>
+
+      <div style="margin-top:12px;padding:11px;border-radius:11px;background:#f8fafc;color:#64748b;font-size:11px;line-height:1.45;">
+        LonerPay does not save your BVN in this form. It is sent to the secure server only for the Paystack verification request.
+      </div>
+    </div>`;
+
+  document.body.appendChild(overlay);
+  overlay.querySelector("#vaClose").onclick = () => overlay.remove();
+
+  overlay.querySelector("#vaCreate").onclick = async () => {
+    const bvn = overlay.querySelector("#vaBvn").value.replace(/\D/g, "");
+    const bankCode = overlay.querySelector("#vaBank").value;
+    const accountNumber = overlay.querySelector("#vaAccountNumber").value.replace(/\D/g, "");
+    const consent = overlay.querySelector("#vaConsent").checked;
+    const errorBox = overlay.querySelector("#vaError");
+    const button = overlay.querySelector("#vaCreate");
+
+    errorBox.textContent = "";
+
+    if (!/^\d{11}$/.test(bvn)) {
+      errorBox.textContent = "Enter your valid 11-digit BVN.";
+      return;
+    }
+    if (!bankCode) {
+      errorBox.textContent = "Select the bank linked to your BVN.";
+      return;
+    }
+    if (!/^\d{10}$/.test(accountNumber)) {
+      errorBox.textContent = "Enter your valid 10-digit bank account number.";
+      return;
+    }
+    if (!consent) {
+      errorBox.textContent = "Please give consent before continuing.";
+      return;
+    }
+
+    const accessToken = localStorage.getItem("lonerpay_access_token");
+    if (!accessToken) {
+      errorBox.textContent = "Please log in again before creating your virtual account.";
+      return;
+    }
+
+    button.disabled = true;
+    button.textContent = "Verifying securely...";
+    button.style.opacity = ".7";
+
+    try {
+      const response = await fetch("/api/virtual-account", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`
+        },
+        body: JSON.stringify({
+          bvn,
+          account_number: accountNumber,
+          bank_code: bankCode,
+          consent: true
+        })
+      });
+
+      const data = await response.json().catch(() => ({}));
+
+      // Clear sensitive field as soon as the request completes.
+      overlay.querySelector("#vaBvn").value = "";
+
+      if (!response.ok || data.success === false) {
+        throw new Error(data.message || "Unable to create virtual account.");
+      }
+
+      const account = data?.data?.dedicated_account || data?.data || {};
+      const accountNumberResult =
+        account.account_number ||
+        account?.bank?.account_number ||
+        "";
+      const accountName =
+        account.account_name ||
+        account?.bank?.account_name ||
+        "";
+      const bankName =
+        account.bank?.name ||
+        account.bank_name ||
+        "Paystack-Titan";
+
+      overlay.querySelector("div[style*='background:#fff']").innerHTML = `
+        <div style="text-align:center;padding:10px 0;">
+          <div style="font-size:54px;">✅</div>
+          <h2 style="margin:8px 0;color:#111827;">Request Submitted</h2>
+          ${
+            accountNumberResult
+              ? `<p style="color:#6b7280;">Your LonerPay virtual account is ready.</p>
+                 <div style="background:#f3f7fc;border-radius:16px;padding:18px;text-align:left;margin-top:16px;">
+                   <div style="font-size:12px;color:#64748b;">Bank</div>
+                   <strong>${escapeReceiptText(bankName)}</strong>
+                   <div style="font-size:12px;color:#64748b;margin-top:12px;">Account Number</div>
+                   <strong style="font-size:22px;">${escapeReceiptText(accountNumberResult)}</strong>
+                   ${accountName ? `<div style="font-size:12px;color:#64748b;margin-top:12px;">Account Name</div><strong>${escapeReceiptText(accountName)}</strong>` : ""}
+                 </div>`
+              : `<p style="color:#6b7280;line-height:1.5;">${escapeReceiptText(data.message || "Paystack is verifying your identity and processing your virtual account request.")}</p>`
+          }
+          <button id="vaDone" type="button"
+            style="width:100%;padding:15px;border:0;border-radius:12px;background:#0863d8;color:white;font-weight:800;margin-top:18px;">
+            Done
+          </button>
+        </div>`;
+      overlay.querySelector("#vaDone").onclick = () => overlay.remove();
+    } catch (error) {
+      errorBox.textContent = error.message || "Unable to create virtual account.";
+      button.disabled = false;
+      button.textContent = "Verify & Create Account";
+      button.style.opacity = "1";
+    }
+  };
+}
 </script>
 
 </body>
