@@ -343,13 +343,19 @@ console.log("Fund Wallet amount check:", {
   userIdPresent: Boolean(userId),
 }); 
       if (
-        !Number.isFinite(paidAmount) ||
-        Math.abs(paidAmount - walletAmount) > 0.01
-      ) {
-        return res.status(400).json({
-          error: "Payment amount does not match wallet amount",
-        });
-      }
+  !Number.isFinite(paidAmount) ||
+  paidAmount + 0.01 < walletAmount
+) {
+  console.error("Fund Wallet payment is below requested amount:", {
+    reference,
+    paidAmount,
+    walletAmount,
+  });
+
+  return res.status(400).json({
+    error: "Payment amount is below wallet amount",
+  });
+      } 
 
       const creditResponse = await fetch(
         `${supabaseUrl}/rest/v1/rpc/credit_wallet_from_paystack`,
