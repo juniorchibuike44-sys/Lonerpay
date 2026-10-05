@@ -650,7 +650,7 @@ window.lpAccount=async function(){
     const d=await r.json();
     if(r.status===401){localStorage.removeItem('lonerpay_access_token');localStorage.removeItem('lonerpay_refresh_token');location.href='index.html';return;}
     if(!r.ok||!d.success)throw new Error(d.error||'Unable to load virtual account');
-    if(d.virtual_account_ready && d.account_number){
+    if((d.virtual_account_ready || d.assignment_status === 'assigned' || d.assignment_status === 'identification_success') && d.account_number){
       box.innerHTML=`<div class="lp-row"><span>Bank</span><strong>${E(d.bank_name||'Paystack-Titan')}</strong></div><div class="lp-row"><span>Account number</span><strong id="lpVaNumber" style="font-size:20px;letter-spacing:1px">${E(d.account_number)}</strong></div>${d.account_name?`<div class="lp-row"><span>Account name</span><strong>${E(d.account_name)}</strong></div>`:''}<button class="lp-primary" id="lpCopyVa">Copy Account Number</button>`;
       box.querySelector('#lpCopyVa').onclick=async()=>{try{await navigator.clipboard.writeText(String(d.account_number));N('Account number copied','Your virtual account number has been copied.','✓')}catch(e){N('Virtual account',`Account number: ${d.account_number}`,'🏦')}};
     }else{
@@ -672,9 +672,10 @@ window.lpKyc=async function(){
     if(!r.ok||!d.success)throw new Error(d.error||'Unable to check verification status');
     const labels={not_verified:'Not Verified',pending:'Verification in Progress',verified:'Verified',action_required:'Action Required'};
     statusEl.textContent=labels[d.status]||'Verification in Progress';
-    vaEl.textContent=d.virtual_account_ready?(d.bank_name?`Ready · ${d.bank_name}`:'Ready'):'Not ready';
+    const vaReady = !!(d.account_number && (d.virtual_account_ready || d.assignment_status === 'assigned' || d.assignment_status === 'identification_success'));
+    vaEl.textContent=vaReady?(d.bank_name?`Ready · ${d.bank_name}`:'Ready'):'Not ready';
     if(d.status==='verified'){
-      if(d.virtual_account_ready){action.textContent='View Virtual Account';action.onclick=()=>{o.remove();lpAccount()};}
+      if(vaReady){action.textContent='View Virtual Account';action.onclick=()=>{o.remove();lpAccount()};}
       else {action.textContent='Continue Virtual Account Setup';action.onclick=()=>{o.remove();lpKycForm()};}
     }
     else if(d.status==='pending'){action.textContent='View Verification Progress';}
@@ -688,7 +689,7 @@ window.lpKycForm=async function(){
     const sr=await fetch('/api/kyc/status',{method:'GET',headers:{Authorization:`Bearer ${token}`},cache:'no-store'});
     const sd=await sr.json();
     if(sr.status===401){localStorage.removeItem('lonerpay_access_token');localStorage.removeItem('lonerpay_refresh_token');location.href='index.html';return;}
-    if(sr.ok && sd.success && sd.virtual_account_ready){lpAccount();return;}
+    if(sr.ok && sd.success && sd.account_number && (sd.virtual_account_ready || sd.assignment_status === 'assigned' || sd.assignment_status === 'identification_success')){lpAccount();return;}
     if(sr.ok && sd.success && sd.status==='pending'){N('Verification in progress','Your verification has already been submitted. Please wait for provider confirmation.','🛡️');return;}
   }catch(e){console.error('KYC pre-check error:',e);}
   const o=S('Identity Verification',`<div class="lp-hero"><h3>Verify securely</h3><p>Enter details that belong to you. Your BVN is sent securely to the verification backend and is cleared from this form after submission.</p></div><div class="lp-ch"><label style="font-weight:800;display:block;margin-bottom:7px">BVN</label><input id="kycBvn" type="password" inputmode="numeric" maxlength="11" autocomplete="off" placeholder="11-digit BVN" style="width:100%;padding:15px;border:1px solid #dce5f0;border-radius:13px;font-size:16px;box-sizing:border-box"><label style="font-weight:800;display:block;margin:16px 0 7px">Bank linked to your BVN</label><select id="kycBank" style="width:100%;padding:15px;border:1px solid #dce5f0;border-radius:13px;font-size:16px;background:#fff;box-sizing:border-box"><option value="">Select bank</option><option value="044">Access Bank</option><option value="058">GTBank</option><option value="033">United Bank for Africa (UBA)</option><option value="011">First Bank of Nigeria</option><option value="057">Zenith Bank</option><option value="032">Union Bank</option><option value="035">Wema Bank</option><option value="221">Stanbic IBTC Bank</option><option value="232">Sterling Bank</option><option value="214">First City Monument Bank (FCMB)</option><option value="50515">Moniepoint MFB</option><option value="999992">OPay</option><option value="999991">PalmPay</option></select><label style="font-weight:800;display:block;margin:16px 0 7px">Bank account number</label><input id="kycAcct" type="tel" inputmode="numeric" maxlength="10" autocomplete="off" placeholder="10-digit account number" style="width:100%;padding:15px;border:1px solid #dce5f0;border-radius:13px;font-size:16px;box-sizing:border-box"><label style="display:flex;gap:10px;align-items:flex-start;margin-top:18px;color:#5f6f84;line-height:1.45"><input id="kycConsent" type="checkbox" style="margin-top:3px"> <span>I consent to LonerPay using these details only as required to verify my identity and process my virtual-account request through its payment provider.</span></label><div id="kycErr" style="color:#b42318;font-weight:700;font-size:13px;margin-top:13px"></div></div><div class="lp-note">Never share your BVN, OTP, password or payment PIN with anyone. LonerPay does not display your BVN after submission.</div><button class="lp-primary" id="kycSubmit">Verify & Continue</button>`);
