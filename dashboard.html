@@ -2911,5 +2911,481 @@ function openAITips() {
 })();
 </script>
 
+
+<script id="lonerpay-professional-service-upgrade">
+(function () {
+  "use strict";
+
+  const money = value => "₦" + Number(value || 0).toLocaleString("en-NG", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  });
+
+  const esc = value => String(value ?? "").replace(/[&<>"']/g, ch => ({
+    "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
+  })[ch]);
+
+  const tokenFrom = data => [
+    data?.token, data?.Token, data?.content?.token, data?.content?.Token,
+    data?.content?.transactions?.token, data?.content?.transactions?.Token,
+    data?.purchased_code
+  ].find(v => typeof v === "string" && v.trim()) || "";
+
+  function accessToken() {
+    return localStorage.getItem("lonerpay_access_token") || "";
+  }
+
+  async function refreshSecureState() {
+    if (typeof window.refreshSecureWallet === "function") await window.refreshSecureWallet();
+    if (typeof window.refreshSecureTransactions === "function") await window.refreshSecureTransactions();
+  }
+
+  function baseOverlay(id) {
+    document.getElementById(id)?.remove();
+    const overlay = document.createElement("div");
+    overlay.id = id;
+    overlay.className = "lp-service-overlay";
+    document.body.appendChild(overlay);
+    return overlay;
+  }
+
+  function serviceStyles() {
+    return `
+      <style>
+        .lp-service-overlay{position:fixed;inset:0;z-index:18000;background:rgba(3,15,35,.72);
+          display:flex;align-items:flex-end;justify-content:center;font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+        .lp-service-overlay *{box-sizing:border-box}
+        .lp-svc-sheet{width:100%;max-width:560px;max-height:94vh;background:#f6f8fc;border-radius:30px 30px 0 0;
+          overflow:hidden;display:flex;flex-direction:column;box-shadow:0 -20px 60px rgba(2,15,35,.25)}
+        .lp-svc-head{background:linear-gradient(135deg,#061b39,#0a4ca7);color:#fff;padding:18px 18px 20px}
+        .lp-svc-handle{width:44px;height:5px;border-radius:20px;background:rgba(255,255,255,.35);margin:0 auto 14px}
+        .lp-svc-title-row{display:flex;justify-content:space-between;align-items:center;gap:12px}
+        .lp-svc-title{font-size:22px;font-weight:900;letter-spacing:-.3px}
+        .lp-svc-sub{font-size:12px;color:#cbdcf5;margin-top:3px}
+        .lp-svc-close{width:38px;height:38px;border:0;border-radius:50%;background:rgba(255,255,255,.13);color:#fff;font-size:24px}
+        .lp-svc-body{padding:16px;overflow:auto;flex:1}
+        .lp-svc-label{display:block;font-size:12px;font-weight:900;color:#64748b;text-transform:uppercase;letter-spacing:.7px;margin:3px 0 9px}
+        .lp-svc-grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+        .lp-svc-grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+        .lp-svc-grid2{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+        .lp-svc-choice{border:1px solid #e1e7f0;background:#fff;border-radius:15px;padding:12px 5px;font-size:12px;font-weight:900;color:#334155}
+        .lp-svc-choice.active{border:2px solid #0863d8;background:#eef6ff;color:#0757c9;box-shadow:0 5px 14px rgba(8,99,216,.12)}
+        .lp-svc-card{border:1px solid #e1e7ef;background:#fff;border-radius:17px;padding:14px;text-align:left;box-shadow:0 5px 16px rgba(15,23,42,.045)}
+        .lp-svc-card.active{border:2px solid #0863d8;background:#f5f9ff}
+        .lp-svc-input,.lp-svc-select{width:100%;border:1px solid #d8e0ea;background:#fff;border-radius:13px;padding:14px;font-size:15px;outline:none}
+        .lp-svc-input:focus,.lp-svc-select:focus{border-color:#0863d8;box-shadow:0 0 0 3px rgba(8,99,216,.08)}
+        .lp-svc-field{margin-top:15px}
+        .lp-svc-primary{width:100%;border:0;border-radius:14px;padding:15px;background:#0863d8;color:#fff;font-size:15px;font-weight:900}
+        .lp-svc-primary:disabled{opacity:.48}
+        .lp-svc-secondary{width:100%;border:0;background:transparent;padding:13px;color:#475569;font-weight:800}
+        .lp-svc-error{display:none;background:#fff1f2;color:#b42318;border:1px solid #fecdd3;border-radius:12px;padding:11px 12px;font-size:12px;margin:12px 0}
+        .lp-svc-successbox{background:#ecfdf5;border:1px solid #bbf7d0;color:#166534;border-radius:14px;padding:13px;margin-top:14px;font-size:13px;line-height:1.55}
+        .lp-svc-review{background:#fff;border:1px solid #e3e8ef;border-radius:20px;padding:17px;box-shadow:0 7px 22px rgba(15,23,42,.05)}
+        .lp-svc-row{display:flex;justify-content:space-between;gap:15px;padding:10px 0;border-bottom:1px solid #edf1f5;font-size:13px}
+        .lp-svc-row:last-child{border-bottom:0}
+        .lp-svc-pin{width:100%;padding:14px;border:1px solid #d8e0ea;border-radius:13px;text-align:center;font-size:20px;letter-spacing:10px;margin-top:9px}
+        .lp-svc-amount{font-size:18px;font-weight:900;color:#0863d8}
+        .lp-svc-plan{position:relative;border:1px solid #e1e7ef;background:#fff;border-radius:17px;padding:14px;text-align:left;min-height:92px}
+        .lp-svc-plan.active{border:2px solid #0863d8;background:#f5f9ff}
+        .lp-svc-plan-name{font-size:13px;font-weight:900;color:#0f172a;line-height:1.35}
+        .lp-svc-plan-price{font-size:16px;font-weight:900;color:#0863d8;margin-top:9px}
+        .lp-svc-note{font-size:11px;color:#94a3b8;line-height:1.45;margin-top:8px;text-align:center}
+        @media(max-width:370px){.lp-svc-grid4{grid-template-columns:repeat(2,1fr)}.lp-svc-grid3{grid-template-columns:1fr}.lp-svc-sheet{max-height:96vh}}
+      </style>`;
+  }
+
+  function showInline(box, message, kind="error") {
+    box.textContent = message;
+    box.style.display = "block";
+    if (kind === "info") {
+      box.style.background = "#eff6ff"; box.style.borderColor = "#bfdbfe"; box.style.color = "#1d4ed8";
+    } else {
+      box.style.background = "#fff1f2"; box.style.borderColor = "#fecdd3"; box.style.color = "#b42318";
+    }
+  }
+
+  function successScreen(overlay, title, amount, lines, token="") {
+    overlay.innerHTML = serviceStyles() + `
+      <div class="lp-svc-sheet">
+        <div class="lp-svc-body" style="padding:28px 20px;text-align:center">
+          <div style="width:68px;height:68px;border-radius:50%;background:#ecfdf5;color:#15803d;display:grid;place-items:center;margin:auto;font-size:34px">✓</div>
+          <h2 style="margin:14px 0 5px;color:#0f172a">${esc(title)}</h2>
+          <div style="font-size:28px;font-weight:950;color:#0f172a;margin:8px 0 18px">${money(amount)}</div>
+          <div class="lp-svc-review" style="text-align:left">
+            ${lines.map(([a,b]) => `<div class="lp-svc-row"><span style="color:#64748b">${esc(a)}</span><strong>${esc(b)}</strong></div>`).join("")}
+          </div>
+          ${token ? `<div style="margin-top:14px;padding:15px;background:#eef6ff;border:1px solid #bfdbfe;border-radius:14px">
+            <div style="font-size:11px;color:#64748b;text-transform:uppercase;font-weight:900">Meter token</div>
+            <strong style="display:block;font-size:20px;word-break:break-all;margin-top:5px">${esc(token)}</strong>
+          </div>` : ""}
+          <button class="lp-svc-primary lp-done" type="button" style="margin-top:18px">Done</button>
+        </div>
+      </div>`;
+    overlay.querySelector(".lp-done").onclick = () => overlay.remove();
+  }
+
+  // ---------- AIRTIME ----------
+  window.buyAirtime = function () {
+    const overlay = baseOverlay("lpAirtimeOverlay");
+    let network = "MTN";
+    overlay.innerHTML = serviceStyles() + `
+      <div class="lp-svc-sheet">
+        <div class="lp-svc-head"><div class="lp-svc-handle"></div><div class="lp-svc-title-row">
+          <div><div class="lp-svc-title">Buy Airtime</div><div class="lp-svc-sub">Fast mobile top-up from your LonerPay wallet</div></div>
+          <button class="lp-svc-close" type="button">×</button>
+        </div></div>
+        <div class="lp-svc-body">
+          <span class="lp-svc-label">Select network</span>
+          <div class="lp-svc-grid4">
+            ${["MTN","Airtel","Glo","9mobile"].map((n,i)=>`<button class="lp-svc-choice ${i===0?"active":""}" data-network="${n}" type="button">${n}</button>`).join("")}
+          </div>
+          <div class="lp-svc-field"><span class="lp-svc-label">Phone number</span>
+            <input class="lp-svc-input lp-air-phone" type="tel" inputmode="numeric" maxlength="11" autocomplete="tel" placeholder="08012345678">
+          </div>
+          <div class="lp-svc-field"><span class="lp-svc-label">Quick amount</span>
+            <div class="lp-svc-grid3">
+              ${[100,200,500,1000,2000,5000].map(a=>`<button class="lp-svc-card lp-air-quick" data-amount="${a}" type="button"><div class="lp-svc-amount">₦${a.toLocaleString()}</div></button>`).join("")}
+            </div>
+          </div>
+          <div class="lp-svc-field"><span class="lp-svc-label">Custom amount</span>
+            <input class="lp-svc-input lp-air-amount" type="number" inputmode="decimal" min="1" placeholder="Enter amount">
+          </div>
+          <div class="lp-svc-error"></div>
+          <button class="lp-svc-primary lp-air-continue" type="button">Continue</button>
+          <button class="lp-svc-secondary lp-air-cancel" type="button">Cancel</button>
+        </div>
+      </div>`;
+
+    const phone = overlay.querySelector(".lp-air-phone");
+    const amount = overlay.querySelector(".lp-air-amount");
+    const error = overlay.querySelector(".lp-svc-error");
+    overlay.querySelector(".lp-svc-close").onclick = () => overlay.remove();
+    overlay.querySelector(".lp-air-cancel").onclick = () => overlay.remove();
+
+    overlay.querySelectorAll("[data-network]").forEach(btn => btn.onclick = () => {
+      network = btn.dataset.network;
+      overlay.querySelectorAll("[data-network]").forEach(x=>x.classList.remove("active"));
+      btn.classList.add("active");
+    });
+    overlay.querySelectorAll(".lp-air-quick").forEach(btn => btn.onclick = () => {
+      amount.value = btn.dataset.amount;
+      overlay.querySelectorAll(".lp-air-quick").forEach(x=>x.classList.remove("active"));
+      btn.classList.add("active");
+    });
+
+    overlay.querySelector(".lp-air-continue").onclick = () => {
+      const p = phone.value.replace(/\D/g,"");
+      const a = Number(amount.value);
+      if (!/^0\d{10}$/.test(p)) return showInline(error,"Enter a valid 11-digit Nigerian phone number.");
+      if (!Number.isFinite(a) || a <= 0) return showInline(error,"Enter a valid airtime amount.");
+
+      const sheet = overlay.querySelector(".lp-svc-sheet");
+      sheet.innerHTML = `
+        <div class="lp-svc-head"><div class="lp-svc-handle"></div><div class="lp-svc-title-row">
+          <div><div class="lp-svc-title">Review Airtime</div><div class="lp-svc-sub">Confirm before payment</div></div>
+          <button class="lp-svc-close" type="button">×</button>
+        </div></div>
+        <div class="lp-svc-body">
+          <div style="text-align:center;margin:4px 0 18px"><div style="font-size:42px">📱</div><h2 style="margin:8px 0 2px">${money(a)}</h2><div style="color:#64748b;font-size:13px">${esc(network)} Airtime</div></div>
+          <div class="lp-svc-review">
+            <div class="lp-svc-row"><span style="color:#64748b">Network</span><strong>${esc(network)}</strong></div>
+            <div class="lp-svc-row"><span style="color:#64748b">Phone</span><strong>${esc(p)}</strong></div>
+            <div class="lp-svc-row"><span style="color:#64748b">Amount</span><strong>${money(a)}</strong></div>
+          </div>
+          <div class="lp-svc-field"><span class="lp-svc-label">Payment PIN</span><input class="lp-svc-pin" type="password" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="••••"></div>
+          <div class="lp-svc-error"></div>
+          <button class="lp-svc-primary lp-air-confirm" type="button">Confirm Payment</button>
+          <button class="lp-svc-secondary lp-air-back" type="button">Back</button>
+        </div>`;
+      sheet.querySelector(".lp-svc-close").onclick = () => overlay.remove();
+      sheet.querySelector(".lp-air-back").onclick = () => { overlay.remove(); window.buyAirtime(); };
+
+      sheet.querySelector(".lp-air-confirm").onclick = async () => {
+        const button = sheet.querySelector(".lp-air-confirm");
+        const pin = sheet.querySelector(".lp-svc-pin");
+        const err = sheet.querySelector(".lp-svc-error");
+        if (!/^\d{4}$/.test(pin.value)) return showInline(err,"Enter your 4-digit payment PIN.");
+        if (!accessToken()) return showInline(err,"Please log in again before making a payment.");
+        button.disabled = true; button.textContent = "Processing...";
+        try {
+          const response = await fetch("/api/secure-pay", {
+            method:"POST",
+            headers:{"Content-Type":"application/json",Authorization:`Bearer ${accessToken()}`},
+            body:JSON.stringify({
+              serviceID: network.toLowerCase(), billersCode:p, variation_code:"",
+              amount:a, phone:p, email:"sandbox@sandbox.com", pin:pin.value
+            })
+          });
+          pin.value = "";
+          const data = await response.json().catch(()=>({}));
+          await refreshSecureState();
+          if (!response.ok) {
+            const refund = data.refunded ? " Your wallet has been refunded." : (data.refund_error ? ` Refund error: ${data.refund_error}` : "");
+            throw new Error((data.error || data.message || "Payment failed.") + refund);
+          }
+          const status = String(data?.content?.transactions?.status || "").toLowerCase();
+          if (String(data.code)==="099" || status==="pending" || status==="initiated") {
+            showInline(err,"Payment is pending. Please check Recent Transactions shortly.","info");
+            button.disabled=false; button.textContent="Confirm Payment"; return;
+          }
+          if (String(data.code)!=="000" || (status && status!=="delivered")) throw new Error("Airtime payment failed.");
+          if (typeof recordTransaction === "function") recordTransaction("Airtime",a,`Network: ${network} | Phone: ${p}`);
+          successScreen(overlay,"Airtime Successful",a,[["Network",network],["Phone",p],["Status","Successful"]]);
+        } catch(e) {
+          showInline(err,e.message || "Could not connect to payment provider.");
+          button.disabled=false; button.textContent="Confirm Payment";
+        }
+      };
+    };
+  };
+
+  // ---------- ELECTRICITY ----------
+  const discos = [
+    ["Ikeja Electric","ikeja-electric"],["Eko Electric","eko-electric"],["Abuja Electric","abuja-electric"],
+    ["Ibadan Electric","ibadan-electric"],["Enugu Electric","enugu-electric"],["Benin Electric","benin-electric"],
+    ["Kaduna Electric","kaduna-electric"],["Kano Electric","kano-electric"],["Jos Electric","jos-electric"],
+    ["Yola Electric","yola-electric"],["Aba Electric","aba-electric"]
+  ];
+
+  window.buyElectricity = function () {
+    const overlay = baseOverlay("lpElectricityOverlay");
+    overlay.innerHTML = serviceStyles() + `
+      <div class="lp-svc-sheet">
+        <div class="lp-svc-head"><div class="lp-svc-handle"></div><div class="lp-svc-title-row">
+          <div><div class="lp-svc-title">Pay Electricity</div><div class="lp-svc-sub">Verify your meter before payment</div></div>
+          <button class="lp-svc-close" type="button">×</button>
+        </div></div>
+        <div class="lp-svc-body">
+          <div><span class="lp-svc-label">Distribution company</span>
+            <select class="lp-svc-select lp-elec-provider"><option value="">Select electricity provider</option>
+              ${discos.map(([n,id])=>`<option value="${id}">${esc(n)}</option>`).join("")}
+            </select>
+          </div>
+          <div class="lp-svc-field"><span class="lp-svc-label">Meter type</span>
+            <div class="lp-svc-grid2">
+              <button class="lp-svc-choice active lp-meter-type" data-type="prepaid" type="button">Prepaid</button>
+              <button class="lp-svc-choice lp-meter-type" data-type="postpaid" type="button">Postpaid</button>
+            </div>
+          </div>
+          <div class="lp-svc-field"><span class="lp-svc-label">Meter number</span>
+            <input class="lp-svc-input lp-elec-meter" inputmode="numeric" placeholder="Enter meter number">
+          </div>
+          <div class="lp-svc-error"></div>
+          <button class="lp-svc-primary lp-elec-verify" type="button">Verify Meter</button>
+          <div class="lp-elec-after" style="display:none"></div>
+          <button class="lp-svc-secondary lp-elec-cancel" type="button">Cancel</button>
+        </div>
+      </div>`;
+
+    const provider = overlay.querySelector(".lp-elec-provider");
+    const meter = overlay.querySelector(".lp-elec-meter");
+    const verify = overlay.querySelector(".lp-elec-verify");
+    const error = overlay.querySelector(".lp-svc-error");
+    const after = overlay.querySelector(".lp-elec-after");
+    let meterType = "prepaid";
+    let verified = null;
+
+    overlay.querySelector(".lp-svc-close").onclick = () => overlay.remove();
+    overlay.querySelector(".lp-elec-cancel").onclick = () => overlay.remove();
+    overlay.querySelectorAll(".lp-meter-type").forEach(btn => btn.onclick = () => {
+      meterType=btn.dataset.type; verified=null; after.style.display="none";
+      overlay.querySelectorAll(".lp-meter-type").forEach(x=>x.classList.remove("active")); btn.classList.add("active");
+    });
+    provider.onchange = meter.oninput = () => { verified=null; after.style.display="none"; error.style.display="none"; };
+
+    verify.onclick = async () => {
+      const m = meter.value.trim();
+      if (!provider.value) return showInline(error,"Select an electricity provider.");
+      if (!/^\d{6,15}$/.test(m)) return showInline(error,"Enter a valid meter number.");
+      if (!accessToken()) return showInline(error,"Please log in again before verifying your meter.");
+      verify.disabled=true; verify.textContent="Verifying...";
+      try {
+        const response = await fetch("/api/verify-meter",{
+          method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${accessToken()}`},
+          body:JSON.stringify({serviceID:provider.value,billersCode:m,type:meterType})
+        });
+        const data = await response.json().catch(()=>({}));
+        if (!response.ok) throw new Error(data.error || data.message || "Meter verification failed.");
+        verified={...data,serviceID:provider.value,billersCode:m,type:meterType};
+        after.style.display="block";
+        after.innerHTML=`
+          <div class="lp-svc-successbox"><strong>✓ ${esc(data.customerName || "Meter verified")}</strong><br>${esc(data.address || "")}
+            ${data.minimumAmount ? `<br>Minimum payment: <strong>${money(data.minimumAmount)}</strong>`:""}</div>
+          <div class="lp-svc-field"><span class="lp-svc-label">Phone number</span><input class="lp-svc-input lp-elec-phone" inputmode="numeric" maxlength="12" placeholder="08012345678"></div>
+          <div class="lp-svc-field"><span class="lp-svc-label">Amount</span><input class="lp-svc-input lp-elec-amount" type="number" inputmode="decimal" min="${Number(data.minimumAmount||1)}" placeholder="Enter amount"></div>
+          <button class="lp-svc-primary lp-elec-continue" type="button" style="margin-top:15px">Continue</button>`;
+        after.querySelector(".lp-elec-continue").onclick = () => electricityReview();
+      } catch(e) { showInline(error,e.message || "Meter verification failed."); after.style.display="none"; verified=null; }
+      finally { verify.disabled=false; verify.textContent="Verify Meter"; }
+    };
+
+    function electricityReview() {
+      const phone = after.querySelector(".lp-elec-phone").value.trim();
+      const amount = Number(after.querySelector(".lp-elec-amount").value);
+      if (!/^\d{11,12}$/.test(phone)) return showInline(error,"Enter a valid phone number.");
+      if (!Number.isFinite(amount)||amount<=0) return showInline(error,"Enter a valid amount.");
+      if (verified.minimumAmount && amount < Number(verified.minimumAmount)) return showInline(error,`Minimum payment is ${money(verified.minimumAmount)}.`);
+      const providerName = discos.find(x=>x[1]===verified.serviceID)?.[0] || verified.serviceID;
+      const sheet = overlay.querySelector(".lp-svc-sheet");
+      sheet.innerHTML=`
+        <div class="lp-svc-head"><div class="lp-svc-handle"></div><div class="lp-svc-title-row">
+          <div><div class="lp-svc-title">Review Electricity</div><div class="lp-svc-sub">Confirm meter and payment details</div></div><button class="lp-svc-close" type="button">×</button>
+        </div></div>
+        <div class="lp-svc-body">
+          <div style="text-align:center;margin:4px 0 18px"><div style="font-size:42px">⚡</div><h2 style="margin:8px 0 2px">${money(amount)}</h2><div style="color:#64748b;font-size:13px">${esc(providerName)}</div></div>
+          <div class="lp-svc-review">
+            <div class="lp-svc-row"><span style="color:#64748b">Customer</span><strong>${esc(verified.customerName||"Verified")}</strong></div>
+            <div class="lp-svc-row"><span style="color:#64748b">Meter</span><strong>${esc(verified.billersCode)}</strong></div>
+            <div class="lp-svc-row"><span style="color:#64748b">Type</span><strong>${esc(verified.type)}</strong></div>
+            <div class="lp-svc-row"><span style="color:#64748b">Phone</span><strong>${esc(phone)}</strong></div>
+            <div class="lp-svc-row"><span style="color:#64748b">Amount</span><strong>${money(amount)}</strong></div>
+          </div>
+          <div class="lp-svc-field"><span class="lp-svc-label">Payment PIN</span><input class="lp-svc-pin" type="password" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="••••"></div>
+          <div class="lp-svc-error"></div>
+          <button class="lp-svc-primary lp-elec-confirm" type="button">Confirm Payment</button>
+          <button class="lp-svc-secondary lp-elec-back" type="button">Back</button>
+        </div>`;
+      sheet.querySelector(".lp-svc-close").onclick=()=>overlay.remove();
+      sheet.querySelector(".lp-elec-back").onclick=()=>{overlay.remove();window.buyElectricity();};
+      sheet.querySelector(".lp-elec-confirm").onclick=async()=>{
+        const btn=sheet.querySelector(".lp-elec-confirm"), pin=sheet.querySelector(".lp-svc-pin"), err=sheet.querySelector(".lp-svc-error");
+        if(!/^\d{4}$/.test(pin.value)) return showInline(err,"Enter your 4-digit payment PIN.");
+        btn.disabled=true;btn.textContent="Processing...";
+        try{
+          const response=await fetch("/api/secure-pay",{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${accessToken()}`},
+            body:JSON.stringify({serviceID:verified.serviceID,billersCode:verified.billersCode,variation_code:verified.type,amount,phone,email:"sandbox@sandbox.com",pin:pin.value})});
+          pin.value="";
+          const data=await response.json().catch(()=>({})); await refreshSecureState();
+          if(!response.ok){const r=data.refunded?" Your wallet has been refunded.":(data.refund_error?` Refund error: ${data.refund_error}`:"");throw new Error((data.error||data.message||"Payment failed.")+r);}
+          const status=String(data?.content?.transactions?.status||"").toLowerCase();
+          if(String(data.code)==="099"||status==="pending"||status==="initiated"){showInline(err,"Payment is pending. Please check Recent Transactions shortly.","info");btn.disabled=false;btn.textContent="Confirm Payment";return;}
+          if(String(data.code)!=="000"||(status&&status!=="delivered")) throw new Error("Electricity payment failed.");
+          successScreen(overlay,"Electricity Payment Successful",amount,[["Customer",verified.customerName||"Verified"],["Provider",providerName],["Meter",verified.billersCode],["Type",verified.type]],tokenFrom(data));
+        }catch(e){showInline(err,e.message||"Electricity payment failed.");btn.disabled=false;btn.textContent="Confirm Payment";}
+      };
+    }
+  };
+
+  // ---------- TV ----------
+  const tvNames={dstv:"DStv",gotv:"GOtv",startimes:"StarTimes"};
+
+  window.buyTV = function () {
+    const overlay=baseOverlay("lpTvOverlay");
+    let selectedProvider="";
+    let verified=null;
+    let plans=[];
+    let selectedPlan=null;
+
+    overlay.innerHTML=serviceStyles()+`
+      <div class="lp-svc-sheet">
+        <div class="lp-svc-head"><div class="lp-svc-handle"></div><div class="lp-svc-title-row">
+          <div><div class="lp-svc-title">Pay TV Subscription</div><div class="lp-svc-sub">Verify your decoder and choose a bouquet</div></div>
+          <button class="lp-svc-close" type="button">×</button>
+        </div></div>
+        <div class="lp-svc-body">
+          <span class="lp-svc-label">TV provider</span>
+          <div class="lp-svc-grid3">
+            ${Object.entries(tvNames).map(([id,n])=>`<button class="lp-svc-choice lp-tv-provider" data-provider="${id}" type="button">${n}</button>`).join("")}
+          </div>
+          <div class="lp-svc-field"><span class="lp-svc-label">Smartcard / IUC number</span><input class="lp-svc-input lp-tv-card" inputmode="numeric" placeholder="Enter decoder number"></div>
+          <div class="lp-svc-error"></div>
+          <button class="lp-svc-primary lp-tv-verify" type="button">Verify Decoder</button>
+          <div class="lp-tv-after" style="display:none"></div>
+          <button class="lp-svc-secondary lp-tv-cancel" type="button">Cancel</button>
+        </div>
+      </div>`;
+
+    const card=overlay.querySelector(".lp-tv-card"), verify=overlay.querySelector(".lp-tv-verify"), error=overlay.querySelector(".lp-svc-error"), after=overlay.querySelector(".lp-tv-after");
+    overlay.querySelector(".lp-svc-close").onclick=()=>overlay.remove();
+    overlay.querySelector(".lp-tv-cancel").onclick=()=>overlay.remove();
+
+    overlay.querySelectorAll(".lp-tv-provider").forEach(btn=>btn.onclick=()=>{
+      selectedProvider=btn.dataset.provider; verified=null; selectedPlan=null; after.style.display="none";
+      overlay.querySelectorAll(".lp-tv-provider").forEach(x=>x.classList.remove("active"));btn.classList.add("active");
+    });
+    card.oninput=()=>{verified=null;selectedPlan=null;after.style.display="none";error.style.display="none";};
+
+    verify.onclick=async()=>{
+      const billersCode=card.value.trim();
+      if(!selectedProvider) return showInline(error,"Select a TV provider.");
+      if(!/^\d{8,15}$/.test(billersCode)) return showInline(error,"Enter a valid smartcard / IUC number.");
+      if(!accessToken()) return showInline(error,"Please log in again before verifying your decoder.");
+      verify.disabled=true;verify.textContent="Verifying...";
+      try{
+        const [vr,pr]=await Promise.all([
+          fetch("/api/verify-tv",{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${accessToken()}`},body:JSON.stringify({serviceID:selectedProvider,billersCode})}),
+          fetch(`/api/tv-variations?serviceID=${encodeURIComponent(selectedProvider)}`,{headers:{Authorization:`Bearer ${accessToken()}`},cache:"no-store"})
+        ]);
+        const vd=await vr.json().catch(()=>({})), pd=await pr.json().catch(()=>({}));
+        if(!vr.ok) throw new Error(vd.error||"Decoder verification failed.");
+        if(!pr.ok) throw new Error(pd.error||"Could not load bouquets.");
+        verified={...vd,serviceID:selectedProvider,billersCode};
+        plans=(Array.isArray(pd.variations)?pd.variations:[]).filter(x=>x.code&&Number.isFinite(Number(x.amount))&&Number(x.amount)>0);
+        after.style.display="block";
+        after.innerHTML=`
+          <div class="lp-svc-successbox"><strong>✓ ${esc(vd.customerName||"Decoder verified")}</strong><br>${esc(vd.customerType||"")}
+            ${vd.status?` • ${esc(vd.status)}`:""}${vd.currentBouquet?`<br>Current bouquet: <strong>${esc(vd.currentBouquet)}</strong>`:""}</div>
+          <div class="lp-svc-field"><span class="lp-svc-label">Choose bouquet</span><div class="lp-svc-grid2 lp-tv-plans">
+            ${plans.length?plans.map((p,i)=>`<button class="lp-svc-plan" data-index="${i}" type="button"><div class="lp-svc-plan-name">${esc(p.name)}</div><div class="lp-svc-plan-price">${money(p.amount)}</div></button>`).join(""):`<div class="lp-svc-card" style="grid-column:1/-1;color:#64748b">No bouquets are currently available for this provider.</div>`}
+          </div></div>
+          <div class="lp-svc-field"><span class="lp-svc-label">Phone number</span><input class="lp-svc-input lp-tv-phone" inputmode="numeric" maxlength="12" placeholder="08012345678"></div>
+          <button class="lp-svc-primary lp-tv-continue" type="button" style="margin-top:15px" disabled>Continue</button>`;
+        const continueBtn=after.querySelector(".lp-tv-continue");
+        after.querySelectorAll(".lp-svc-plan").forEach(btn=>btn.onclick=()=>{
+          selectedPlan=plans[Number(btn.dataset.index)];
+          after.querySelectorAll(".lp-svc-plan").forEach(x=>x.classList.remove("active"));btn.classList.add("active");
+          continueBtn.disabled=false;
+        });
+        continueBtn.onclick=()=>tvReview();
+      }catch(e){showInline(error,e.message||"Decoder verification failed.");after.style.display="none";verified=null;}
+      finally{verify.disabled=false;verify.textContent="Verify Decoder";}
+    };
+
+    function tvReview(){
+      const phone=after.querySelector(".lp-tv-phone").value.trim();
+      if(!selectedPlan) return showInline(error,"Select a bouquet.");
+      if(!/^\d{11,12}$/.test(phone)) return showInline(error,"Enter a valid phone number.");
+      const amount=Number(selectedPlan.amount), sheet=overlay.querySelector(".lp-svc-sheet");
+      sheet.innerHTML=`
+        <div class="lp-svc-head"><div class="lp-svc-handle"></div><div class="lp-svc-title-row">
+          <div><div class="lp-svc-title">Review TV Payment</div><div class="lp-svc-sub">Confirm subscription details</div></div><button class="lp-svc-close" type="button">×</button>
+        </div></div>
+        <div class="lp-svc-body">
+          <div style="text-align:center;margin:4px 0 18px"><div style="font-size:42px">📺</div><h2 style="margin:8px 0 2px">${money(amount)}</h2><div style="color:#64748b;font-size:13px">${esc(tvNames[verified.serviceID])}</div></div>
+          <div class="lp-svc-review">
+            <div class="lp-svc-row"><span style="color:#64748b">Customer</span><strong>${esc(verified.customerName||"Verified")}</strong></div>
+            <div class="lp-svc-row"><span style="color:#64748b">Smartcard / IUC</span><strong>${esc(verified.billersCode)}</strong></div>
+            <div class="lp-svc-row"><span style="color:#64748b">Bouquet</span><strong>${esc(selectedPlan.name)}</strong></div>
+            <div class="lp-svc-row"><span style="color:#64748b">Phone</span><strong>${esc(phone)}</strong></div>
+            <div class="lp-svc-row"><span style="color:#64748b">Amount</span><strong>${money(amount)}</strong></div>
+          </div>
+          <div class="lp-svc-field"><span class="lp-svc-label">Payment PIN</span><input class="lp-svc-pin" type="password" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="••••"></div>
+          <div class="lp-svc-error"></div>
+          <button class="lp-svc-primary lp-tv-confirm" type="button">Confirm Payment</button>
+          <button class="lp-svc-secondary lp-tv-back" type="button">Back</button>
+        </div>`;
+      sheet.querySelector(".lp-svc-close").onclick=()=>overlay.remove();
+      sheet.querySelector(".lp-tv-back").onclick=()=>{overlay.remove();window.buyTV();};
+      sheet.querySelector(".lp-tv-confirm").onclick=async()=>{
+        const btn=sheet.querySelector(".lp-tv-confirm"),pin=sheet.querySelector(".lp-svc-pin"),err=sheet.querySelector(".lp-svc-error");
+        if(!/^\d{4}$/.test(pin.value)) return showInline(err,"Enter your 4-digit payment PIN.");
+        btn.disabled=true;btn.textContent="Processing...";
+        try{
+          const response=await fetch("/api/secure-pay",{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${accessToken()}`},
+            body:JSON.stringify({serviceID:verified.serviceID,billersCode:verified.billersCode,variation_code:selectedPlan.code,amount,phone,email:"sandbox@sandbox.com",subscription_type:"change",quantity:1,pin:pin.value})});
+          pin.value="";
+          const data=await response.json().catch(()=>({}));await refreshSecureState();
+          if(!response.ok){const r=data.refunded?" Your wallet has been refunded.":(data.refund_error?` Refund error: ${data.refund_error}`:"");throw new Error((data.error||data.message||"Payment failed.")+r);}
+          const status=String(data?.content?.transactions?.status||"").toLowerCase();
+          if(String(data.code)==="099"||status==="pending"||status==="initiated"){showInline(err,"Payment is pending. Please check Recent Transactions shortly.","info");btn.disabled=false;btn.textContent="Confirm Payment";return;}
+          if(String(data.code)!=="000"||(status&&status!=="delivered")) throw new Error("TV subscription payment failed.");
+          successScreen(overlay,"TV Subscription Successful",amount,[["Provider",tvNames[verified.serviceID]],["Customer",verified.customerName||"Verified"],["Bouquet",selectedPlan.name],["Smartcard / IUC",verified.billersCode]]);
+        }catch(e){showInline(err,e.message||"TV subscription payment failed.");btn.disabled=false;btn.textContent="Confirm Payment";}
+      };
+    }
+  };
+})();
+</script>
+
 </body>
 </html> 
