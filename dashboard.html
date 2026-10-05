@@ -1864,10 +1864,7 @@ async function addDemoFunds() {
       window.location.pathname
     );
 
-    alert("Wallet funded successfully.");
-
-    // Reload dashboard so wallet balance and transactions refresh
-    window.location.reload();
+    showFundWalletSuccess(data, reference);
 
   } catch (error) {
     console.error("Wallet funding verification error:", error);
@@ -4046,6 +4043,181 @@ function openVirtualAccount() {
   } else {
     install();
   }
+})();
+</script>
+
+
+<style id="lonerpay-fund-wallet-professional-style">
+#fundWalletOverlay *{box-sizing:border-box}
+#fundWalletOverlay .lp-fw-sheet{width:100%;max-width:460px;background:#f8fafc;border-radius:28px 28px 0 0;overflow:hidden;box-shadow:0 -18px 60px rgba(3,18,40,.24)}
+#fundWalletOverlay .lp-fw-head{background:linear-gradient(135deg,#06244d,#0b63ce);color:#fff;padding:14px 18px 23px}
+#fundWalletOverlay .lp-fw-handle{width:46px;height:5px;border-radius:999px;background:rgba(255,255,255,.34);margin:0 auto 15px}
+#fundWalletOverlay .lp-fw-close{width:39px;height:39px;border:0;border-radius:50%;background:rgba(255,255,255,.14);color:#fff;font-size:23px}
+#fundWalletOverlay .lp-fw-body{padding:19px 17px 24px}
+#fundWalletOverlay .lp-fw-label{display:block;font-size:12px;font-weight:800;color:#526176;margin:0 0 8px}
+#fundWalletOverlay .lp-fw-amount{display:flex;align-items:center;background:#fff;border:1.5px solid #dbe4ef;border-radius:16px;padding:0 15px;box-shadow:0 3px 14px rgba(15,35,65,.04)}
+#fundWalletOverlay .lp-fw-amount:focus-within{border-color:#0b63ce;box-shadow:0 0 0 3px rgba(11,99,206,.09)}
+#fundWalletOverlay .lp-fw-amount input{width:100%;border:0;outline:0;padding:17px 9px;background:transparent;font-size:24px;font-weight:900;color:#10213b}
+#fundWalletOverlay .lp-fw-quick{border:1px solid #dce5f0;background:#fff;color:#24405f;border-radius:12px;padding:11px 6px;font-weight:800;font-size:13px}
+#fundWalletOverlay .lp-fw-quick:active{background:#edf5ff;border-color:#b9d6fb}
+#fundWalletOverlay .lp-fw-primary{width:100%;border:0;border-radius:14px;padding:15px;background:#0863d8;color:#fff;font-size:15px;font-weight:900;box-shadow:0 8px 20px rgba(8,99,216,.20)}
+#fundWalletOverlay .lp-fw-cancel{width:100%;border:0;background:transparent;padding:13px;color:#526176;font-weight:800}
+</style>
+<script id="lonerpay-fund-wallet-professional-js">
+(function(){
+  "use strict";
+
+  window.addDemoFunds = async function () {
+    document.getElementById("fundWalletOverlay")?.remove();
+
+    const overlay = document.createElement("div");
+    overlay.id = "fundWalletOverlay";
+    overlay.style.cssText = "position:fixed;inset:0;background:rgba(4,18,38,.66);display:flex;align-items:flex-end;justify-content:center;z-index:30000;font-family:Arial,sans-serif";
+
+    overlay.innerHTML = `
+      <div class="lp-fw-sheet">
+        <div class="lp-fw-head">
+          <div class="lp-fw-handle"></div>
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:14px">
+            <div>
+              <div style="font-size:11px;font-weight:900;letter-spacing:.9px;opacity:.82">LONERPAY</div>
+              <h2 style="margin:5px 0 2px;font-size:24px">Fund Wallet</h2>
+              <div style="font-size:12px;opacity:.82">Add money securely with Paystack</div>
+            </div>
+            <button id="fundWalletClose" class="lp-fw-close" type="button" aria-label="Close">×</button>
+          </div>
+        </div>
+
+        <div class="lp-fw-body">
+          <div style="background:#edf6ff;border:1px solid #d9eaff;border-radius:15px;padding:12px 13px;margin-bottom:17px;display:flex;gap:11px;align-items:flex-start">
+            <div style="width:35px;height:35px;flex:0 0 35px;border-radius:11px;background:#fff;display:grid;place-items:center">🔒</div>
+            <div style="font-size:12px;color:#45617f;line-height:1.5"><strong style="display:block;color:#173b64;margin-bottom:2px">Secure wallet funding</strong>Your payment is processed securely. Your wallet is credited only after payment confirmation.</div>
+          </div>
+
+          <label class="lp-fw-label" for="fundWalletAmount">Amount to add</label>
+          <div class="lp-fw-amount">
+            <span style="font-size:23px;font-weight:900;color:#10213b">₦</span>
+            <input id="fundWalletAmount" type="number" min="100" step="1" inputmode="decimal" placeholder="1,000">
+          </div>
+          <div id="fundWalletError" style="min-height:20px;margin:7px 2px 2px;color:#b42318;font-size:12px"></div>
+
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin:7px 0 19px">
+            <button type="button" class="lp-fw-quick" data-amount="500">₦500</button>
+            <button type="button" class="lp-fw-quick" data-amount="1000">₦1k</button>
+            <button type="button" class="lp-fw-quick" data-amount="5000">₦5k</button>
+            <button type="button" class="lp-fw-quick" data-amount="10000">₦10k</button>
+          </div>
+
+          <button id="fundWalletContinue" class="lp-fw-primary" type="button">Continue to Paystack</button>
+          <button id="fundWalletCancel" class="lp-fw-cancel" type="button">Cancel</button>
+          <div style="text-align:center;color:#8a98aa;font-size:11px;line-height:1.5">Minimum ₦100 · Payment confirmation is automatic</div>
+        </div>
+      </div>`;
+
+    document.body.appendChild(overlay);
+
+    const input = overlay.querySelector("#fundWalletAmount");
+    const error = overlay.querySelector("#fundWalletError");
+    const button = overlay.querySelector("#fundWalletContinue");
+    const close = () => overlay.remove();
+
+    overlay.querySelector("#fundWalletClose").onclick = close;
+    overlay.querySelector("#fundWalletCancel").onclick = close;
+    overlay.addEventListener("click", e => { if (e.target === overlay) close(); });
+
+    overlay.querySelectorAll(".lp-fw-quick").forEach(q => {
+      q.onclick = () => {
+        input.value = q.dataset.amount;
+        error.textContent = "";
+        input.focus();
+      };
+    });
+
+    button.onclick = async () => {
+      const amount = Number(input.value);
+      error.textContent = "";
+
+      if (!Number.isFinite(amount) || amount < 100) {
+        error.textContent = "Enter a funding amount of at least ₦100.";
+        input.focus();
+        return;
+      }
+
+      const accessToken = localStorage.getItem("lonerpay_access_token");
+      if (!accessToken) {
+        error.textContent = "Please log in again before funding your wallet.";
+        return;
+      }
+
+      button.disabled = true;
+      button.textContent = "Preparing secure payment…";
+      button.style.opacity = ".72";
+
+      try {
+        const response = await fetch("/api/fund-wallet/initialize", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${accessToken}`
+          },
+          body: JSON.stringify({ amount })
+        });
+
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(data.error || data.message || "Could not start wallet funding.");
+
+        const paymentUrl = data.authorization_url || data.checkout_url || data.payment_url;
+        if (!paymentUrl) throw new Error("Payment provider did not return a checkout link.");
+
+        window.location.href = paymentUrl;
+      } catch (e) {
+        error.textContent = e.message || "Could not start wallet funding.";
+        button.disabled = false;
+        button.textContent = "Continue to Paystack";
+        button.style.opacity = "1";
+      }
+    };
+
+    setTimeout(() => input.focus(), 80);
+  };
+
+  window.showFundWalletSuccess = function(data, reference) {
+    document.getElementById("lpFundSuccess")?.remove();
+
+    const amount = Number(
+      data?.wallet_amount ?? data?.amount ?? data?.credited_amount ?? 0
+    );
+    const amountText = amount > 0
+      ? "₦" + amount.toLocaleString("en-NG", {minimumFractionDigits:2, maximumFractionDigits:2})
+      : "Wallet funded";
+
+    const overlay = document.createElement("div");
+    overlay.id = "lpFundSuccess";
+    overlay.style.cssText = "position:fixed;inset:0;background:rgba(4,18,38,.66);z-index:31000;display:flex;align-items:flex-end;justify-content:center;font-family:Arial,sans-serif";
+
+    overlay.innerHTML = `
+      <div style="width:100%;max-width:460px;background:#fff;border-radius:28px 28px 0 0;padding:11px 19px 27px;box-shadow:0 -18px 60px rgba(3,18,40,.24)">
+        <div style="width:46px;height:5px;border-radius:999px;background:#dbe3ee;margin:0 auto 22px"></div>
+        <div style="text-align:center">
+          <div style="width:68px;height:68px;border-radius:50%;margin:auto;background:#e9f9ef;color:#118447;display:grid;place-items:center;font-size:34px;font-weight:900">✓</div>
+          <div style="font-size:12px;color:#118447;font-weight:900;margin-top:13px">PAYMENT SUCCESSFUL</div>
+          <h2 style="margin:6px 0 3px;color:#10213b;font-size:28px">${amountText}</h2>
+          <div style="font-size:14px;font-weight:800;color:#10213b">Wallet funded successfully</div>
+          <p style="margin:7px auto 18px;color:#718096;font-size:12px;line-height:1.5;max-width:310px">Your payment has been confirmed and your LonerPay wallet has been credited.</p>
+        </div>
+
+        <div style="background:#f8fafc;border:1px solid #edf2f7;border-radius:17px;padding:4px 14px;margin-bottom:18px">
+          <div style="display:flex;justify-content:space-between;gap:16px;padding:12px 0;border-bottom:1px solid #e9eef5;font-size:12px"><span style="color:#718096">Payment method</span><strong style="color:#10213b">Paystack</strong></div>
+          <div style="display:flex;justify-content:space-between;gap:16px;padding:12px 0;border-bottom:1px solid #e9eef5;font-size:12px"><span style="color:#718096">Status</span><strong style="color:#118447">Successful</strong></div>
+          <div style="display:flex;justify-content:space-between;gap:16px;padding:12px 0;font-size:12px"><span style="color:#718096">Reference</span><strong style="color:#10213b;text-align:right;word-break:break-all;max-width:65%">${String(reference || "Confirmed")}</strong></div>
+        </div>
+
+        <button id="lpFundSuccessDone" type="button" style="width:100%;padding:15px;border:0;border-radius:14px;background:#0863d8;color:#fff;font-size:15px;font-weight:900">Done</button>
+      </div>`;
+
+    document.body.appendChild(overlay);
+    overlay.querySelector("#lpFundSuccessDone").onclick = () => window.location.reload();
+  };
 })();
 </script>
 
