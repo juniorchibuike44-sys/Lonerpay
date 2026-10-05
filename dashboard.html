@@ -429,6 +429,12 @@ button:active {
         <h3>TV</h3>
         <p>Pay TV subscription</p>
       </div>
+
+      <div class="service" onclick="openEducation()">
+        <div>🎓</div>
+        <h3>Education</h3>
+        <p>WAEC & JAMB</p>
+      </div>
       <div class="service" onclick="openTransfer()">
   <div>💸</div>
   <h3>Transfer</h3>
@@ -3384,6 +3390,324 @@ function openAITips() {
       };
     }
   };
+})();
+</script>
+
+
+<script id="lonerpay-education-upgrade">
+(function () {
+  const SERVICES = {
+    waec: {
+      id: "waec",
+      title: "WAEC Result Checker",
+      subtitle: "Purchase WAEC result checker PIN",
+      icon: "📘",
+      needsProfile: false
+    },
+    registration: {
+      id: "waec-registration",
+      title: "WAEC Registration",
+      subtitle: "Purchase WAEC registration PIN",
+      icon: "📝",
+      needsProfile: false
+    },
+    jamb: {
+      id: "jamb",
+      title: "JAMB",
+      subtitle: "UTME & Direct Entry PIN vending",
+      icon: "🎓",
+      needsProfile: true
+    }
+  };
+
+  function esc(v) {
+    return String(v ?? "").replace(/[&<>"']/g, c => ({
+      "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
+    })[c]);
+  }
+
+  function money(v) {
+    return "₦" + Number(v || 0).toLocaleString("en-NG", {
+      minimumFractionDigits: 0, maximumFractionDigits: 2
+    });
+  }
+
+  function token() {
+    return localStorage.getItem("lonerpay_access_token") || "";
+  }
+
+  function closeEducation() {
+    document.getElementById("lp-edu-overlay")?.remove();
+  }
+
+  function shell(title, subtitle, body) {
+    closeEducation();
+    const wrap = document.createElement("div");
+    wrap.id = "lp-edu-overlay";
+    wrap.innerHTML = `
+      <style>
+        #lp-edu-overlay{position:fixed;inset:0;background:rgba(7,18,38,.56);z-index:2147483000;
+          display:flex;align-items:flex-end;justify-content:center;font-family:inherit}
+        #lp-edu-sheet{width:min(100%,560px);max-height:94vh;overflow:auto;background:#f7f9fc;
+          border-radius:26px 26px 0 0;box-shadow:0 -18px 50px rgba(0,0,0,.22)}
+        .lp-edu-head{background:linear-gradient(135deg,#063b91,#0873e6);color:#fff;padding:22px 20px 18px;
+          border-radius:26px 26px 0 0;position:sticky;top:0;z-index:3}
+        .lp-edu-headrow{display:flex;align-items:center;gap:12px}.lp-edu-back,.lp-edu-x{
+          border:0;background:rgba(255,255,255,.15);color:#fff;width:38px;height:38px;border-radius:12px;
+          font-size:20px;cursor:pointer}.lp-edu-x{margin-left:auto}
+        .lp-edu-title{font-size:20px;font-weight:800;margin:0}.lp-edu-sub{font-size:12px;opacity:.86;margin-top:3px}
+        .lp-edu-body{padding:18px 16px 28px}.lp-edu-grid{display:grid;grid-template-columns:1fr;gap:12px}
+        .lp-edu-card{background:#fff;border:1px solid #e3e9f2;border-radius:18px;padding:16px;display:flex;
+          align-items:center;gap:13px;cursor:pointer;box-shadow:0 5px 18px rgba(12,44,91,.06)}
+        .lp-edu-card:active{transform:scale(.99)}.lp-edu-icon{width:48px;height:48px;border-radius:15px;
+          background:#edf5ff;display:grid;place-items:center;font-size:25px;flex:none}
+        .lp-edu-card h3{margin:0 0 4px;font-size:15px;color:#10233f}.lp-edu-card p{margin:0;font-size:12px;color:#70809a}
+        .lp-edu-arrow{margin-left:auto;color:#0a66d8;font-size:20px}
+        .lp-edu-label{font-size:12px;font-weight:800;color:#33445f;margin:14px 0 7px;display:block}
+        .lp-edu-input,.lp-edu-select{width:100%;box-sizing:border-box;border:1px solid #d9e1ec;background:#fff;
+          border-radius:14px;padding:14px;font-size:15px;outline:none}
+        .lp-edu-input:focus,.lp-edu-select:focus{border-color:#0a66d8;box-shadow:0 0 0 3px rgba(10,102,216,.08)}
+        .lp-edu-plans{display:grid;grid-template-columns:1fr;gap:10px;margin-top:8px}
+        .lp-edu-plan{border:1px solid #dde5ef;background:#fff;border-radius:16px;padding:14px;text-align:left;cursor:pointer}
+        .lp-edu-plan.selected{border:2px solid #0a66d8;background:#f1f7ff}
+        .lp-edu-plan strong{display:block;color:#152945;font-size:14px}.lp-edu-plan span{font-size:13px;color:#63758f}
+        .lp-edu-btn{width:100%;border:0;border-radius:15px;padding:14px 16px;margin-top:16px;background:#0867d8;
+          color:#fff;font-size:15px;font-weight:800;cursor:pointer}.lp-edu-btn:disabled{opacity:.55;cursor:not-allowed}
+        .lp-edu-note{background:#edf5ff;border:1px solid #d7e8ff;color:#31577f;padding:12px;border-radius:14px;
+          font-size:12px;line-height:1.5;margin-top:12px}.lp-edu-error{display:none;background:#fff0f0;color:#a52a2a;
+          border:1px solid #ffd1d1;padding:11px;border-radius:13px;font-size:12px;margin-top:12px}
+        .lp-edu-summary{background:#fff;border:1px solid #e1e7ef;border-radius:17px;padding:15px}
+        .lp-edu-row{display:flex;justify-content:space-between;gap:18px;padding:9px 0;border-bottom:1px solid #edf0f4;
+          font-size:13px}.lp-edu-row:last-child{border-bottom:0}.lp-edu-row span{color:#74839a}.lp-edu-row strong{text-align:right;color:#152945}
+        .lp-edu-pin{letter-spacing:12px;text-align:center;font-size:23px;font-weight:800}
+        .lp-edu-success{text-align:center;padding:10px}.lp-edu-check{width:68px;height:68px;border-radius:50%;
+          display:grid;place-items:center;margin:5px auto 14px;background:#e7f8ee;color:#16864b;font-size:34px}
+        .lp-edu-code{background:#0b1d36;color:#fff;border-radius:15px;padding:15px;margin-top:14px;word-break:break-word;
+          font-family:monospace;font-size:14px;line-height:1.6}
+        .lp-edu-spinner{width:28px;height:28px;border:3px solid #dbe8f8;border-top-color:#0867d8;border-radius:50%;
+          animation:lpEduSpin .8s linear infinite;margin:24px auto}@keyframes lpEduSpin{to{transform:rotate(360deg)}}
+      </style>
+      <div id="lp-edu-sheet">
+        <div class="lp-edu-head">
+          <div class="lp-edu-headrow">
+            <button class="lp-edu-back" id="lp-edu-back" type="button" aria-label="Back">‹</button>
+            <div><div class="lp-edu-title">${esc(title)}</div><div class="lp-edu-sub">${esc(subtitle)}</div></div>
+            <button class="lp-edu-x" type="button" onclick="closeEducation()" aria-label="Close">×</button>
+          </div>
+        </div>
+        <div class="lp-edu-body">${body}</div>
+      </div>`;
+    document.body.appendChild(wrap);
+    wrap.addEventListener("click", e => { if (e.target === wrap) closeEducation(); });
+    return wrap;
+  }
+
+  function setError(msg) {
+    const e = document.getElementById("lp-edu-error");
+    if (e) { e.textContent = msg; e.style.display = "block"; }
+  }
+
+  async function api(url, options={}) {
+    const headers = Object.assign({}, options.headers || {});
+    const t = token();
+    if (t) headers.Authorization = "Bearer " + t;
+    if (options.body && !headers["Content-Type"]) headers["Content-Type"] = "application/json";
+    const r = await fetch(url, Object.assign({cache:"no-store"}, options, {headers}));
+    let j = {};
+    try { j = await r.json(); } catch (_) {}
+    if (!r.ok) throw new Error(j.error || j.message || "Request failed. Please try again.");
+    return j;
+  }
+
+  window.closeEducation = closeEducation;
+
+  window.openEducation = function () {
+    const w = shell("Education", "Exam and registration services", `
+      <div class="lp-edu-grid">
+        ${Object.entries(SERVICES).map(([key,s]) => `
+          <button class="lp-edu-card" type="button" data-edu="${key}">
+            <div class="lp-edu-icon">${s.icon}</div>
+            <div><h3>${esc(s.title)}</h3><p>${esc(s.subtitle)}</p></div>
+            <div class="lp-edu-arrow">›</div>
+          </button>`).join("")}
+      </div>
+      <div class="lp-edu-note">Payments are protected with your LonerPay 4-digit payment PIN. Always confirm the candidate or service details before paying.</div>
+    `);
+    w.querySelector("#lp-edu-back").onclick = closeEducation;
+    w.querySelectorAll("[data-edu]").forEach(b => b.onclick = () => openEducationService(b.dataset.edu));
+  };
+
+  async function openEducationService(key) {
+    const s = SERVICES[key];
+    const w = shell(s.title, s.subtitle, `<div class="lp-edu-spinner"></div><div style="text-align:center;font-size:13px;color:#667892">Loading available options…</div>`);
+    w.querySelector("#lp-edu-back").onclick = openEducation;
+    try {
+      const data = await api(`/api/variations?serviceID=${encodeURIComponent(s.id)}`);
+      const raw = data?.content?.variations || data?.variations || data?.data?.content?.variations || data?.data?.variations || [];
+      const plans = raw.map(x => ({
+        code: x.variation_code || x.code || x.value,
+        name: x.name || x.variation_name || "Education service",
+        amount: Number(x.variation_amount ?? x.amount ?? x.price)
+      })).filter(x => x.code && Number.isFinite(x.amount) && x.amount > 0);
+      if (!plans.length) throw new Error("No education options are available from the provider right now.");
+      renderForm(key, plans);
+    } catch (e) {
+      const w2 = shell(s.title, s.subtitle, `
+        <div class="lp-edu-error" style="display:block">${esc(e.message)}</div>
+        <button class="lp-edu-btn" id="lp-edu-retry">Try Again</button>`);
+      w2.querySelector("#lp-edu-back").onclick = openEducation;
+      w2.querySelector("#lp-edu-retry").onclick = () => openEducationService(key);
+    }
+  }
+
+  function renderForm(key, plans) {
+    const s = SERVICES[key];
+    const w = shell(s.title, "Choose an option and enter customer details", `
+      <label class="lp-edu-label">Select option</label>
+      <div class="lp-edu-plans">
+        ${plans.map((p,i)=>`<button type="button" class="lp-edu-plan" data-i="${i}">
+          <strong>${esc(p.name)}</strong><span>${money(p.amount)}</span>
+        </button>`).join("")}
+      </div>
+      ${s.needsProfile ? `<label class="lp-edu-label">JAMB Profile ID</label>
+        <input id="lp-edu-profile" class="lp-edu-input" inputmode="numeric" autocomplete="off" placeholder="Enter candidate Profile ID">` : ""}
+      <label class="lp-edu-label">Phone number</label>
+      <input id="lp-edu-phone" class="lp-edu-input" inputmode="tel" maxlength="11" autocomplete="tel" placeholder="08012345678">
+      <div id="lp-edu-error" class="lp-edu-error"></div>
+      <button id="lp-edu-continue" class="lp-edu-btn" type="button">Continue</button>
+    `);
+    w.querySelector("#lp-edu-back").onclick = openEducation;
+    let selected = null;
+    w.querySelectorAll(".lp-edu-plan").forEach(btn => btn.onclick = () => {
+      w.querySelectorAll(".lp-edu-plan").forEach(x=>x.classList.remove("selected"));
+      btn.classList.add("selected");
+      selected = plans[Number(btn.dataset.i)];
+    });
+    w.querySelector("#lp-edu-continue").onclick = () => {
+      const phone = w.querySelector("#lp-edu-phone").value.trim();
+      const profile = s.needsProfile ? w.querySelector("#lp-edu-profile").value.trim() : "";
+      if (!selected) return setError("Select an education option.");
+      if (!/^0\d{10}$/.test(phone)) return setError("Enter a valid 11-digit Nigerian phone number.");
+      if (s.needsProfile && !/^\d{8,15}$/.test(profile)) return setError("Enter a valid JAMB Profile ID.");
+      reviewEducation(key, selected, phone, profile);
+    };
+  }
+
+  function reviewEducation(key, plan, phone, profile) {
+    const s = SERVICES[key];
+    const w = shell("Review payment", "Confirm the details before entering your PIN", `
+      <div class="lp-edu-summary">
+        <div class="lp-edu-row"><span>Service</span><strong>${esc(s.title)}</strong></div>
+        <div class="lp-edu-row"><span>Option</span><strong>${esc(plan.name)}</strong></div>
+        ${profile ? `<div class="lp-edu-row"><span>Profile ID</span><strong>${esc(profile)}</strong></div>` : ""}
+        <div class="lp-edu-row"><span>Phone</span><strong>${esc(phone)}</strong></div>
+        <div class="lp-edu-row"><span>Amount</span><strong>${money(plan.amount)}</strong></div>
+      </div>
+      <div class="lp-edu-note">Check every detail carefully. Education PIN products may not be reversible after successful delivery.</div>
+      <div id="lp-edu-error" class="lp-edu-error"></div>
+      <button id="lp-edu-pay" class="lp-edu-btn" type="button">Continue to Payment PIN</button>
+    `);
+    w.querySelector("#lp-edu-back").onclick = () => openEducationService(key);
+    w.querySelector("#lp-edu-pay").onclick = () => paymentPin(key, plan, phone, profile);
+  }
+
+  function paymentPin(key, plan, phone, profile) {
+    const s = SERVICES[key];
+    const w = shell("Payment PIN", `Authorize ${money(plan.amount)} payment`, `
+      <div class="lp-edu-summary">
+        <div class="lp-edu-row"><span>Service</span><strong>${esc(s.title)}</strong></div>
+        <div class="lp-edu-row"><span>Amount</span><strong>${money(plan.amount)}</strong></div>
+      </div>
+      <label class="lp-edu-label">Enter your 4-digit payment PIN</label>
+      <input id="lp-edu-pin" class="lp-edu-input lp-edu-pin" type="password" inputmode="numeric" maxlength="4"
+        autocomplete="off" placeholder="••••">
+      <div id="lp-edu-error" class="lp-edu-error"></div>
+      <button id="lp-edu-confirm" class="lp-edu-btn" type="button">Confirm Payment</button>
+    `);
+    w.querySelector("#lp-edu-back").onclick = () => reviewEducation(key, plan, phone, profile);
+    const pin = w.querySelector("#lp-edu-pin");
+    pin.focus();
+    pin.addEventListener("input", () => pin.value = pin.value.replace(/\D/g,"").slice(0,4));
+    w.querySelector("#lp-edu-confirm").onclick = () => submitEducation(key, plan, phone, profile, pin.value);
+  }
+
+  async function submitEducation(key, plan, phone, profile, pin) {
+    if (!/^\d{4}$/.test(pin)) return setError("Enter your 4-digit payment PIN.");
+    const s = SERVICES[key];
+    const btn = document.getElementById("lp-edu-confirm");
+    if (btn) { btn.disabled = true; btn.textContent = "Processing…"; }
+    try {
+      const payload = {
+        serviceID: s.id,
+        billersCode: profile || phone,
+        variation_code: plan.code,
+        amount: plan.amount,
+        phone,
+        email: "sandbox@sandbox.com",
+        quantity: 1,
+        pin
+      };
+      const result = await api("/api/secure-pay", {method:"POST", body:JSON.stringify(payload)});
+      try { if (typeof window.loadSecureWallet === "function") await window.loadSecureWallet(); } catch (_) {}
+      try { if (typeof window.loadTransactions === "function") await window.loadTransactions(); } catch (_) {}
+
+      const code = String(result?.code ?? result?.provider?.code ?? result?.data?.code ?? "");
+      const status = String(result?.content?.transactions?.status ?? result?.provider?.content?.transactions?.status ?? result?.status ?? "").toLowerCase();
+      const pending = code === "099" || ["pending","initiated","processing"].includes(status);
+      if (pending) return educationPending(key, result);
+
+      const ok = code === "000" || ["delivered","successful","success"].includes(status);
+      if (!ok) throw new Error(result?.response_description || result?.message || result?.error || "The provider did not complete this transaction.");
+
+      educationSuccess(key, plan, result);
+    } catch (e) {
+      setError(e.message || "Payment could not be completed.");
+      if (btn) { btn.disabled = false; btn.textContent = "Confirm Payment"; }
+    }
+  }
+
+  function extractPurchased(result) {
+    const cards = result?.cards || result?.provider?.cards || result?.data?.cards;
+    if (Array.isArray(cards) && cards.length) {
+      return cards.map(c => [c.Serial || c.serial, c.Pin || c.pin].filter(Boolean).join(" — PIN: ")).join("\n");
+    }
+    return result?.purchased_code || result?.Pin || result?.pin ||
+      result?.provider?.purchased_code || result?.provider?.Pin ||
+      result?.data?.purchased_code || result?.data?.Pin || "";
+  }
+
+  function educationSuccess(key, plan, result) {
+    const s = SERVICES[key];
+    const purchased = extractPurchased(result);
+    const ref = result?.requestId || result?.request_id || result?.reference || result?.provider?.requestId || "";
+    const w = shell("Payment successful", "Your education purchase has been completed", `
+      <div class="lp-edu-success">
+        <div class="lp-edu-check">✓</div>
+        <h3 style="margin:0;color:#142944">${esc(s.title)}</h3>
+        <p style="color:#6b7c94;font-size:13px">${esc(plan.name)} • ${money(plan.amount)}</p>
+        ${purchased ? `<div class="lp-edu-code">${esc(purchased).replace(/\n/g,"<br>")}</div>` : ""}
+        ${ref ? `<div class="lp-edu-note">Reference: <strong>${esc(ref)}</strong></div>` : ""}
+      </div>
+      <button class="lp-edu-btn" id="lp-edu-done" type="button">Done</button>
+    `);
+    w.querySelector("#lp-edu-back").onclick = closeEducation;
+    w.querySelector("#lp-edu-done").onclick = closeEducation;
+  }
+
+  function educationPending(key, result) {
+    const ref = result?.requestId || result?.request_id || result?.reference || result?.provider?.requestId || "";
+    const w = shell("Payment processing", "The provider has not returned a final result yet", `
+      <div class="lp-edu-success">
+        <div class="lp-edu-check" style="background:#fff6df;color:#b87500">…</div>
+        <h3 style="margin:0;color:#142944">Transaction processing</h3>
+        <p style="color:#6b7c94;font-size:13px">Do not pay again while this transaction is being processed.</p>
+        ${ref ? `<div class="lp-edu-note">Reference: <strong>${esc(ref)}</strong></div>` : ""}
+      </div>
+      <button class="lp-edu-btn" id="lp-edu-done" type="button">Done</button>
+    `);
+    w.querySelector("#lp-edu-back").onclick = closeEducation;
+    w.querySelector("#lp-edu-done").onclick = closeEducation;
+  }
 })();
 </script>
 
