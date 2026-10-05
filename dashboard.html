@@ -4221,5 +4221,125 @@ function openVirtualAccount() {
 })();
 </script>
 
+
+<style id="lonerpay-dashboard-flow-2026">
+/* Recent Transactions: independent, safe scrolling.
+   Keep whole cards visible; do not alter transaction/receipt logic. */
+.transactions{
+  max-height: 430px !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  overscroll-behavior: contain !important;
+  -webkit-overflow-scrolling: touch;
+  scroll-padding-top: 62px;
+}
+.transactions > h2{
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 20 !important;
+  background: #fff !important;
+  margin: 0 0 10px !important;
+  padding: 4px 0 12px !important;
+  border-bottom: 1px solid #edf1f6 !important;
+}
+.transactions .transaction{
+  scroll-margin-top: 66px;
+}
+@media (max-width:480px){
+  .transactions{
+    max-height: 390px !important;
+  }
+}
+</style>
+
+<script id="lonerpay-dashboard-back-flow-2026">
+(function () {
+  "use strict";
+
+  const STATE_KEY = "lonerpayDashboard";
+  let handlingPop = false;
+
+  function isVisible(el) {
+    if (!el) return false;
+    const s = getComputedStyle(el);
+    return s.display !== "none" && s.visibility !== "hidden" && el.getClientRects().length > 0;
+  }
+
+  function closeTopDashboardLayer() {
+    /* Close only dashboard overlays/modals. Never touch login/auth state. */
+    const selectors = [
+      "#lpFundSuccess",
+      "#fundWalletOverlay",
+      "#lpReceiptOverlay",
+      "#receiptOverlay",
+      "#transactionHistoryOverlay",
+      "#historyOverlay",
+      ".receipt-overlay",
+      ".transaction-history-overlay",
+      ".modal-overlay",
+      ".overlay"
+    ];
+
+    for (const selector of selectors) {
+      const nodes = Array.from(document.querySelectorAll(selector)).reverse();
+      for (const node of nodes) {
+        if (!isVisible(node)) continue;
+
+        /* Avoid deleting structural page containers accidentally. */
+        if (node.id === "fundWalletOverlay" || node.id === "lpFundSuccess" ||
+            /receipt|history|modal|overlay/i.test(node.id || "") ||
+            /receipt|history|modal|overlay/i.test(node.className || "")) {
+          const closeButton = node.querySelector(
+            '[data-close], .close, .close-btn, .modal-close, [aria-label="Close"]'
+          );
+          if (closeButton) closeButton.click();
+          else node.remove();
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  function armDashboardHistory() {
+    try {
+      const st = history.state || {};
+      if (!st[STATE_KEY]) {
+        history.replaceState(Object.assign({}, st, {[STATE_KEY]: "root"}), "", location.href);
+        history.pushState({[STATE_KEY]: "guard"}, "", location.href);
+      }
+    } catch (_) {}
+  }
+
+  window.addEventListener("popstate", function () {
+    if (handlingPop) return;
+    handlingPop = true;
+
+    const closed = closeTopDashboardLayer();
+
+    /* Keep Back inside the authenticated dashboard instead of falling
+       straight through to the previous login page. */
+    if (!closed) {
+      try {
+        history.pushState({[STATE_KEY]: "guard"}, "", location.href);
+        window.scrollTo({top: 0, behavior: "smooth"});
+      } catch (_) {}
+    } else {
+      try {
+        history.pushState({[STATE_KEY]: "guard"}, "", location.href);
+      } catch (_) {}
+    }
+
+    setTimeout(() => { handlingPop = false; }, 80);
+  });
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", armDashboardHistory, {once:true});
+  } else {
+    armDashboardHistory();
+  }
+})();
+</script>
+
 </body>
 </html> 
