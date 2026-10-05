@@ -630,6 +630,8 @@ body{background:var(--bg)!important;color:var(--ink)}
 .lp-status{display:inline-flex;border-radius:999px;padding:7px 10px;font-size:12px;font-weight:850;background:#eef4fb;color:#45617e}.lp-nav{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:15px 0}.lp-nav button{border:1px solid #dce5f0;background:#f8fbff;border-radius:15px;padding:14px 10px;font-weight:800;color:#17345b}
 .lp-list{margin:8px 0 0;padding-left:19px;color:#66758b;font-size:14px;line-height:1.65}
 @media(max-width:480px){.lp-card{padding:20px 18px 28px}.lp-head h2{font-size:27px}.lp-nav{grid-template-columns:1fr}}
+.lp-spin{display:inline-block;width:17px;height:17px;border:2px solid rgba(255,255,255,.45);border-top-color:#fff;border-radius:50%;vertical-align:-3px;margin-right:8px;animation:lpSpin .75s linear infinite}
+@keyframes lpSpin{to{transform:rotate(360deg)}}
 </style>
 
 <script id="lonerpay-fintech-profile-2026-js">
@@ -670,7 +672,12 @@ window.lpKycForm=function(){
     if(!bc){err.textContent='Select the bank linked to your BVN.';return;}
     if(!/^\d{10}$/.test(an)){err.textContent='Enter your valid 10-digit bank account number.';return;}
     if(!cons.checked){err.textContent='Please give consent before continuing.';return;}
-    b.disabled=true;b.textContent='Verifying securely…';b.style.opacity='.7';
+    b.disabled=true;
+    b.innerHTML='<span class="lp-spin" aria-hidden="true"></span>Verifying securely…';
+    b.style.opacity='.78';
+    b.style.cursor='wait';
+    b.setAttribute('aria-busy','true');
+    bvn.disabled=true;acct.disabled=true;bank.disabled=true;cons.disabled=true;
     try{
       const r=await fetch('/api/virtual-account',{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`},body:JSON.stringify({bvn:bv,account_number:an,bank_code:bc,consent:true})});
       const d=await r.json().catch(()=>({}));
@@ -679,7 +686,16 @@ window.lpKycForm=function(){
       if(!r.ok||d.success===false)throw new Error(d.message||d.error||'Unable to submit verification.');
       o.remove();
       N('Verification submitted',d.message||'Your verification request was submitted. Paystack confirmation may take a moment. Check your KYC status again shortly.','🛡️');
-    }catch(e){bvn.value='';err.textContent=e.message||'Unable to submit verification.';b.disabled=false;b.textContent='Verify & Continue';b.style.opacity='1';}
+    }catch(e){
+      bvn.value='';
+      err.textContent=e.message||'Unable to submit verification.';
+      b.disabled=false;
+      b.textContent='Verify & Continue';
+      b.style.opacity='1';
+      b.style.cursor='pointer';
+      b.removeAttribute('aria-busy');
+      bvn.disabled=false;acct.disabled=false;bank.disabled=false;cons.disabled=false;
+    }
   };
 };
 window.lpBio=()=>S('Biometrics & Login',`<div class="lp-hero"><h3>Fast login. Secure device.</h3><p>Use supported device authentication for faster access without storing a fingerprint or face image as a password.</p></div><div class="lp-ch"><h3>Device authentication</h3><div class="lp-row"><span>Fingerprint / Face</span><strong><span class="lp-status">Not configured</span></strong></div><div class="lp-row"><span>Payment PIN</span><strong>Managed separately</strong></div><div class="lp-row"><span>Device support</span><strong>Checked during setup</strong></div></div><div class="lp-ch"><h3>Security</h3><p>On supported devices, authentication should be handled by the operating system or a secure standards-based credential. LonerPay should not store raw fingerprint or face images.</p></div><div class="lp-note">Actual biometric login must be connected and tested securely before this can be marked active.</div><button class="lp-primary" onclick="lpNotice('Biometric setup','Secure device authentication still needs to be connected before activation.','◉')">Set up biometrics</button>`);
