@@ -1319,211 +1319,236 @@ function safeTransferText(value) {
 
 
 function buyData() {
-  const old = document.getElementById("dataBundleOverlay");
-  if (old) old.remove();
+  document.getElementById("dataBundleOverlay")?.remove();
 
   const overlay = document.createElement("div");
   overlay.id = "dataBundleOverlay";
-  overlay.style.cssText = `
-    position:fixed;inset:0;background:rgba(6,24,49,.72);display:flex;
-    align-items:flex-end;justify-content:center;z-index:12000;box-sizing:border-box;
-  `;
-
-  const plans = {
-    MTN: [
-      {name:"Daily Starter", data:"500 MB", validity:"Daily", price:null, variation:""},
-      {name:"Everyday", data:"1 GB", validity:"Daily", price:null, variation:""},
-      {name:"Weekly Value", data:"2 GB", validity:"Weekly", price:null, variation:""},
-      {name:"Monthly Plus", data:"5 GB", validity:"Monthly", price:null, variation:""}
-    ],
-    Airtel: [
-      {name:"Daily Starter", data:"500 MB", validity:"Daily", price:null, variation:""},
-      {name:"Everyday", data:"1 GB", validity:"Daily", price:null, variation:""},
-      {name:"Weekly Value", data:"2 GB", validity:"Weekly", price:null, variation:""},
-      {name:"Monthly Plus", data:"5 GB", validity:"Monthly", price:null, variation:""}
-    ],
-    Glo: [
-      {name:"Daily Starter", data:"500 MB", validity:"Daily", price:null, variation:""},
-      {name:"Everyday", data:"1 GB", validity:"Daily", price:null, variation:""},
-      {name:"Weekly Value", data:"2 GB", validity:"Weekly", price:null, variation:""},
-      {name:"Monthly Plus", data:"5 GB", validity:"Monthly", price:null, variation:""}
-    ],
-    "9mobile": [
-      {name:"Daily Starter", data:"500 MB", validity:"Daily", price:null, variation:""},
-      {name:"Everyday", data:"1 GB", validity:"Daily", price:null, variation:""},
-      {name:"Weekly Value", data:"2 GB", validity:"Weekly", price:null, variation:""},
-      {name:"Monthly Plus", data:"5 GB", validity:"Monthly", price:null, variation:""}
-    ]
-  };
-
   overlay.innerHTML = `
-    <div style="background:#f7f9fc;width:100%;max-width:520px;max-height:94vh;overflow:auto;
-      border-radius:26px 26px 0 0;padding:20px 16px 28px;box-sizing:border-box;
-      font-family:Inter,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
-      <div style="width:42px;height:5px;border-radius:99px;background:#d5dbe5;margin:0 auto 17px;"></div>
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
-        <div>
-          <div style="font-size:12px;font-weight:800;color:#0863d8;letter-spacing:.7px;">LONERPAY DATA</div>
-          <h2 style="margin:5px 0 4px;font-size:25px;color:#0f172a;">Choose a data bundle</h2>
-          <p style="margin:0;color:#64748b;font-size:13px;">Fast, simple and secure data purchase</p>
+    <style>
+      #dataBundleOverlay{position:fixed;inset:0;z-index:15000;background:rgba(3,15,35,.72);
+        display:flex;align-items:flex-end;justify-content:center;font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+      #dataBundleOverlay *{box-sizing:border-box}
+      .lp-data-sheet{width:100%;max-width:560px;height:min(94vh,860px);background:#f6f8fc;border-radius:30px 30px 0 0;
+        overflow:hidden;display:flex;flex-direction:column;box-shadow:0 -20px 60px rgba(2,15,35,.25)}
+      .lp-data-head{background:linear-gradient(135deg,#061b39,#0a4ca7);color:#fff;padding:18px 18px 20px}
+      .lp-data-handle{width:44px;height:5px;border-radius:20px;background:rgba(255,255,255,.35);margin:0 auto 14px}
+      .lp-data-title-row{display:flex;justify-content:space-between;align-items:center;gap:12px}
+      .lp-data-title{font-size:22px;font-weight:900;letter-spacing:-.3px}
+      .lp-data-sub{font-size:12px;color:#cbdcf5;margin-top:3px}
+      .lp-data-close{width:38px;height:38px;border:0;border-radius:50%;background:rgba(255,255,255,.13);color:#fff;font-size:24px}
+      .lp-data-body{padding:15px;overflow:auto;flex:1}
+      .lp-section-label{font-size:12px;font-weight:900;color:#64748b;text-transform:uppercase;letter-spacing:.7px;margin:2px 0 9px}
+      .lp-networks{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+      .lp-network{border:1px solid #e1e7f0;background:#fff;border-radius:15px;padding:11px 3px;font-size:12px;font-weight:900;color:#334155}
+      .lp-network.active{border:2px solid #0863d8;background:#eef6ff;color:#0757c9;box-shadow:0 5px 14px rgba(8,99,216,.12)}
+      .lp-filter-wrap{display:flex;gap:7px;overflow-x:auto;padding:14px 0 12px;scrollbar-width:none}
+      .lp-filter-wrap::-webkit-scrollbar{display:none}
+      .lp-filter{white-space:nowrap;border:0;border-radius:999px;padding:9px 14px;background:#e9eef6;color:#64748b;font-size:12px;font-weight:800}
+      .lp-filter.active{background:#0f2342;color:#fff}
+      .lp-plan-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+      .lp-plan{position:relative;text-align:left;border:1px solid #e1e7ef;background:#fff;border-radius:18px;padding:14px;
+        min-height:137px;box-shadow:0 5px 16px rgba(15,23,42,.045)}
+      .lp-plan.selected{border:2px solid #0863d8;background:#f5f9ff;box-shadow:0 8px 20px rgba(8,99,216,.13)}
+      .lp-plan-tag{display:inline-flex;border-radius:999px;padding:4px 7px;background:#edf2f7;color:#64748b;font-size:9px;font-weight:900;text-transform:uppercase}
+      .lp-plan-data{font-size:25px;font-weight:950;color:#0f172a;margin:11px 0 3px;letter-spacing:-.7px}
+      .lp-plan-validity{font-size:11px;color:#64748b;min-height:16px}
+      .lp-plan-price{font-size:16px;font-weight:900;color:#0863d8;margin-top:10px}
+      .lp-selected-dot{display:none;position:absolute;right:11px;top:11px;width:22px;height:22px;border-radius:50%;background:#0863d8;color:#fff;
+        align-items:center;justify-content:center;font-size:13px;font-weight:900}
+      .lp-plan.selected .lp-selected-dot{display:flex}
+      .lp-data-checkout{background:#fff;border-top:1px solid #e7ebf2;padding:13px 15px calc(14px + env(safe-area-inset-bottom))}
+      .lp-phone{width:100%;border:1px solid #d8e0ea;background:#f9fbfd;border-radius:13px;padding:13px 14px;font-size:15px;outline:none}
+      .lp-phone:focus{border-color:#0863d8;box-shadow:0 0 0 3px rgba(8,99,216,.08)}
+      .lp-selection{font-size:11px;color:#64748b;margin:7px 2px 10px;min-height:16px}
+      .lp-continue{width:100%;border:0;border-radius:14px;padding:14px;background:#0863d8;color:#fff;font-size:15px;font-weight:900}
+      .lp-continue:disabled{opacity:.42}
+      .lp-empty{grid-column:1/-1;background:#fff;border:1px dashed #cfd8e5;border-radius:18px;padding:25px 16px;text-align:center;color:#64748b;font-size:13px}
+      .lp-data-review{padding:22px 18px;overflow:auto;flex:1}
+      .lp-review-card{background:#fff;border:1px solid #e3e8ef;border-radius:20px;padding:17px;box-shadow:0 7px 22px rgba(15,23,42,.05)}
+      .lp-review-row{display:flex;justify-content:space-between;gap:15px;padding:10px 0;border-bottom:1px solid #edf1f5;font-size:13px}
+      .lp-review-row:last-child{border-bottom:0}
+      .lp-pin{width:100%;padding:14px;border:1px solid #d8e0ea;border-radius:13px;text-align:center;font-size:20px;letter-spacing:10px;margin-top:9px}
+      .lp-inline-error{display:none;background:#fff1f2;color:#b42318;border:1px solid #fecdd3;border-radius:12px;padding:10px 12px;font-size:12px;margin:10px 0}
+      @media(max-width:370px){.lp-plan-grid{grid-template-columns:1fr}.lp-data-sheet{height:96vh}}
+    </style>
+    <div class="lp-data-sheet">
+      <div class="lp-data-head">
+        <div class="lp-data-handle"></div>
+        <div class="lp-data-title-row">
+          <div><div class="lp-data-title">Buy Data</div><div class="lp-data-sub">Choose the best bundle for you</div></div>
+          <button class="lp-data-close" type="button" aria-label="Close">×</button>
         </div>
-        <button id="dataClose" type="button" aria-label="Close"
-          style="width:40px;height:40px;border:0;border-radius:50%;background:#e9eef6;color:#334155;font-size:23px;">×</button>
       </div>
-
-      <div id="dataNetworks" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:20px 0 16px;">
-        <button class="dataNet" data-network="MTN" style="padding:11px 4px;border:2px solid #0863d8;border-radius:14px;background:#fff;font-weight:800;">MTN</button>
-        <button class="dataNet" data-network="Airtel" style="padding:11px 4px;border:1px solid #dbe2ec;border-radius:14px;background:#fff;font-weight:800;">Airtel</button>
-        <button class="dataNet" data-network="Glo" style="padding:11px 4px;border:1px solid #dbe2ec;border-radius:14px;background:#fff;font-weight:800;">Glo</button>
-        <button class="dataNet" data-network="9mobile" style="padding:11px 4px;border:1px solid #dbe2ec;border-radius:14px;background:#fff;font-weight:800;">9mobile</button>
-      </div>
-
-      <div style="display:flex;gap:8px;overflow:auto;padding-bottom:4px;margin-bottom:14px;">
-        <button class="dataFilter" data-filter="All" style="white-space:nowrap;padding:9px 14px;border:0;border-radius:999px;background:#0f172a;color:#fff;font-weight:700;">All plans</button>
-        <button class="dataFilter" data-filter="Daily" style="white-space:nowrap;padding:9px 14px;border:0;border-radius:999px;background:#e9eef6;color:#475569;font-weight:700;">Daily</button>
-        <button class="dataFilter" data-filter="Weekly" style="white-space:nowrap;padding:9px 14px;border:0;border-radius:999px;background:#e9eef6;color:#475569;font-weight:700;">Weekly</button>
-        <button class="dataFilter" data-filter="Monthly" style="white-space:nowrap;padding:9px 14px;border:0;border-radius:999px;background:#e9eef6;color:#475569;font-weight:700;">Monthly</button>
-      </div>
-
-      <div id="dataPlanList" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;"></div>
-
-      <div style="margin-top:18px;background:#fff;border:1px solid #e3e8f0;border-radius:18px;padding:15px;">
-        <label style="display:block;font-size:13px;font-weight:800;color:#334155;margin-bottom:7px;">Phone number</label>
-        <input id="dataPhone" type="tel" inputmode="numeric" maxlength="11" autocomplete="tel"
-          placeholder="08012345678"
-          style="width:100%;padding:14px;border:1px solid #cfd7e3;border-radius:12px;font-size:16px;box-sizing:border-box;">
-        <div id="dataSelectionNote" style="min-height:20px;margin-top:8px;font-size:12px;color:#64748b;">
-          Select a bundle above to continue.
+      <div class="lp-data-body">
+        <div class="lp-section-label">Select network</div>
+        <div class="lp-networks">
+          <button class="lp-network active" data-network="MTN">MTN</button>
+          <button class="lp-network" data-network="Airtel">Airtel</button>
+          <button class="lp-network" data-network="Glo">Glo</button>
+          <button class="lp-network" data-network="9mobile">9mobile</button>
         </div>
-        <button id="dataContinue" type="button" disabled
-          style="width:100%;padding:15px;border:0;border-radius:13px;background:#0863d8;color:#fff;
-          font-size:15px;font-weight:800;opacity:.5;margin-top:7px;">
-          Continue
-        </button>
+        <div class="lp-filter-wrap">
+          <button class="lp-filter active" data-filter="All">All plans</button>
+          <button class="lp-filter" data-filter="Daily">Daily</button>
+          <button class="lp-filter" data-filter="Weekly">Weekly</button>
+          <button class="lp-filter" data-filter="Monthly">Monthly</button>
+        </div>
+        <div class="lp-section-label">Available bundles</div>
+        <div class="lp-plan-grid"></div>
       </div>
-    </div>
-  `;
+      <div class="lp-data-checkout">
+        <input class="lp-phone" type="tel" inputmode="numeric" maxlength="11" autocomplete="tel" placeholder="Phone number • 08012345678">
+        <div class="lp-selection">Select a data bundle to continue</div>
+        <button class="lp-continue" type="button" disabled>Continue</button>
+      </div>
+    </div>`;
 
   document.body.appendChild(overlay);
 
-  let selectedNetwork = "MTN";
-  let selectedFilter = "All";
-  let selectedPlan = null;
+  /* Display catalogue only. These prices mirror the existing MTN list already
+     seen in the current LonerPay test flow. Provider variation codes are NOT
+     invented here; live VTpass codes should replace this catalogue when enabled. */
+  const catalog = {
+    MTN: [
+      {data:"100MB", validity:"24 hrs", period:"Daily", price:100},
+      {data:"200MB", validity:"2 days", period:"Daily", price:200},
+      {data:"1.5GB", validity:"30 days", period:"Monthly", price:1000},
+      {data:"4.5GB", validity:"30 days", period:"Monthly", price:2000},
+      {data:"6GB", validity:"7 days", period:"Weekly", price:1500},
+      {data:"6GB", validity:"30 days", period:"Monthly", price:2500},
+      {data:"8GB", validity:"30 days", period:"Monthly", price:3000},
+      {data:"10GB", validity:"30 days", period:"Monthly", price:3500},
+      {data:"15GB", validity:"30 days", period:"Monthly", price:5000},
+      {data:"20GB", validity:"30 days", period:"Monthly", price:6000},
+      {data:"40GB", validity:"30 days", period:"Monthly", price:10000},
+      {data:"75GB", validity:"30 days", period:"Monthly", price:15000}
+    ],
+    Airtel: [], Glo: [], "9mobile": []
+  };
 
-  const planList = overlay.querySelector("#dataPlanList");
-  const note = overlay.querySelector("#dataSelectionNote");
-  const continueBtn = overlay.querySelector("#dataContinue");
+  let network = "MTN", filter = "All", selected = null;
+  const grid = overlay.querySelector(".lp-plan-grid");
+  const selection = overlay.querySelector(".lp-selection");
+  const continueBtn = overlay.querySelector(".lp-continue");
 
-  function renderPlans() {
-    const visible = plans[selectedNetwork].filter(p =>
-      selectedFilter === "All" || p.validity === selectedFilter
-    );
+  const money = n => "₦" + Number(n).toLocaleString("en-NG");
 
-    planList.innerHTML = visible.map((p, i) => `
-      <button type="button" class="dataPlan" data-index="${plans[selectedNetwork].indexOf(p)}"
-        style="text-align:left;padding:15px;border:${selectedPlan === p ? "2px solid #0863d8" : "1px solid #e0e6ef"};
-        border-radius:17px;background:#fff;box-shadow:0 5px 16px rgba(15,23,42,.05);min-height:126px;">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:6px;">
-          <span style="font-size:11px;font-weight:800;color:#64748b;">${p.validity.toUpperCase()}</span>
-          <span style="font-size:10px;font-weight:800;color:#08783e;background:#eaf8f0;padding:4px 6px;border-radius:999px;">Rewards soon</span>
-        </div>
-        <div style="font-size:25px;font-weight:900;color:#0f172a;margin:10px 0 3px;">${p.data}</div>
-        <div style="font-size:12px;color:#64748b;">${p.name}</div>
-        <div style="font-size:13px;font-weight:800;color:#0863d8;margin-top:10px;">
-          ${p.price ? "₦" + Number(p.price).toLocaleString() : "Live price when available"}
-        </div>
-      </button>
-    `).join("");
-
-    planList.querySelectorAll(".dataPlan").forEach(button => {
-      button.onclick = () => {
-        selectedPlan = plans[selectedNetwork][Number(button.dataset.index)];
-        note.textContent = `${selectedNetwork} • ${selectedPlan.data} • ${selectedPlan.validity}`;
+  function render() {
+    const rows = (catalog[network] || []).filter(p => filter === "All" || p.period === filter);
+    if (!rows.length) {
+      grid.innerHTML = `<div class="lp-empty"><strong>${network} plans</strong><br><br>Live bundle catalogue will appear here when this network's VTpass plans are connected.</div>`;
+      return;
+    }
+    grid.innerHTML = rows.map((p, i) => `
+      <button class="lp-plan ${selected === p ? "selected" : ""}" type="button" data-index="${(catalog[network]||[]).indexOf(p)}">
+        <span class="lp-selected-dot">✓</span>
+        <span class="lp-plan-tag">${p.period}</span>
+        <div class="lp-plan-data">${p.data}</div>
+        <div class="lp-plan-validity">${p.validity}</div>
+        <div class="lp-plan-price">${money(p.price)}</div>
+      </button>`).join("");
+    grid.querySelectorAll(".lp-plan").forEach(btn => {
+      btn.onclick = () => {
+        selected = catalog[network][Number(btn.dataset.index)];
+        selection.textContent = `${network} • ${selected.data} • ${selected.validity} • ${money(selected.price)}`;
         continueBtn.disabled = false;
-        continueBtn.style.opacity = "1";
-        renderPlans();
+        render();
       };
     });
   }
 
-  overlay.querySelectorAll(".dataNet").forEach(button => {
-    button.onclick = () => {
-      selectedNetwork = button.dataset.network;
-      selectedPlan = null;
-      note.textContent = "Select a bundle above to continue.";
+  overlay.querySelector(".lp-data-close").onclick = () => overlay.remove();
+
+  overlay.querySelectorAll(".lp-network").forEach(btn => {
+    btn.onclick = () => {
+      network = btn.dataset.network; selected = null;
+      overlay.querySelectorAll(".lp-network").forEach(x => x.classList.remove("active"));
+      btn.classList.add("active");
+      selection.textContent = "Select a data bundle to continue";
       continueBtn.disabled = true;
-      continueBtn.style.opacity = ".5";
-      overlay.querySelectorAll(".dataNet").forEach(b => {
-        b.style.border = "1px solid #dbe2ec";
-      });
-      button.style.border = "2px solid #0863d8";
-      renderPlans();
+      render();
     };
   });
 
-  overlay.querySelectorAll(".dataFilter").forEach(button => {
-    button.onclick = () => {
-      selectedFilter = button.dataset.filter;
-      overlay.querySelectorAll(".dataFilter").forEach(b => {
-        b.style.background = "#e9eef6";
-        b.style.color = "#475569";
-      });
-      button.style.background = "#0f172a";
-      button.style.color = "#fff";
-      renderPlans();
+  overlay.querySelectorAll(".lp-filter").forEach(btn => {
+    btn.onclick = () => {
+      filter = btn.dataset.filter;
+      overlay.querySelectorAll(".lp-filter").forEach(x => x.classList.remove("active"));
+      btn.classList.add("active");
+      render();
     };
   });
 
-  overlay.querySelector("#dataClose").onclick = () => overlay.remove();
+  function showError(message) {
+    let box = overlay.querySelector(".lp-inline-error");
+    if (!box) {
+      box = document.createElement("div");
+      box.className = "lp-inline-error";
+      overlay.querySelector(".lp-data-checkout")?.prepend(box);
+    }
+    box.textContent = message; box.style.display = "block";
+  }
 
   continueBtn.onclick = () => {
-    const phone = overlay.querySelector("#dataPhone").value.replace(/\D/g, "");
-    if (!/^0\d{10}$/.test(phone)) {
-      alert("Please enter a valid 11-digit Nigerian phone number.");
-      return;
-    }
-    if (!selectedPlan) {
-      alert("Please select a data bundle.");
-      return;
-    }
+    const phone = overlay.querySelector(".lp-phone").value.replace(/\D/g,"");
+    if (!/^0\d{10}$/.test(phone)) return showError("Enter a valid 11-digit Nigerian phone number.");
+    if (!selected) return showError("Select a data bundle first.");
 
-    /* We intentionally do not invent live VTpass prices or variation codes.
-       When VTpass live plans are available, this same professional interface
-       can be populated with the real catalogue and connected to /api/secure-pay. */
-    overlay.innerHTML = `
-      <div style="background:#fff;width:calc(100% - 32px);max-width:430px;margin:auto;border-radius:22px;
-        padding:28px 22px;box-sizing:border-box;text-align:center;font-family:Inter,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
-        <div style="font-size:46px;">📶</div>
-        <h2 style="margin:10px 0 7px;color:#0f172a;">${selectedNetwork} ${selectedPlan.data}</h2>
-        <p style="color:#64748b;line-height:1.5;margin:0 0 18px;">
-          ${selectedPlan.validity} bundle for ${phone}
-        </p>
-        <div style="background:#f7f9fc;border-radius:15px;padding:15px;text-align:left;margin-bottom:18px;">
-          <div style="font-size:12px;color:#64748b;">Availability</div>
-          <strong style="display:block;margin-top:4px;color:#0f172a;">Waiting for VTpass live catalogue</strong>
-          <div style="font-size:12px;color:#64748b;margin-top:10px;">
-            The final price and reward will appear here automatically when the live plans are connected.
-          </div>
+    const sheet = overlay.querySelector(".lp-data-sheet");
+    sheet.innerHTML = `
+      <div class="lp-data-head">
+        <div class="lp-data-handle"></div>
+        <div class="lp-data-title-row">
+          <div><div class="lp-data-title">Review Data Purchase</div><div class="lp-data-sub">Confirm your bundle details</div></div>
+          <button class="lp-data-close" type="button">×</button>
         </div>
-        <button id="dataBackToPlans" type="button"
-          style="width:100%;padding:15px;border:0;border-radius:13px;background:#0863d8;color:#fff;font-weight:800;">
-          Back to Data Plans
-        </button>
-        <button id="dataDone" type="button"
-          style="width:100%;padding:13px;border:0;background:transparent;color:#475569;font-weight:700;margin-top:6px;">
-          Close
-        </button>
       </div>
-    `;
-    overlay.querySelector("#dataBackToPlans").onclick = () => {
-      overlay.remove();
-      buyData();
+      <div class="lp-data-review">
+        <div style="text-align:center;margin:5px 0 20px">
+          <div style="width:58px;height:58px;border-radius:18px;background:#eaf3ff;color:#0863d8;display:grid;place-items:center;margin:auto;font-size:28px">📶</div>
+          <div style="font-size:26px;font-weight:950;color:#0f172a;margin-top:10px">${selected.data}</div>
+          <div style="font-size:13px;color:#64748b">${network} Data Bundle</div>
+        </div>
+        <div class="lp-review-card">
+          <div class="lp-review-row"><span style="color:#64748b">Network</span><strong>${network}</strong></div>
+          <div class="lp-review-row"><span style="color:#64748b">Phone</span><strong>${phone}</strong></div>
+          <div class="lp-review-row"><span style="color:#64748b">Validity</span><strong>${selected.validity}</strong></div>
+          <div class="lp-review-row"><span style="color:#64748b">Amount</span><strong style="font-size:18px">${money(selected.price)}</strong></div>
+        </div>
+        <div style="margin-top:18px">
+          <div style="font-size:13px;font-weight:850;color:#334155">Payment PIN</div>
+          <input class="lp-pin" type="password" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="••••">
+          <div class="lp-inline-error"></div>
+        </div>
+        <button class="lp-continue lp-review-confirm" type="button" style="margin-top:12px">Confirm Payment</button>
+        <button class="lp-review-back" type="button" style="width:100%;border:0;background:transparent;padding:13px;color:#475569;font-weight:800">Back</button>
+        <div style="margin-top:8px;text-align:center;font-size:11px;line-height:1.5;color:#94a3b8">
+          Live purchase will be enabled after the matching VTpass variation codes are available. No payment will be taken from this preview.
+        </div>
+      </div>`;
+
+    sheet.querySelector(".lp-data-close").onclick = () => overlay.remove();
+    sheet.querySelector(".lp-review-back").onclick = () => { overlay.remove(); buyData(); };
+    sheet.querySelector(".lp-review-confirm").onclick = () => {
+      const pin = sheet.querySelector(".lp-pin").value;
+      const error = sheet.querySelector(".lp-inline-error");
+      if (!/^\d{4}$/.test(pin)) {
+        error.textContent = "Enter your 4-digit payment PIN.";
+        error.style.display = "block";
+        return;
+      }
+      /* Safety: do not send a payment with guessed/missing VTpass variation codes. */
+      error.textContent = "This professional Data screen is ready. Live payment will activate when the VTpass plan codes are connected.";
+      error.style.display = "block";
+      error.style.background = "#eff6ff";
+      error.style.borderColor = "#bfdbfe";
+      error.style.color = "#1d4ed8";
     };
-    overlay.querySelector("#dataDone").onclick = () => overlay.remove();
   };
 
-  renderPlans();
+  render();
 }
+
 
 function buyElectricity() {
   const meterNumber = prompt("Enter meter number:");
