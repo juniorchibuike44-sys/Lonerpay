@@ -640,7 +640,25 @@ const E=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt
 function S(title,body){document.querySelector('.lp-sheet')?.remove();let o=document.createElement('div');o.className='lp-sheet';o.innerHTML=`<div class="lp-card"><div class="lp-head"><div><small style="color:#0863d8;font-weight:900">LONERPAY</small><h2 style="margin:4px 0 0">${E(title)}</h2></div><button class="lp-close">×</button></div>${body}</div>`;document.body.appendChild(o);o.querySelector('.lp-close').onclick=()=>o.remove();o.onclick=e=>{if(e.target===o)o.remove()};return o}
 function N(t,m,i='✓'){let o=S(t,`<div style="text-align:center;padding:8px 0"><div style="font-size:45px">${i}</div><p style="color:#68788e;line-height:1.6">${E(m)}</p><button class="lp-primary" id="ok">Done</button></div>`);o.querySelector('#ok').onclick=()=>o.remove()}
 window.lpNotice=N;
-window.lpAccount=()=>S('Account & Virtual Account',`<div class="lp-hero"><h3>Your LonerPay account</h3><p>Manage the details connected to your wallet and your dedicated receiving-account status.</p></div><div class="lp-ch"><h3>Account information</h3><div class="lp-row"><span>Profile</span><strong>Linked to your secure login</strong></div><div class="lp-row"><span>Wallet</span><strong>LonerPay Wallet</strong></div></div><div class="lp-ch"><h3>Virtual account</h3><p>A dedicated account can be shown only after the payment provider confirms issuance. LonerPay will never invent an account number.</p><button class="lp-primary" onclick="location.href='dashboard.html'">Open Dashboard</button></div>`);
+window.lpAccount=async function(){
+  const o=S('Account & Virtual Account',`<div class="lp-hero"><h3>Your LonerPay account</h3><p>Manage the details connected to your wallet and your dedicated receiving-account status.</p></div><div class="lp-ch"><h3>Account information</h3><div class="lp-row"><span>Profile</span><strong>Linked to your secure login</strong></div><div class="lp-row"><span>Wallet</span><strong>LonerPay Wallet</strong></div></div><div class="lp-ch"><h3>Virtual account</h3><div id="lpVaBox"><p>Checking your dedicated account…</p></div></div>`);
+  const box=o.querySelector('#lpVaBox');
+  const token=localStorage.getItem('lonerpay_access_token');
+  if(!token){box.innerHTML='<p>Please log in again to view your virtual account.</p><button class="lp-primary" id="vaLogin">Log in again</button>';box.querySelector('#vaLogin').onclick=()=>location.href='index.html';return;}
+  try{
+    const r=await fetch('/api/kyc/status',{method:'GET',headers:{Authorization:`Bearer ${token}`},cache:'no-store'});
+    const d=await r.json();
+    if(r.status===401){localStorage.removeItem('lonerpay_access_token');localStorage.removeItem('lonerpay_refresh_token');location.href='index.html';return;}
+    if(!r.ok||!d.success)throw new Error(d.error||'Unable to load virtual account');
+    if(d.virtual_account_ready && d.account_number){
+      box.innerHTML=`<div class="lp-row"><span>Bank</span><strong>${E(d.bank_name||'Paystack-Titan')}</strong></div><div class="lp-row"><span>Account number</span><strong id="lpVaNumber" style="font-size:20px;letter-spacing:1px">${E(d.account_number)}</strong></div>${d.account_name?`<div class="lp-row"><span>Account name</span><strong>${E(d.account_name)}</strong></div>`:''}<button class="lp-primary" id="lpCopyVa">Copy Account Number</button>`;
+      box.querySelector('#lpCopyVa').onclick=async()=>{try{await navigator.clipboard.writeText(String(d.account_number));N('Account number copied','Your virtual account number has been copied.','✓')}catch(e){N('Virtual account',`Account number: ${d.account_number}`,'🏦')}};
+    }else{
+      box.innerHTML='<p>Your dedicated account is not ready yet. Complete verification or wait for provider confirmation.</p><button class="lp-primary" id="vaKyc">Open KYC & Verification</button>';
+      box.querySelector('#vaKyc').onclick=()=>{o.remove();lpKyc()};
+    }
+  }catch(e){console.error('Virtual account load error:',e);box.innerHTML='<p>Unable to load your virtual account right now.</p><button class="lp-primary" id="vaRetry">Try Again</button>';box.querySelector('#vaRetry').onclick=()=>{o.remove();lpAccount()};}
+};
 window.lpKyc=async function(){
   const o=S('KYC & Verification',`<div class="lp-hero"><h3>Protect your identity</h3><p>Verification helps protect accounts, reduce fraud and meet payment-provider requirements.</p></div><div class="lp-ch"><h3>Verification status</h3><div class="lp-row"><span>Current status</span><strong><span class="lp-status" id="lpKycStatus">Checking…</span></strong></div><div class="lp-row"><span>BVN</span><strong>Never displayed in full</strong></div><div class="lp-row"><span>Virtual account</span><strong id="lpKycVa">Checking…</strong></div></div><div class="lp-ch"><h3>How verification works</h3><ul class="lp-list"><li>Confirm identity through the approved verification flow.</li><li>Collect only information required for KYC.</li><li>Never expose a full BVN, PIN, password or OTP.</li><li>Show Verified, Pending or Action Required only when the backend confirms it.</li></ul></div><div class="lp-ch"><h3>Verification limits</h3><p>Wallet and transaction limits will be displayed only after LonerPay's final KYC tiers and provider requirements are configured.</p></div><button class="lp-primary" id="lpKycAction">Check / complete verification</button>`);
   const statusEl=o.querySelector('#lpKycStatus'), vaEl=o.querySelector('#lpKycVa'), action=o.querySelector('#lpKycAction');
@@ -655,14 +673,24 @@ window.lpKyc=async function(){
     const labels={not_verified:'Not Verified',pending:'Verification in Progress',verified:'Verified',action_required:'Action Required'};
     statusEl.textContent=labels[d.status]||'Verification in Progress';
     vaEl.textContent=d.virtual_account_ready?(d.bank_name?`Ready · ${d.bank_name}`:'Ready'):'Not ready';
-    if(d.status==='verified'){action.textContent=d.virtual_account_ready?'Open Virtual Account':'Continue Virtual Account Setup';}
+    if(d.status==='verified'){
+      if(d.virtual_account_ready){action.textContent='View Virtual Account';action.onclick=()=>{o.remove();lpAccount()};}
+      else {action.textContent='Continue Virtual Account Setup';action.onclick=()=>{o.remove();lpKycForm()};}
+    }
     else if(d.status==='pending'){action.textContent='View Verification Progress';}
     else if(d.status==='action_required'){action.textContent='Review / Retry Verification';}
   }catch(e){console.error('KYC status load error:',e);statusEl.textContent='Unable to check';vaEl.textContent='Unavailable';action.textContent='Try again';action.onclick=()=>{o.remove();lpKyc()};}
 };
-window.lpKycForm=function(){
+window.lpKycForm=async function(){
   const token=localStorage.getItem('lonerpay_access_token');
   if(!token){location.href='index.html';return;}
+  try{
+    const sr=await fetch('/api/kyc/status',{method:'GET',headers:{Authorization:`Bearer ${token}`},cache:'no-store'});
+    const sd=await sr.json();
+    if(sr.status===401){localStorage.removeItem('lonerpay_access_token');localStorage.removeItem('lonerpay_refresh_token');location.href='index.html';return;}
+    if(sr.ok && sd.success && sd.virtual_account_ready){lpAccount();return;}
+    if(sr.ok && sd.success && sd.status==='pending'){N('Verification in progress','Your verification has already been submitted. Please wait for provider confirmation.','🛡️');return;}
+  }catch(e){console.error('KYC pre-check error:',e);}
   const o=S('Identity Verification',`<div class="lp-hero"><h3>Verify securely</h3><p>Enter details that belong to you. Your BVN is sent securely to the verification backend and is cleared from this form after submission.</p></div><div class="lp-ch"><label style="font-weight:800;display:block;margin-bottom:7px">BVN</label><input id="kycBvn" type="password" inputmode="numeric" maxlength="11" autocomplete="off" placeholder="11-digit BVN" style="width:100%;padding:15px;border:1px solid #dce5f0;border-radius:13px;font-size:16px;box-sizing:border-box"><label style="font-weight:800;display:block;margin:16px 0 7px">Bank linked to your BVN</label><select id="kycBank" style="width:100%;padding:15px;border:1px solid #dce5f0;border-radius:13px;font-size:16px;background:#fff;box-sizing:border-box"><option value="">Select bank</option><option value="044">Access Bank</option><option value="058">GTBank</option><option value="033">United Bank for Africa (UBA)</option><option value="011">First Bank of Nigeria</option><option value="057">Zenith Bank</option><option value="032">Union Bank</option><option value="035">Wema Bank</option><option value="221">Stanbic IBTC Bank</option><option value="232">Sterling Bank</option><option value="214">First City Monument Bank (FCMB)</option><option value="50515">Moniepoint MFB</option><option value="999992">OPay</option><option value="999991">PalmPay</option></select><label style="font-weight:800;display:block;margin:16px 0 7px">Bank account number</label><input id="kycAcct" type="tel" inputmode="numeric" maxlength="10" autocomplete="off" placeholder="10-digit account number" style="width:100%;padding:15px;border:1px solid #dce5f0;border-radius:13px;font-size:16px;box-sizing:border-box"><label style="display:flex;gap:10px;align-items:flex-start;margin-top:18px;color:#5f6f84;line-height:1.45"><input id="kycConsent" type="checkbox" style="margin-top:3px"> <span>I consent to LonerPay using these details only as required to verify my identity and process my virtual-account request through its payment provider.</span></label><div id="kycErr" style="color:#b42318;font-weight:700;font-size:13px;margin-top:13px"></div></div><div class="lp-note">Never share your BVN, OTP, password or payment PIN with anyone. LonerPay does not display your BVN after submission.</div><button class="lp-primary" id="kycSubmit">Verify & Continue</button>`);
   const b=o.querySelector('#kycSubmit'),err=o.querySelector('#kycErr'),bvn=o.querySelector('#kycBvn'),acct=o.querySelector('#kycAcct'),bank=o.querySelector('#kycBank'),cons=o.querySelector('#kycConsent');
   b.onclick=async()=>{
