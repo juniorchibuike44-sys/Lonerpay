@@ -1812,6 +1812,7 @@ async function addDemoFunds() {
       const paymentUrl = data.authorization_url || data.checkout_url || data.payment_url;
       if (!paymentUrl) throw new Error("Payment provider did not return a checkout link.");
 
+      localStorage.setItem("lonerpay_pending_fund_amount", String(amount));
       window.location.href = paymentUrl;
     } catch (error) {
       errorBox.textContent = error.message || "Could not start wallet funding.";
@@ -1864,10 +1865,23 @@ async function addDemoFunds() {
       window.location.pathname
     );
 
-    alert("Wallet funded successfully.");
+    const pendingAmount = Number(localStorage.getItem("lonerpay_pending_fund_amount")) ||
+      Number(data.wallet_amount || data.amount || data.credited_amount || 0);
+    localStorage.removeItem("lonerpay_pending_fund_amount");
 
-    // Reload dashboard so wallet balance and transactions refresh
-    window.location.reload();
+    // Refresh the live wallet and transactions without returning to the old alert UI.
+    try {
+      if (typeof window.loadSecureWallet === "function") await window.loadSecureWallet();
+    } catch (_) {}
+    try {
+      if (typeof window.loadTransactions === "function") await window.loadTransactions();
+    } catch (_) {}
+
+    showFundWalletSuccess({
+      amount: pendingAmount,
+      reference,
+      message: data.message || "Your wallet has been funded successfully."
+    });
 
   } catch (error) {
     console.error("Wallet funding verification error:", error);
@@ -3731,6 +3745,49 @@ function close(id){document.getElementById(id)?.remove();}
 function receiptFields(t){const fields=[];const d=t.detailMap||{};Object.entries(d).forEach(([k,v])=>{if(v&&!/status/i.test(k))fields.push([k,v]);});if(t.customerName&&!fields.some(x=>/customer|account name/i.test(x[0])))fields.push(['Customer',t.customerName]);if(t.recipient&&!fields.some(x=>/phone|meter|smartcard|betting id|recipient/i.test(x[0])))fields.push(['Recipient',t.recipient]);if(t.reference)fields.push(['Reference',t.reference]);if(t.providerReference)fields.push(['Provider Reference',t.providerReference]);if(t.token)fields.push(['Token',t.token]);if(t.purchased)fields.push(['Purchased Code / PIN',t.purchased]);return fields;}
 window.showDigitalReceipt=function(raw){const t=normalize(raw),sm=statusMeta(t.status);close('lpProReceipt');const o=document.createElement('div');o.id='lpProReceipt';o.style.cssText='position:fixed;inset:0;background:rgba(4,18,38,.64);z-index:30000;display:flex;align-items:flex-end;justify-content:center;padding:0;font-family:Arial,sans-serif';const fields=receiptFields(t);o.innerHTML=`<style>#lpProReceipt .sheet{width:100%;max-width:520px;max-height:94vh;overflow:auto;background:#fff;border-radius:26px 26px 0 0;padding:10px 20px 28px;box-shadow:0 -16px 60px rgba(0,0,0,.18)}#lpProReceipt .handle{width:46px;height:5px;border-radius:8px;background:#dbe3ee;margin:2px auto 18px}#lpProReceipt .line{display:flex;justify-content:space-between;gap:18px;padding:12px 0;border-bottom:1px solid #eef2f7;font-size:13px}#lpProReceipt .line span{color:${LP.muted}}#lpProReceipt .line strong{text-align:right;color:${LP.ink};word-break:break-word;max-width:62%}#lpProReceipt button{font:inherit}</style><div class="sheet"><div class="handle"></div><div style="display:flex;justify-content:space-between;align-items:center"><div><div style="font-size:12px;font-weight:900;color:${LP.blue};letter-spacing:.8px">LONERPAY</div><div style="font-size:12px;color:${LP.muted};margin-top:2px">Transaction Receipt</div></div><button id="lpRcClose" style="width:38px;height:38px;border:0;border-radius:50%;background:#f0f4f9;font-size:22px">×</button></div><div style="text-align:center;padding:22px 0 16px"><div style="width:58px;height:58px;margin:auto;border-radius:50%;display:grid;place-items:center;background:${sm.bg};color:${sm.fg};font-size:30px;font-weight:900">${sm.icon}</div><div style="font-size:30px;font-weight:900;color:${LP.ink};margin-top:12px">${money(t.amount)}</div><div style="font-size:14px;font-weight:800;color:${LP.ink};margin-top:5px">${esc(t.type)}</div><span style="display:inline-block;margin-top:9px;padding:6px 11px;border-radius:999px;background:${sm.bg};color:${sm.fg};font-size:12px;font-weight:800">${sm.label}</span></div><div style="background:#f8fafc;border:1px solid #edf2f7;border-radius:17px;padding:4px 14px"><div class="line"><span>Receipt ID</span><strong>${esc(t.receiptId)}</strong></div>${fields.map(([k,v])=>`<div class="line"><span>${esc(k)}</span><strong>${esc(v)}</strong></div>`).join('')}<div class="line"><span>Date & time</span><strong>${esc(dateText(t.date))}</strong></div></div><div style="font-size:11px;color:#8794a7;text-align:center;line-height:1.5;margin:16px 10px">This receipt confirms the transaction status shown above. Keep the reference for support enquiries.</div><button id="lpRcPrint" style="width:100%;padding:15px;border:0;border-radius:13px;background:${LP.blue};color:#fff;font-weight:800">Save / Print Receipt</button><button id="lpRcDone" style="width:100%;padding:13px;border:0;background:transparent;color:${LP.ink};font-weight:800;margin-top:5px">Done</button></div>`;document.body.appendChild(o);o.querySelector('#lpRcClose').onclick=o.querySelector('#lpRcDone').onclick=()=>o.remove();o.querySelector('#lpRcPrint').onclick=()=>{const w=window.open('','_blank','width=520,height=760');if(!w)return alert('Allow pop-ups to save or print this receipt.');w.document.write(`<html><head><title>LonerPay Receipt</title><style>body{font-family:Arial;padding:32px;color:#10213b}.top{text-align:center}.row{display:flex;justify-content:space-between;gap:20px;padding:10px 0;border-bottom:1px solid #ddd}small{color:#667}</style></head><body><div class=top><h2>LonerPay</h2><small>One app. Everyday payments.</small><h1>${esc(money(t.amount))}</h1><b>${esc(t.type)} · ${sm.label}</b></div><hr><div class=row><span>Receipt ID</span><b>${esc(t.receiptId)}</b></div>${fields.map(([k,v])=>`<div class=row><span>${esc(k)}</span><b>${esc(v)}</b></div>`).join('')}<div class=row><span>Date</span><b>${esc(dateText(t.date))}</b></div><script>window.onload=()=>window.print()<\/script>
 
+
+
+<style id="lonerpay-fund-wallet-and-scroll-2026">
+/* Fund Wallet — professional 2026 presentation */
+#fundWalletOverlay{background:rgba(5,20,43,.66)!important;backdrop-filter:blur(5px);align-items:flex-end!important;padding:0!important}
+#fundWalletOverlay>div{max-width:700px!important;border-radius:30px 30px 0 0!important;padding:26px 22px 34px!important;box-shadow:0 -18px 60px rgba(5,20,43,.22)!important;font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif!important}
+#fundWalletOverlay #fundWalletAmount{font-size:28px!important;color:#10213b!important}
+#fundWalletOverlay #fundWalletContinue{background:linear-gradient(135deg,#0863d8,#0878ed)!important;border-radius:15px!important;padding:16px!important;box-shadow:0 8px 20px rgba(8,99,216,.20)!important}
+#fundWalletOverlay .fundQuick{border:1px solid #dce7f5!important;background:#f5f9ff!important;color:#1557a8!important;border-radius:13px!important}
+
+/* Keep a long transaction history from pushing the whole dashboard off-screen. */
+.transactions{max-height:min(46vh,430px)!important;overflow-y:auto!important;overscroll-behavior:contain!important;scrollbar-width:thin!important;position:relative!important}
+.transactions>h2{position:sticky!important;top:-16px!important;z-index:8!important;background:#fff!important;padding:16px 0 12px!important;margin:-16px 0 4px!important;border-bottom:1px solid #edf1f6!important}
+.transactions::-webkit-scrollbar{width:5px}.transactions::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:999px}
+@media(max-width:480px){.transactions{max-height:42vh!important}.transactions>h2{top:-14px!important;margin:-14px 0 4px!important;padding:14px 0 11px!important}}
+
+/* Funding success sheet */
+.lp-fund-success-overlay{position:fixed;inset:0;z-index:22000;background:rgba(5,20,43,.66);backdrop-filter:blur(5px);display:flex;align-items:flex-end;justify-content:center}
+.lp-fund-success-card{width:100%;max-width:700px;background:#fff;border-radius:30px 30px 0 0;padding:28px 22px 34px;box-sizing:border-box;font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#10213b;box-shadow:0 -18px 60px rgba(5,20,43,.22)}
+.lp-fund-success-brand{font-size:13px;font-weight:900;letter-spacing:.8px;color:#0863d8}.lp-fund-success-top{display:flex;justify-content:space-between;align-items:flex-start}.lp-fund-success-close{width:46px;height:46px;border:0;border-radius:50%;background:#f1f5f9;font-size:27px;color:#10213b}.lp-fund-success-main{text-align:center;padding:22px 0 12px}.lp-fund-success-check{width:84px;height:84px;border-radius:50%;margin:0 auto 20px;background:#e8faf1;color:#0b9b61;display:grid;place-items:center;font-size:46px;font-weight:900}.lp-fund-success-amount{font-size:42px;font-weight:900;letter-spacing:-1px;margin:0}.lp-fund-success-title{font-size:19px;font-weight:800;margin:7px 0}.lp-fund-success-badge{display:inline-flex;padding:8px 13px;border-radius:999px;background:#e8faf1;color:#13895b;font-size:13px;font-weight:850}.lp-fund-success-info{margin:20px 0;border:1px solid #e7edf5;border-radius:20px;padding:4px 18px;background:#fbfdff}.lp-fund-success-row{display:flex;justify-content:space-between;gap:16px;padding:16px 0;border-bottom:1px solid #edf1f6;font-size:13px}.lp-fund-success-row:last-child{border-bottom:0}.lp-fund-success-row span{color:#7b8799}.lp-fund-success-row strong{text-align:right;word-break:break-word}.lp-fund-success-done{width:100%;border:0;border-radius:15px;background:linear-gradient(135deg,#0863d8,#0878ed);color:#fff;padding:16px;font-size:16px;font-weight:850}.lp-fund-success-note{text-align:center;color:#8793a5;font-size:12px;line-height:1.5;margin:15px 8px 0}
+</style>
+<script id="lonerpay-fund-wallet-success-2026">
+function showFundWalletSuccess(info = {}) {
+  document.querySelector('.lp-fund-success-overlay')?.remove();
+  const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const amount = Number(info.amount || 0);
+  const amountText = amount > 0 ? '₦' + amount.toLocaleString('en-NG',{minimumFractionDigits:2,maximumFractionDigits:2}) : 'Wallet funded';
+  const dateText = new Date().toLocaleString('en-NG',{dateStyle:'medium',timeStyle:'short'});
+  const overlay = document.createElement('div');
+  overlay.className = 'lp-fund-success-overlay';
+  overlay.innerHTML = `<section class="lp-fund-success-card" role="dialog" aria-modal="true" aria-label="Wallet funding successful">
+    <div class="lp-fund-success-top"><div><div class="lp-fund-success-brand">LONERPAY</div><div style="color:#7b8799;font-size:13px;margin-top:4px">Wallet Funding</div></div><button class="lp-fund-success-close" type="button" aria-label="Close">×</button></div>
+    <div class="lp-fund-success-main"><div class="lp-fund-success-check">✓</div><div class="lp-fund-success-amount">${esc(amountText)}</div><div class="lp-fund-success-title">Wallet funded successfully</div><span class="lp-fund-success-badge">Successful</span></div>
+    <div class="lp-fund-success-info"><div class="lp-fund-success-row"><span>Payment method</span><strong>Paystack</strong></div><div class="lp-fund-success-row"><span>Date & time</span><strong>${esc(dateText)}</strong></div>${info.reference?`<div class="lp-fund-success-row"><span>Reference</span><strong>${esc(info.reference)}</strong></div>`:''}</div>
+    <button class="lp-fund-success-done" type="button">Back to Dashboard</button>
+    <div class="lp-fund-success-note">Your wallet balance and transaction history are refreshed after confirmed payment.</div>
+  </section>`;
+  document.body.appendChild(overlay);
+  const close = () => overlay.remove();
+  overlay.querySelector('.lp-fund-success-close').onclick = close;
+  overlay.querySelector('.lp-fund-success-done').onclick = close;
+}
+</script>
 
 </body></html>`);w.document.close();};};
 function historyRow(t,i){const sm=statusMeta(t.status),sign=/fund|credit|refund/i.test(t.type)?'+':'−';return `<button class="lpTxRow" data-i="${i}" type="button" style="width:100%;border:0;background:#fff;padding:15px 14px;border-radius:16px;margin:0 0 10px;display:grid;grid-template-columns:46px 1fr auto;gap:12px;align-items:center;text-align:left;box-shadow:0 3px 14px rgba(15,35,65,.05)"><span style="width:46px;height:46px;border-radius:14px;background:#f1f6fd;display:grid;place-items:center;font-size:21px">${iconFor(t.type)}</span><span><strong style="display:block;color:${LP.ink};font-size:14px">${esc(t.type)}</strong><small style="display:block;color:${LP.muted};margin-top:4px">${esc(dateText(t.date))}</small><small style="display:inline-block;color:${sm.fg};background:${sm.bg};padding:4px 7px;border-radius:999px;margin-top:6px;font-weight:800">${sm.label}</small></span><strong style="color:${/fund|credit|refund/i.test(t.type)?LP.green:LP.ink};font-size:14px">${sign}${money(t.amount)}</strong></button>`;}
