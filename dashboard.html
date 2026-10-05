@@ -4223,31 +4223,45 @@ function openVirtualAccount() {
 
 
 <style id="lonerpay-dashboard-flow-2026">
-/* Recent Transactions: independent, safe scrolling.
-   Keep whole cards visible; do not alter transaction/receipt logic. */
+/* Recent Transactions viewport.
+   Header stays visible; complete transaction rows scroll below it.
+   No payment, receipt, service, or transaction-data logic is changed. */
 .transactions{
-  max-height: 430px !important;
+  position: relative !important;
+  height: 390px !important;
+  max-height: 390px !important;
   overflow-y: auto !important;
   overflow-x: hidden !important;
-  overscroll-behavior: contain !important;
-  -webkit-overflow-scrolling: touch;
-  scroll-padding-top: 62px;
+  overscroll-behavior-y: contain !important;
+  -webkit-overflow-scrolling: touch !important;
+  padding: 0 20px 22px !important;
+  scroll-padding-top: 78px !important;
 }
 .transactions > h2{
   position: sticky !important;
   top: 0 !important;
-  z-index: 20 !important;
+  z-index: 30 !important;
   background: #fff !important;
-  margin: 0 0 10px !important;
-  padding: 4px 0 12px !important;
+  margin: 0 -2px 8px !important;
+  padding: 20px 2px 14px !important;
   border-bottom: 1px solid #edf1f6 !important;
 }
 .transactions .transaction{
-  scroll-margin-top: 66px;
+  position: relative !important;
+  min-height: max-content !important;
+  scroll-margin-top: 82px !important;
+}
+.transactions .transaction:last-child{
+  margin-bottom: 8px !important;
 }
 @media (max-width:480px){
   .transactions{
-    max-height: 390px !important;
+    height: 365px !important;
+    max-height: 365px !important;
+    padding: 0 18px 24px !important;
+  }
+  .transactions > h2{
+    padding-top: 18px !important;
   }
 }
 </style>
