@@ -130,29 +130,56 @@ console.log("Paystack webhook event:", eventType);
     }
 
     if (eventType === "customeridentification.failed") {
-      const email =
-        eventData.email ||
-        eventData.customer?.email ||
-        "";
+  const email =
+    eventData.email ||
+    eventData.customer?.email ||
+    "";
 
-      await updateVirtualAccount(
-        supabaseUrl,
-        supabaseSecretKey,
-        email,
-        {
-          paystack_customer_code:
-            eventData.customer_code ||
-            eventData.customer?.customer_code ||
-            null,
-          assignment_status: "identification_failed",
-        }
-      );
+  // Log only safe diagnostic information.
+  // Do NOT log BVN, bank account number, authorization data,
+  // API keys, or the complete Paystack payload.
+  const failureReason =
+    eventData.reason ||
+    eventData.message ||
+    eventData.description ||
+    eventData.failure_reason ||
+    eventData.errors?.[0]?.message ||
+    eventData.customer?.identification?.reason ||
+    "No failure reason supplied by Paystack";
 
-      return res.status(200).json({
-        received: true,
-        identification: "failed",
-      });
+  const identificationStatus =
+    eventData.status ||
+    eventData.identification?.status ||
+    eventData.customer?.identification?.status ||
+    "failed";
+
+  console.error("Paystack customer identification failed:", {
+    customer_code:
+      eventData.customer_code ||
+      eventData.customer?.customer_code ||
+      null,
+    status: String(identificationStatus),
+    reason: String(failureReason)
+  });
+
+  await updateVirtualAccount(
+    supabaseUrl,
+    supabaseSecretKey,
+    email,
+    {
+      paystack_customer_code:
+        eventData.customer_code ||
+        eventData.customer?.customer_code ||
+        null,
+      assignment_status: "identification_failed",
     }
+  );
+
+  return res.status(200).json({
+    received: true,
+    identification: "failed",
+  });
+    } 
 
     // -----------------------------------------
     // DEDICATED VIRTUAL ACCOUNT ASSIGNMENT
