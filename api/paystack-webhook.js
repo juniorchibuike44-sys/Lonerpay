@@ -119,7 +119,7 @@ console.log("Paystack webhook event:", eventType);
             eventData.customer_code ||
             eventData.customer?.customer_code ||
             null,
-          assignment_status: "identification_success",
+          
         }
       );
 
