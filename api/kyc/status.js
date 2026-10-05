@@ -64,7 +64,7 @@ export default async function handler(req, res) {
     const accountResponse = await fetch(
       `${supabaseUrl}/rest/v1/virtual_accounts?user_id=eq.${encodeURIComponent(
         user.id
-      )}&select=assignment_status,account_number,bank_name&limit=1`,
+      )}&select=assignment_status,account_number,account_name,bank_name&limit=1`,
       {
         headers: {
           apikey: supabaseSecretKey,
@@ -88,6 +88,11 @@ export default async function handler(req, res) {
         success: true,
         status: "not_verified",
         verified: false,
+        assignment_status: null,
+        virtual_account_ready: false,
+        account_number: null,
+        account_name: null,
+        bank_name: null,
         message: "Identity verification has not been completed."
       });
     }
@@ -95,6 +100,12 @@ export default async function handler(req, res) {
     const assignmentStatus = String(
       account.assignment_status || ""
     ).toLowerCase();
+
+    const hasVirtualAccount = Boolean(account.account_number);
+
+    // Treat an existing assigned account as ready.
+    const virtualAccountReady =
+      assignmentStatus === "assigned" && hasVirtualAccount;
 
     let status = "pending";
     let verified = false;
@@ -121,13 +132,20 @@ export default async function handler(req, res) {
       status,
       verified,
       message,
-      virtual_account_ready:
-        assignmentStatus === "assigned" &&
-        Boolean(account.account_number),
-      bank_name:
-        assignmentStatus === "assigned"
-          ? account.bank_name || null
-          : null
+
+      // Return these values so profile.html can display
+      // the customer's assigned virtual account.
+      assignment_status: assignmentStatus || null,
+      virtual_account_ready: virtualAccountReady,
+      account_number: virtualAccountReady
+        ? account.account_number
+        : null,
+      account_name: virtualAccountReady
+        ? account.account_name || null
+        : null,
+      bank_name: virtualAccountReady
+        ? account.bank_name || null
+        : null
     });
   } catch (error) {
     console.error("KYC status error:", error);
