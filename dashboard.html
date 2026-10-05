@@ -3755,11 +3755,12 @@ window.showDigitalReceipt=function(raw){const t=normalize(raw),sm=statusMeta(t.s
 #fundWalletOverlay #fundWalletContinue{background:linear-gradient(135deg,#0863d8,#0878ed)!important;border-radius:15px!important;padding:16px!important;box-shadow:0 8px 20px rgba(8,99,216,.20)!important}
 #fundWalletOverlay .fundQuick{border:1px solid #dce7f5!important;background:#f5f9ff!important;color:#1557a8!important;border-radius:13px!important}
 
-/* Keep a long transaction history from pushing the whole dashboard off-screen. */
-.transactions{max-height:min(46vh,430px)!important;overflow-y:auto!important;overscroll-behavior:contain!important;scrollbar-width:thin!important;position:relative!important}
-.transactions>h2{position:sticky!important;top:-16px!important;z-index:8!important;background:#fff!important;padding:16px 0 12px!important;margin:-16px 0 4px!important;border-bottom:1px solid #edf1f6!important}
-.transactions::-webkit-scrollbar{width:5px}.transactions::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:999px}
-@media(max-width:480px){.transactions{max-height:42vh!important}.transactions>h2{top:-14px!important;margin:-14px 0 4px!important;padding:14px 0 11px!important}}
+/* Recent Transactions stays fully readable on the dashboard.
+   Do not clip the transaction card itself; full history remains available through See all. */
+.transactions{max-height:none!important;overflow:visible!important;position:relative!important}
+.transactions>h2{position:relative!important;top:auto!important;z-index:auto!important;background:#fff!important;padding:0 0 12px!important;margin:0 0 4px!important;border-bottom:1px solid #edf1f6!important}
+.transactions::-webkit-scrollbar{display:none!important}
+@media(max-width:480px){.transactions{max-height:none!important;overflow:visible!important}.transactions>h2{top:auto!important;margin:0 0 4px!important;padding:0 0 11px!important}}
 
 /* Funding success sheet */
 .lp-fund-success-overlay{position:fixed;inset:0;z-index:22000;background:rgba(5,20,43,.66);backdrop-filter:blur(5px);display:flex;align-items:flex-end;justify-content:center}
