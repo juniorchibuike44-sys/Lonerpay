@@ -336,7 +336,12 @@ console.log("Paystack webhook event:", eventType);
       walletAmount >= 100
     ) {
       const paidAmount = Number(transaction.amount) / 100;
-
+console.log("Fund Wallet amount check:", {
+  reference,
+  paidAmount,
+  walletAmount,
+  userIdPresent: Boolean(userId),
+}); 
       if (
         !Number.isFinite(paidAmount) ||
         Math.abs(paidAmount - walletAmount) > 0.01
