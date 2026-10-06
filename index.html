@@ -6,6 +6,85 @@
   <title>LonerPay — Everyday Payments</title> 
   <link rel="stylesheet" href="style.css">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.105.0/dist/umd/supabase.js"></script>
+<style id="lp-auth-design-v2">
+:root{--lp-blue:#0863d8;--lp-navy:#12233e;--lp-muted:#62718a;--lp-line:#dce5f1}
+#modal{position:fixed!important;inset:0!important;z-index:21000!important;background:#f4f7fc!important;overflow-y:auto!important;align-items:flex-start!important;justify-content:center!important;padding:32px 18px!important;box-sizing:border-box!important;font-family:Arial,sans-serif!important}
+#modal>.modal-card{position:relative!important;width:100%!important;max-width:430px!important;margin:auto!important;background:#fff!important;border:1px solid var(--lp-line)!important;border-radius:26px!important;padding:30px 24px!important;box-shadow:0 12px 40px rgba(18,35,62,.06)!important;box-sizing:border-box!important;color:var(--lp-navy)!important}
+#lpAuthBrand{display:flex;align-items:center;gap:10px;margin-bottom:34px;font-size:21px;font-weight:800;color:var(--lp-navy)}
+#lpAuthBrand span{display:grid;place-items:center;width:40px;height:40px;border-radius:13px;background:var(--lp-blue);color:#fff;font-size:25px}
+#modalTitle{font-size:28px!important;line-height:1.2!important;margin:0 0 10px!important;letter-spacing:-.7px!important;color:var(--lp-navy)!important}
+#modalText{font-size:14px!important;line-height:1.6!important;color:var(--lp-muted)!important;margin:0 0 26px!important}
+#authForm input{width:100%!important;height:54px!important;background:#f8fafd!important;border:1px solid var(--lp-line)!important;border-radius:13px!important;padding:0 15px!important;margin:0 0 13px!important;font:16px Arial,sans-serif!important;color:var(--lp-navy)!important;box-sizing:border-box!important}
+#authForm input:focus{outline:2px solid #0863d8!important;outline-offset:2px!important;background:#fff!important}
+#authForm button,#biometricModal button{width:100%!important;min-height:52px!important;border-radius:13px!important;padding:13px 16px!important;font:700 14px Arial,sans-serif!important;cursor:pointer!important;box-sizing:border-box!important}
+#authForm button[type=submit],#enableBiometricButton{background:var(--lp-blue)!important;border:1px solid var(--lp-blue)!important;color:#fff!important;box-shadow:0 5px 12px rgba(8,99,216,.12)!important}
+#authForm button:disabled,#biometricModal button:disabled{opacity:.65!important;cursor:wait!important}
+#passkeyLoginButton,#skipBiometricButton{background:#fff!important;border:1px solid var(--lp-line)!important;color:var(--lp-blue)!important}
+#passkeyHelp{font-size:12px!important;color:var(--lp-muted)!important;line-height:1.5!important;text-align:center!important;opacity:1!important}
+#modal>.modal-card>.close{position:absolute!important;top:22px!important;right:20px!important;width:36px!important;height:36px!important;border:0!important;border-radius:50%!important;background:#f0f4f9!important;color:var(--lp-muted)!important;font-size:24px!important}
+#biometricModal{position:fixed!important;inset:0!important;z-index:22000!important;background:#f4f7fc!important;overflow:auto!important;align-items:center!important;justify-content:center!important;padding:24px 18px!important;box-sizing:border-box!important;font-family:Arial,sans-serif!important}
+#biometricModal>.modal-card{width:100%!important;max-width:400px!important;padding:32px 24px!important;border-radius:26px!important;background:#fff!important;border:1px solid var(--lp-line)!important;box-sizing:border-box!important;color:var(--lp-navy)!important;box-shadow:0 12px 40px rgba(18,35,62,.06)!important}
+#biometricModal h2{font-size:25px!important;letter-spacing:-.5px!important;margin:22px 0 12px!important}
+#biometricModal p{font-size:14px!important;color:var(--lp-muted)!important;line-height:1.6!important}
+#biometricModal .lp-fingerprint{width:74px;height:74px;padding:16px;box-sizing:border-box;border-radius:23px;background:#edf5ff;color:var(--lp-blue);margin:auto}
+#lpWelcomeBack{background:#f4f7fc!important;padding:24px 20px!important;z-index:20000!important}
+#lpWelcomeBack>div{max-width:390px!important}
+#lpWelcomeBack>div>div:first-child{width:58px!important;height:58px!important;border-radius:19px!important;font-size:30px!important;margin-bottom:23px!important}
+#lpWelcomeTitle{font-size:28px!important;letter-spacing:-.6px!important;line-height:1.25!important;margin-top:20px!important}
+#lpWelcomeBack button{min-height:52px!important;border-radius:13px!important;font-size:14px!important;padding:14px!important}
+#lpWelcomeHelp{font-size:12px!important;line-height:1.6!important;margin:15px 12px!important}
+#lpWelcomeError:empty{display:none!important}
+#lpWelcomeError{padding:10px!important;background:#fff1f0!important;border-radius:10px!important}
+#lpWelcomeSwitch{margin-top:8px!important;font-size:12px!important}
+@media(max-width:480px){#modal{padding:28px 22px!important}#modal>.modal-card{border:0!important;background:transparent!important;box-shadow:none!important;padding:22px 0!important;max-width:390px!important;margin:0 auto!important}#modal>.modal-card>.close{top:22px!important;right:0!important}#lpAuthBrand{margin-bottom:48px}#biometricModal>.modal-card{border:0!important;box-shadow:none!important;background:transparent!important;padding:24px 8px!important}}
+</style>
+<script id="lp-auth-copy-v2">
+document.addEventListener('DOMContentLoaded',function(){
+  const modal=document.getElementById('modal');
+  const card=modal?.querySelector('.modal-card');
+  if(card&&!document.getElementById('lpAuthBrand')){
+    const brand=document.createElement('div');brand.id='lpAuthBrand';
+    brand.innerHTML='<span aria-hidden="true">L</span>LonerPay';card.prepend(brand);
+  }
+  const biometric=document.getElementById('biometricModal');
+  if(biometric){
+    // Keep setup independent of the password form's display state.
+    document.body.appendChild(biometric);
+    const icon=biometric.querySelector('.modal-card>div');
+    if(icon){icon.className='lp-fingerprint';icon.style.cssText='';icon.innerHTML='<svg aria-hidden="true" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M10 21a14 14 0 0 1 28 0M6 18a18 18 0 0 1 36 0M15 23a9 9 0 0 1 18 0v8M24 20a3 3 0 0 1 3 3v7c0 6-2 11-5 15M21 25v5c0 5-2 9-5 12M15 27v3c0 3-1 6-3 9M10 26v5M33 36l-2 7M38 25v7"/></svg>';}
+    const heading=biometric.querySelector('h2');if(heading)heading.textContent='Enable quick login';
+    const paragraphs=biometric.querySelectorAll('p');
+    if(paragraphs[0])paragraphs[0].textContent='Use your fingerprint or face to sign in faster next time.';
+    if(paragraphs[1])paragraphs[1].textContent='Your phone verifies you securely. LonerPay never receives your fingerprint or face data.';
+    const enable=document.getElementById('enableBiometricButton');if(enable)enable.textContent='Enable biometric login';
+    const skip=document.getElementById('skipBiometricButton');if(skip)skip.textContent='Maybe later';
+  }
+  document.querySelectorAll('#authForm input').forEach(input=>input.setAttribute('aria-label',input.placeholder||input.name));
+  function set(id,text){const node=document.getElementById(id);if(node&&node.textContent!==text)node.textContent=text;}
+  function polish(){
+    if(modal?.dataset.authMode==='login'){
+      set('modalTitle','Welcome to LonerPay');
+      set('modalText','Sign in to continue to your dashboard.');
+      const submit=document.querySelector('#authForm button[type="submit"]');
+      if(submit&&!submit.disabled&&submit.textContent==='Continue')submit.textContent='Log in';
+    }
+    const passkeyButton=document.getElementById('passkeyLoginButton');
+    if(passkeyButton&&!passkeyButton.disabled)set('passkeyLoginButton','Use biometric login');
+    // Do not replace the progress message while verification is running.
+    const unlock=document.getElementById('lpWelcomeUnlock');
+    if(unlock&&!unlock.disabled)set('lpWelcomeUnlock','Unlock securely');
+    set('passkeyHelp','Verify with your fingerprint, face, or device screen lock.');
+    const help=document.getElementById('lpWelcomeHelp');
+    if(help){
+      if(help.textContent.includes('If you have not set up'))set('lpWelcomeHelp','New to biometric login? Sign in with email and password once to set it up.');
+      else if(help.textContent.includes('when your phone offers'))set('lpWelcomeHelp','Use your fingerprint, face, or device screen lock.');
+    }
+  }
+  polish();
+  new MutationObserver(polish).observe(document.body,{childList:true,subtree:true});
+});
+</script>
+
 </head>
 <body>
   <header class="nav">
@@ -59,7 +138,7 @@
       <p class="eyebrow">HOW IT WORKS</p>
       <h2>Simple from start to finish.</h2>
       <div class="steps">
-        <div><b>01</b><h3>Create your account</h3><p>Sign up with your phone number and secure your account.</p></div>
+        <div><b>01</b><h3>Create your account</h3><p>Sign up with your email and secure your account.</p></div>
         <div><b>02</b><h3>Fund your wallet</h3><p>Add money securely so your everyday payments are ready.</p></div>
         <div><b>03</b><h3>Pay in seconds</h3><p>Choose a service, confirm your details, and you're done.</p></div>
       </div>
