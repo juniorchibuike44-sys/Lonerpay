@@ -3778,7 +3778,7 @@ body{background:var(--lp-bg)!important}
     const oldWrap=oldActions[0]?.parentElement;
     if(oldWrap && !qs('#lpHomeQuickActions',balance)){
       const q=document.createElement('div');q.id='lpHomeQuickActions';
-      q.innerHTML=`<button class="lpHomeQuick primary" type="button"><span>＋</span>Fund</button><button class="lpHomeQuick" type="button"><span>↗</span>Send</button><button class="lpHomeQuick" type="button"><span>◷</span>History</button><button class="lpHomeQuick" type="button"><span>▣</span>Services</button>`;
+      q.innerHTML=`<button class="lpHomeQuick primary" type="button"><span>＋</span>Fund Wallet</button><button class="lpHomeQuick" type="button"><span>↗</span>Send</button><button class="lpHomeQuick" type="button"><span>◷</span>Transactions</button><button class="lpHomeQuick" type="button"><span>▣</span>Services</button>`;
       oldWrap.replaceWith(q);
       const b=q.querySelectorAll('button');
       b[0].onclick=()=>window.openFundWallet?.();b[1].onclick=()=>window.openTransfer?.();b[2].onclick=()=>window.openTransactionHistory?.();b[3].onclick=()=>services.scrollIntoView({behavior:'smooth',block:'start'});
@@ -4345,22 +4345,7 @@ function openVirtualAccount() {
   }
 
   function setupBackFlow(){
-    try{
-      if(!history.state || !history.state[ROOT_KEY]){
-        history.replaceState({...(history.state||{}),[ROOT_KEY]:"home"},"",location.href);
-        history.pushState({[ROOT_KEY]:"home-guard"},"",location.href);
-      }
-    }catch(_){}
-
-    window.addEventListener("popstate",function(){
-      /* Back first closes an in-dashboard layer. Otherwise remain on Home.
-         Login is still reached only through the app's explicit logout flow. */
-      closeDashboardLayer();
-      try{
-        history.pushState({[ROOT_KEY]:"home-guard"},"",location.href);
-      }catch(_){}
-      window.scrollTo({top:0,behavior:"smooth"});
-    });
+    // Navigation is installed once below, after all service implementations.
   }
 
   function init(){
@@ -4387,6 +4372,77 @@ function openVirtualAccount() {
   }else{
     init();
   }
+})();
+</script>
+
+
+<style id="lp-separate-transactions">
+.container .transactions{display:none!important}
+#lpHomeQuickActions{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+#lpHomeQuickActions .lpHomeQuick{font-size:12px!important}
+</style>
+<script id="lp-view-navigation">
+(function(){
+  'use strict';
+  const KEY='lpViewNavigation';
+  let restoring=false, current=0, pending=false;
+  const views=new Map();
+  function layers(){return Array.from(document.body.children).filter(n=>{
+    if(n.tagName!=='DIV')return false;
+    const c=getComputedStyle(n);
+    return c.position==='fixed' && c.display!=='none' && c.visibility!=='hidden' &&
+      (c.top==='0px' && c.bottom==='0px');
+  });}
+  // Retain actual nodes so input values and attached event handlers survive Back.
+  function tree(node){return {node,children:Array.from(node.childNodes).map(tree)};}
+  function rebuild(t){
+    if(t.node.nodeType===1){t.children.forEach(rebuild);t.node.replaceChildren(...t.children.map(x=>x.node));}
+  }
+  function snapshot(){return {layers:layers().map(tree),scroll:window.scrollY};}
+  function same(a,b){
+    if(a.layers.length!==b.layers.length)return false;
+    function equal(x,y){return x.node===y.node && x.children.length===y.children.length && x.children.every((v,i)=>equal(v,y.children[i]));}
+    return a.layers.every((t,i)=>equal(t,b.layers[i]));
+  }
+  function save(){
+    pending=false;if(restoring)return;
+    const next=snapshot(),prev=views.get(current);
+    if(prev && same(prev,next))return;
+    if(!next.layers.length && current>0){history.go(-current);return;}
+    // A dismissed receipt returns to its existing history/service view.
+    if(prev && next.layers.length<prev.layers.length){history.back();return;}
+    for(const k of views.keys())if(k>current)views.delete(k);
+    current++;views.set(current,next);
+    history.pushState({[KEY]:current},'',location.href);
+  }
+  function schedule(){if(!pending&&!restoring){pending=true;setTimeout(save,0);}}
+  function restore(index){
+    const view=views.get(index);if(!view)return;
+    restoring=true;
+    layers().forEach(n=>n.remove());
+    view.layers.forEach(t=>{rebuild(t);document.body.appendChild(t.node);});
+    current=index;window.scrollTo(0,view.scroll);
+    setTimeout(()=>{restoring=false;},0);
+  }
+  function init(){
+    // A local root entry protects the active dashboard from its login predecessor.
+    history.replaceState({[KEY]:-1},'',location.href);
+    history.pushState({[KEY]:0},'',location.href);
+    views.set(0,snapshot());
+    new MutationObserver(schedule).observe(document.body,{childList:true,subtree:true});
+    window.addEventListener('popstate',e=>{
+      const index=e.state && e.state[KEY];
+      if(index===-1){restore(0);history.pushState({[KEY]:0},'',location.href);return;}
+      if(Number.isInteger(index))restore(index);
+    });
+    // Capture the current live input state before a service changes its contents.
+    document.addEventListener('click',()=>{
+      const existing=views.get(current),now=snapshot();
+      if(existing&&same(existing,now))views.set(current,now);
+      schedule();
+    },true);
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
 })();
 </script>
 
