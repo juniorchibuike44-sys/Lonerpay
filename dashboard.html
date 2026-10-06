@@ -4222,135 +4222,170 @@ function openVirtualAccount() {
 </script>
 
 
-<style id="lonerpay-dashboard-flow-2026">
-/* Recent Transactions viewport.
-   Header stays visible; complete transaction rows scroll below it.
-   No payment, receipt, service, or transaction-data logic is changed. */
-.transactions{
-  position: relative !important;
-  height: 390px !important;
-  max-height: 390px !important;
-  overflow-y: auto !important;
-  overflow-x: hidden !important;
-  overscroll-behavior-y: contain !important;
-  -webkit-overflow-scrolling: touch !important;
-  padding: 0 20px 22px !important;
-  scroll-padding-top: 78px !important;
+
+<style id="lonerpay-home-flow-final">
+/* Home stays compact. Full transaction history remains under See all / Transactions. */
+.transactions .lp-home-extra-transaction{display:none!important}
+
+/* Hide-balance control injected next to the live balance. */
+#lpBalancePrivacyBtn{
+  border:0;background:transparent;padding:5px 7px;margin-left:4px;
+  border-radius:10px;cursor:pointer;vertical-align:middle;color:inherit;
+  font-size:18px;line-height:1;
 }
-.transactions > h2{
-  position: sticky !important;
-  top: 0 !important;
-  z-index: 30 !important;
-  background: #fff !important;
-  margin: 0 -2px 8px !important;
-  padding: 20px 2px 14px !important;
-  border-bottom: 1px solid #edf1f6 !important;
-}
-.transactions .transaction{
-  position: relative !important;
-  min-height: max-content !important;
-  scroll-margin-top: 82px !important;
-}
-.transactions .transaction:last-child{
-  margin-bottom: 8px !important;
-}
-@media (max-width:480px){
-  .transactions{
-    height: 365px !important;
-    max-height: 365px !important;
-    padding: 0 18px 24px !important;
-  }
-  .transactions > h2{
-    padding-top: 18px !important;
-  }
-}
+#lpBalancePrivacyBtn:active{background:rgba(255,255,255,.12)}
 </style>
 
-<script id="lonerpay-dashboard-back-flow-2026">
-(function () {
+<script id="lonerpay-home-flow-final-js">
+(function(){
   "use strict";
 
-  const STATE_KEY = "lonerpayDashboard";
-  let handlingPop = false;
+  const HIDE_KEY = "lonerpay_hide_balance";
+  const ROOT_KEY = "lonerpay_dashboard_root";
 
-  function isVisible(el) {
-    if (!el) return false;
-    const s = getComputedStyle(el);
-    return s.display !== "none" && s.visibility !== "hidden" && el.getClientRects().length > 0;
+  function compactRecentTransactions(){
+    const box = document.querySelector(".transactions");
+    if(!box) return;
+    const rows = Array.from(box.querySelectorAll(".transaction"))
+      .filter(row => !/no transactions yet/i.test(row.textContent || ""));
+    rows.forEach((row,i) => row.classList.toggle("lp-home-extra-transaction", i >= 3));
   }
 
-  function closeTopDashboardLayer() {
-    /* Close only dashboard overlays/modals. Never touch login/auth state. */
+  function findBalanceElement(){
     const selectors = [
-      "#lpFundSuccess",
-      "#fundWalletOverlay",
-      "#lpReceiptOverlay",
-      "#receiptOverlay",
-      "#transactionHistoryOverlay",
-      "#historyOverlay",
-      ".receipt-overlay",
-      ".transaction-history-overlay",
-      ".modal-overlay",
-      ".overlay"
+      "#walletBalance", "#wallet-balance", "#balance",
+      ".wallet-balance", ".balance-amount", "[data-wallet-balance]"
     ];
+    for(const s of selectors){
+      const el = document.querySelector(s);
+      if(el) return el;
+    }
+    /* Fallback: find a prominent element containing a naira amount near the top. */
+    const candidates = Array.from(document.querySelectorAll("h1,h2,h3,strong,span,div"));
+    return candidates.find(el => {
+      const t=(el.textContent||"").trim();
+      return /^₦\s?[\d,.]+$/.test(t) && el.getBoundingClientRect().top < 500;
+    }) || null;
+  }
 
-    for (const selector of selectors) {
-      const nodes = Array.from(document.querySelectorAll(selector)).reverse();
-      for (const node of nodes) {
-        if (!isVisible(node)) continue;
+  function setupBalancePrivacy(){
+    const balance = findBalanceElement();
+    if(!balance || balance.dataset.lpPrivacyReady === "1") return;
+    balance.dataset.lpPrivacyReady = "1";
 
-        /* Avoid deleting structural page containers accidentally. */
-        if (node.id === "fundWalletOverlay" || node.id === "lpFundSuccess" ||
-            /receipt|history|modal|overlay/i.test(node.id || "") ||
-            /receipt|history|modal|overlay/i.test(node.className || "")) {
-          const closeButton = node.querySelector(
-            '[data-close], .close, .close-btn, .modal-close, [aria-label="Close"]'
-          );
-          if (closeButton) closeButton.click();
-          else node.remove();
-          return true;
+    let realText = balance.textContent.trim();
+    let hidden = localStorage.getItem(HIDE_KEY) === "1";
+
+    const btn = document.createElement("button");
+    btn.id = "lpBalancePrivacyBtn";
+    btn.type = "button";
+    btn.setAttribute("aria-label","Hide wallet balance");
+
+    function render(){
+      if(!hidden && balance.textContent.trim() !== "₦••••••"){
+        realText = balance.textContent.trim();
+      }
+      balance.textContent = hidden ? "₦••••••" : realText;
+      btn.textContent = hidden ? "🙈" : "👁";
+      btn.setAttribute("aria-label", hidden ? "Show wallet balance" : "Hide wallet balance");
+      btn.title = hidden ? "Show balance" : "Hide balance";
+    }
+
+    btn.onclick = function(e){
+      e.preventDefault();
+      e.stopPropagation();
+      if(hidden){
+        hidden = false;
+        localStorage.setItem(HIDE_KEY,"0");
+        /* restore latest known value; wallet refresh can update it afterward */
+      }else{
+        realText = balance.textContent.trim();
+        hidden = true;
+        localStorage.setItem(HIDE_KEY,"1");
+      }
+      render();
+    };
+
+    balance.insertAdjacentElement("afterend",btn);
+    render();
+
+    /* Preserve privacy when existing wallet code refreshes the amount. */
+    const obs = new MutationObserver(function(){
+      const t=balance.textContent.trim();
+      if(hidden){
+        if(t !== "₦••••••"){
+          realText=t;
+          balance.textContent="₦••••••";
         }
+      }else if(t && t !== "₦••••••"){
+        realText=t;
+      }
+    });
+    obs.observe(balance,{childList:true,subtree:true,characterData:true});
+  }
+
+  function closeDashboardLayer(){
+    const selectors=[
+      "#lpFundSuccess","#fundWalletOverlay",
+      "#lpReceiptOverlay","#receiptOverlay",
+      "#transactionHistoryOverlay","#historyOverlay",
+      ".transaction-history-overlay",".receipt-overlay"
+    ];
+    for(const s of selectors){
+      const nodes=Array.from(document.querySelectorAll(s)).reverse();
+      for(const node of nodes){
+        const cs=getComputedStyle(node);
+        if(cs.display==="none" || cs.visibility==="hidden") continue;
+        const close=node.querySelector('[data-close],.close,.close-btn,.modal-close,[aria-label="Close"]');
+        if(close) close.click(); else node.remove();
+        return true;
       }
     }
     return false;
   }
 
-  function armDashboardHistory() {
-    try {
-      const st = history.state || {};
-      if (!st[STATE_KEY]) {
-        history.replaceState(Object.assign({}, st, {[STATE_KEY]: "root"}), "", location.href);
-        history.pushState({[STATE_KEY]: "guard"}, "", location.href);
+  function setupBackFlow(){
+    try{
+      if(!history.state || !history.state[ROOT_KEY]){
+        history.replaceState({...(history.state||{}),[ROOT_KEY]:"home"},"",location.href);
+        history.pushState({[ROOT_KEY]:"home-guard"},"",location.href);
       }
-    } catch (_) {}
+    }catch(_){}
+
+    window.addEventListener("popstate",function(){
+      /* Back first closes an in-dashboard layer. Otherwise remain on Home.
+         Login is still reached only through the app's explicit logout flow. */
+      closeDashboardLayer();
+      try{
+        history.pushState({[ROOT_KEY]:"home-guard"},"",location.href);
+      }catch(_){}
+      window.scrollTo({top:0,behavior:"smooth"});
+    });
   }
 
-  window.addEventListener("popstate", function () {
-    if (handlingPop) return;
-    handlingPop = true;
+  function init(){
+    compactRecentTransactions();
+    setupBalancePrivacy();
+    setupBackFlow();
 
-    const closed = closeTopDashboardLayer();
-
-    /* Keep Back inside the authenticated dashboard instead of falling
-       straight through to the previous login page. */
-    if (!closed) {
-      try {
-        history.pushState({[STATE_KEY]: "guard"}, "", location.href);
-        window.scrollTo({top: 0, behavior: "smooth"});
-      } catch (_) {}
-    } else {
-      try {
-        history.pushState({[STATE_KEY]: "guard"}, "", location.href);
-      } catch (_) {}
+    const tx=document.querySelector(".transactions");
+    if(tx){
+      new MutationObserver(compactRecentTransactions)
+        .observe(tx,{childList:true,subtree:false});
     }
 
-    setTimeout(() => { handlingPop = false; }, 80);
-  });
+    /* Balance can be rendered asynchronously after authentication. */
+    let tries=0;
+    const timer=setInterval(function(){
+      setupBalancePrivacy();
+      if(++tries>=20 || document.getElementById("lpBalancePrivacyBtn")) clearInterval(timer);
+    },350);
+  }
 
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", armDashboardHistory, {once:true});
-  } else {
-    armDashboardHistory();
+  if(document.readyState==="loading"){
+    document.addEventListener("DOMContentLoaded",init,{once:true});
+  }else{
+    init();
   }
 })();
 </script>
