@@ -13,6 +13,13 @@ export default async function handler(req, res) {
   const supabaseSecretKey = process.env.SUPABASE_SECRET_KEY;
   const vtpassApiKey = process.env.VTPASS_API_KEY;
   const vtpassSecretKey = process.env.VTPASS_SECRET_KEY;
+  const vtpassPublicKey = process.env.VTPASS_PUBLIC_KEY || vtpassSecretKey;
+  const vtpassBaseUrl = String(
+    process.env.VTPASS_BASE_URL ||
+    (String(process.env.VTPASS_ENV || "").toLowerCase() === "live"
+      ? "https://vtpass.com/api"
+      : "https://sandbox.vtpass.com/api")
+  ).replace(/\/+$/, "");
 
   if (!allowedTvServices.has(serviceID)) {
     return res.status(400).json({ error: "Invalid TV provider" });
@@ -35,11 +42,11 @@ export default async function handler(req, res) {
     }
 
     const providerResponse = await fetch(
-      `https://sandbox.vtpass.com/api/service-variations?serviceID=${encodeURIComponent(serviceID)}`,
+      `${vtpassBaseUrl}/service-variations?serviceID=${encodeURIComponent(serviceID)}`,
       {
         headers: {
           "api-key": vtpassApiKey,
-          "secret-key": vtpassSecretKey,
+          "public-key": vtpassPublicKey,
           Accept: "application/json"
         }
       }
