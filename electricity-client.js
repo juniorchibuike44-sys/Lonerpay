@@ -8,6 +8,7 @@
     ["Benin Electric (BEDC)", "benin-electric"],
     ["Kaduna Electric (KAEDCO)", "kaduna-electric"],
     ["Kano Electric (KEDCO)", "kano-electric"],
+    ["Port Harcourt Electric (PHED)", "portharcourt-electric"],
     ["Jos Electric (JED)", "jos-electric"],
     ["Yola Electric (YEDC)", "yola-electric"],
     ["Aba Electric", "aba-electric"]
@@ -153,7 +154,6 @@
             variation_code: verifiedDetails.type,
             amount: paymentAmount,
             phone: phoneNumber,
-            email: "sandbox@sandbox.com",
             pin: pin.value
           })
         });
