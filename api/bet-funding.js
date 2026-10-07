@@ -62,12 +62,14 @@ export default async function handler(req, res) {
   }
 let debitCompleted = false; 
   let user = null;
-let reference = null; 
+let reference = null;
+let pairgateReference = null;
   let pairgateSubmitted = false; 
   try {
-    const { provider_id, amount, customer_id, recipient_name, pin, request_id } = req.body; 
+    const { provider_id, amount, customer_id, recipient_name, pin, request_id } = req.body || {};
+    const normalizedProvider = String(provider_id || "").trim().toLowerCase();
 
-   if (!provider_id || !amount || !customer_id || !pin) { 
+   if (!normalizedProvider || !amount || !customer_id || !pin || !request_id) {
       return res.status(400).json({
         success: false,
         message: "Provider, amount and customer ID are required"
@@ -154,7 +156,24 @@ if (!storedPinHash || !verifyStoredPin(String(pin), storedPinHash)) {
       });
     }
 
-reference = request_id; 
+reference = String(request_id).trim();
+
+if (reference.length < 8 || reference.length > 100) {
+  return res.status(400).json({ success: false, message: "Invalid transaction reference" });
+}
+
+// Never debit for a provider that Pairgate does not currently advertise.
+const providersResponse = await fetch("https://pairgate.com/api/v1/providers/bet", {
+  headers: { Authorization: `Bearer ${apiKey}`, Accept: "application/json" }
+});
+const providersData = await providersResponse.json().catch(() => ({}));
+const availableProviders = Array.isArray(providersData?.data) ? providersData.data : [];
+if (!providersResponse.ok || providersData?.status !== "success") {
+  return res.status(503).json({ success: false, message: "Betting providers are temporarily unavailable. Your wallet was not debited." });
+}
+if (!availableProviders.some(item => String(item?.slug || "").toLowerCase() === normalizedProvider)) {
+  return res.status(422).json({ success: false, message: "This betting platform is not currently supported. Your wallet was not debited." });
+}
     
 const debit = await callRpc("debit_wallet", {
   p_user_id: user.id,
@@ -162,7 +181,7 @@ const debit = await callRpc("debit_wallet", {
   p_request_id: reference,
   p_service: "bet-funding",
   p_details: {
-    provider_id: provider_id,
+    provider_id: normalizedProvider,
     customer_id: String(customer_id),
     recipient_name: recipient_name || ""
   }
@@ -187,7 +206,7 @@ debitCompleted = true;
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
-          provider_id,
+          provider_id: normalizedProvider,
           amount: numericAmount,
           customer_id: String(customer_id),
           recipient_name: recipient_name || "LonerPay Customer",
@@ -196,10 +215,10 @@ debitCompleted = true;
       }
     );
 
-    const data = await response.json();
-    pairgateSubmitted = response.ok && data.status === "success"; 
+    const data = await response.json().catch(() => ({}));
+    pairgateSubmitted = response.ok && data?.status === "success" && data?.data?.status === true;
 
-    if (!response.ok || data.status !== "success") {
+    if (!pairgateSubmitted) {
       if (debitCompleted) {
   await callRpc("refund_wallet", {
     p_user_id: user.id,
@@ -215,7 +234,7 @@ debitCompleted = true;
       });
     }
 
-   const pairgateReference = data.data?.reference_code;  
+   pairgateReference = data.data?.reference_code || data.reference_code;
     if (!pairgateReference) {
   throw new Error("Pairgate reference code missing");
     } 
@@ -230,13 +249,19 @@ debitCompleted = true;
   }
 );
 
-const statusData = await statusResponse.json(); 
+const statusData = await statusResponse.json().catch(() => ({}));
     console.log("Pairgate status response:", JSON.stringify(statusData)); 
     if (!statusResponse.ok) {
-  throw new Error("Could not verify Pairgate transaction status");
+      return res.status(202).json({
+        success: false,
+        pending: true,
+        message: "Bet funding was submitted and is awaiting confirmation",
+        reference,
+        pairgate_reference: pairgateReference
+      });
     } 
     console.log("FULL Pairgate Response:", JSON.stringify(statusData, null, 2));
-const rawStatus = statusData.data?.status || statusData.status || statusData.data?.data?.status;
+const rawStatus = statusData.data?.status || statusData.data?.data?.status;
 let  finalStatus = (rawStatus || '').toString().toLowerCase().trim();
 console.log("Extracted finalStatus:", finalStatus, "rawStatus:", rawStatus); 
 console.log("Pairgate finalStatus normalized:", finalStatus, "raw:", statusData);
@@ -299,12 +324,20 @@ if (finalStatus === "successful" || finalStatus === "success" || finalStatus ===
     success: true,
     message: "Bet funding successful",
     reference,
+    pairgate_reference: pairgateReference,
     data: data.data
   });
 }
 
-// Only throw if truly unknown
-throw new Error(`Unexpected Pairgate status: ${finalStatus}`); 
+// A submitted transaction with an unfamiliar or empty state must remain pending.
+// Treating it as failed can show the wrong result after the betting wallet was credited.
+return res.status(202).json({
+  success: false,
+  pending: true,
+  message: "Bet funding was submitted and is awaiting final confirmation",
+  reference,
+  pairgate_reference: pairgateReference
+});
 
   } catch (error) {
     console.error("Bet funding error:", error);
@@ -319,7 +352,16 @@ if (debitCompleted && !pairgateSubmitted) {
   } catch (refundError) {
     console.error("Bet funding refund error:", refundError);
   }
-} 
+}
+if (debitCompleted && pairgateSubmitted) {
+  return res.status(202).json({
+    success: false,
+    pending: true,
+    message: "Bet funding was submitted and is awaiting final confirmation",
+    reference,
+    pairgate_reference: pairgateReference
+  });
+}
     return res.status(500).json({
       success: false,
       message: "Unable to process bet funding"
