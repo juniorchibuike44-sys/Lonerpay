@@ -110,6 +110,7 @@ const electricityServices = new Set([
   "jos-electric",
   "kaduna-electric",
   "kano-electric",
+  "portharcourt-electric",
   "yola-electric"
 ]);
 
@@ -173,6 +174,16 @@ export default async function handler(
   const vtpassSecretKey =
     process.env.VTPASS_SECRET_KEY;
 
+  const vtpassPublicKey =
+    process.env.VTPASS_PUBLIC_KEY || vtpassSecretKey;
+
+  const vtpassBaseUrl = String(
+    process.env.VTPASS_BASE_URL ||
+    (String(process.env.VTPASS_ENV || "").toLowerCase() === "live"
+      ? "https://vtpass.com/api"
+      : "https://sandbox.vtpass.com/api")
+  ).replace(/\/+$/, "");
+
   const authorization =
     req.headers.authorization;
 
@@ -216,6 +227,9 @@ export default async function handler(
 
   const paymentAmount =
     Number(amount);
+
+  const providerServiceID =
+    serviceID === "9mobile" ? "etisalat" : serviceID;
 
 
   if (
@@ -288,6 +302,10 @@ export default async function handler(
 
   let debitCompleted = false;
 
+  let providerRequestStarted = false;
+
+  let providerResponseReceived = false;
+
 
   /* =========================
      SUPABASE RPC
@@ -343,6 +361,74 @@ export default async function handler(
     return Array.isArray(data)
       ? data[0]
       : data;
+  }
+
+  async function updateTransaction(status, providerData = {}) {
+    if (!user?.id || !requestId) return;
+    try {
+      await fetch(
+        `${supabaseUrl}/rest/v1/wallet_transactions?user_id=eq.${encodeURIComponent(user.id)}&request_id=eq.${encodeURIComponent(requestId)}`,
+        {
+          method: "PATCH",
+          headers: {
+            apikey: secretKey,
+            Authorization: `Bearer ${secretKey}`,
+            "Content-Type": "application/json",
+            Prefer: "return=minimal"
+          },
+          body: JSON.stringify({
+            status,
+            details: {
+              provider: "vtpass",
+              serviceID,
+              billersCode,
+              variation_code: variation_code || "",
+              phone: phone || "",
+              provider_code: String(providerData?.code || ""),
+              provider_status: String(providerData?.content?.transactions?.status || ""),
+              provider_reference: String(providerData?.requestId || providerData?.request_id || ""),
+              purchased_code: String(providerData?.purchased_code || providerData?.token || "")
+            },
+            updated_at: new Date().toISOString()
+          })
+        }
+      );
+    } catch (error) {
+      console.error("TRANSACTION STATUS UPDATE ERROR:", error);
+    }
+  }
+
+  async function validateFixedVariation() {
+    if (!(dataServices.has(serviceID) || tvServices.has(serviceID))) return;
+    const response = await fetch(
+      `${vtpassBaseUrl}/service-variations?serviceID=${encodeURIComponent(serviceID)}`,
+      {
+        headers: {
+          "api-key": vtpassApiKey,
+          "public-key": vtpassPublicKey,
+          Accept: "application/json"
+        },
+        cache: "no-store"
+      }
+    );
+    const data = await response.json().catch(() => ({}));
+    const variations = Array.isArray(data?.content?.variations)
+      ? data.content.variations
+      : [];
+    const selected = variations.find(item =>
+      String(item?.variation_code || "") === String(variation_code || "")
+    );
+    const expectedAmount = Number(selected?.variation_amount);
+    if (!response.ok || !selected || !Number.isFinite(expectedAmount) || expectedAmount <= 0) {
+      const error = new Error("The selected plan is no longer available. Refresh the plans and try again.");
+      error.statusCode = 409;
+      throw error;
+    }
+    if (Math.abs(expectedAmount - paymentAmount) > 0.01) {
+      const error = new Error("The plan price has changed. Refresh the plans before payment.");
+      error.statusCode = 409;
+      throw error;
+    }
   }
 
 
@@ -674,6 +760,8 @@ export default async function handler(
     requestId =
       createRequestId();
 
+    await validateFixedVariation();
+
 
     /* =========================
        ELECTRICITY VERIFY
@@ -686,7 +774,7 @@ export default async function handler(
     ) {
       const verifyResponse =
         await fetch(
-          "https://sandbox.vtpass.com/api/merchant-verify",
+          `${vtpassBaseUrl}/merchant-verify`,
           {
             method:
               "POST",
@@ -786,7 +874,7 @@ export default async function handler(
     ) {
       const verifyResponse =
         await fetch(
-          "https://sandbox.vtpass.com/api/merchant-verify",
+          `${vtpassBaseUrl}/merchant-verify`,
           {
             method:
               "POST",
@@ -915,7 +1003,7 @@ export default async function handler(
       request_id:
         requestId,
 
-      serviceID,
+      serviceID: providerServiceID,
 
       billersCode,
 
@@ -929,9 +1017,7 @@ export default async function handler(
         phone ||
         billersCode,
 
-      email:
-        email ||
-        "sandbox@sandbox.com"
+      ...(email && !/^sandbox@/i.test(String(email)) ? { email: String(email) } : {})
     };
 
 
@@ -972,9 +1058,11 @@ export default async function handler(
        SEND PAYMENT TO VTPASS
     ========================= */
 
+    providerRequestStarted = true;
+
     const vtpassResponse =
       await fetch(
-        "https://sandbox.vtpass.com/api/pay",
+        `${vtpassBaseUrl}/pay`,
         {
           method:
             "POST",
@@ -996,6 +1084,8 @@ export default async function handler(
             )
         }
       );
+
+    providerResponseReceived = true;
 
 
     const responseText =
@@ -1027,14 +1117,23 @@ export default async function handler(
       );
 
 
-    const providerAccepted =
+    const providerStatus = String(
+      vtpassData?.content?.transactions?.status || ""
+    ).toLowerCase();
+
+    const delivered =
       vtpassResponse.ok &&
-      (
-        providerCode ===
-          "000" ||
-        providerCode ===
-          "099"
-      );
+      providerCode === "000" &&
+      providerStatus === "delivered";
+
+    const pending =
+      providerCode === "099" ||
+      (providerCode === "000" && providerStatus !== "delivered");
+
+    const definitiveFailureCodes = new Set([
+      "010", "011", "012", "013", "014", "015", "016", "017",
+      "018", "032", "034", "035", "040", "083", "087", "091"
+    ]);
 
 
     /* =========================
@@ -1043,7 +1142,7 @@ export default async function handler(
     ========================= */
 
     if (
-      !providerAccepted
+      definitiveFailureCodes.has(providerCode)
     ) {
 
       const refund =
@@ -1054,6 +1153,8 @@ export default async function handler(
             ?.message ||
           "VTpass rejected the payment"
         );
+
+      await updateTransaction("refunded", vtpassData);
 
 
       return res
@@ -1089,30 +1190,40 @@ export default async function handler(
         });
     }
 
+    if (delivered) {
+      await updateTransaction("successful", vtpassData);
+      return res.status(200).json({
+        ...vtpassData,
+        request_id: requestId,
+        pending: false,
+        wallet: {
+          balance: Number(debit.new_balance),
+          transaction_id: debit.transaction_id
+        }
+      });
+    }
+
+    // VTpass requires every unclear, unexpected, timeout-like, 099, initiated
+    // or pending response to be treated as pending and requeried. Never refund
+    // here because the provider may still deliver the service.
+    await updateTransaction("pending", vtpassData);
+
+    return res.status(202).json({
+      ...vtpassData,
+      code: providerCode || "099",
+      request_id: requestId,
+      pending: true,
+      message: vtpassData?.response_description || "Transaction is processing",
+      wallet: {
+        balance: Number(debit.new_balance),
+        transaction_id: debit.transaction_id
+      }
+    });
+
 
     /* =========================
        SUCCESS / PENDING
     ========================= */
-
-    return res
-      .status(200)
-      .json({
-        ...vtpassData,
-
-        request_id:
-          requestId,
-
-        wallet: {
-          balance:
-            Number(
-              debit.new_balance
-            ),
-
-          transaction_id:
-            debit.transaction_id
-        }
-      });
-
 
   } catch (error) {
 
@@ -1122,14 +1233,33 @@ export default async function handler(
     );
 
 
-    const refund =
-      await refundWallet(
-        error.message
-      );
+    if (debitCompleted && providerRequestStarted && !providerResponseReceived) {
+      await updateTransaction("pending", {
+        code: "099",
+        response_description: error.message
+      });
+      return res.status(202).json({
+        error: "Provider response is pending confirmation",
+        message: "The request may still be processing. Check transaction history before trying again.",
+        request_id: requestId,
+        pending: true,
+        refunded: false
+      });
+    }
+
+    if (!debitCompleted) {
+      return res.status(Number(error?.statusCode) || 500).json({
+        error: error.message || "Payment validation failed",
+        request_id: requestId || null,
+        refunded: false
+      });
+    }
+
+    const refund = await refundWallet(error.message);
 
 
     return res
-      .status(500)
+      .status(Number(error?.statusCode) || 500)
       .json({
         error:
           "Secure payment failed",
