@@ -17,7 +17,7 @@ export default async function handler(req, res) {
     }
 
     const response = await fetch(
-     "https://pairgate.com/api/v1/providers/betting", 
+     "https://pairgate.com/api/v1/providers/bet",
       {
         method: "GET",
         headers: {
@@ -39,7 +39,7 @@ console.log("Pairgate response:", JSON.stringify(data));
 
     return res.status(200).json({
       success: true,
-      providers: data.data || []
+      providers: Array.isArray(data.data) ? data.data : []
     });
 
   } catch (error) {
