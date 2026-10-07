@@ -181,6 +181,7 @@ document.addEventListener("DOMContentLoaded", function () {
           <button id="lpWelcomeUnlock" type="button" style="width:100%;border:0;border-radius:15px;background:#0863d8;color:white;padding:17px;font-size:16px;font-weight:bold">Unlock with phone security</button>
           <p id="lpWelcomeHelp" style="color:#62718a;font-size:12px;line-height:1.6"></p>
           <p id="lpWelcomeError" role="status" aria-live="polite" style="min-height:22px;color:#b42318;font-size:13px;line-height:1.5"></p>
+          <button id="lpWelcomeSetupPin" type="button" style="display:none;width:100%;background:#eef5ff;border:1px solid #b9d4f7;border-radius:15px;color:#0863d8;padding:15px;font-size:14px;font-weight:bold;margin-bottom:12px">Set up 6-digit login PIN</button>
           <button id="lpWelcomePassword" type="button" style="width:100%;background:white;border:1px solid #d8e2ef;border-radius:15px;color:#12233e;padding:15px;font-size:14px;font-weight:bold">Use email and password</button>
           <button id="lpWelcomeSwitch" type="button" style="border:0;background:transparent;color:#62718a;padding:20px;font-size:13px">Use another account</button>
         </div>`;
@@ -260,6 +261,12 @@ document.addEventListener("DOMContentLoaded", function () {
         window.showModal("login");
       };
 
+      welcomeScreen.querySelector("#lpWelcomeSetupPin").onclick = () => {
+        if (passkeyBusy || pinBusy) return;
+        forcePinSetup = true;
+        window.showModal("login");
+      };
+
       welcomeScreen.querySelector("#lpWelcomeSwitch").onclick = () => {
         if (passkeyBusy || pinBusy) return;
 
@@ -280,6 +287,9 @@ document.addEventListener("DOMContentLoaded", function () {
 
     welcomeScreen.querySelector("#lpLoginPinForm").hidden =
       remembered?.hasLoginPin !== true;
+
+    const setupPin = welcomeScreen.querySelector("#lpWelcomeSetupPin");
+    setupPin.style.display = remembered?.hasLoginPin === true ? "none" : "block";
 
     const unlock = welcomeScreen.querySelector("#lpWelcomeUnlock");
     unlock.hidden = !supportsPasskeys();
