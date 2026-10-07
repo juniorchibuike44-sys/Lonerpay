@@ -37,6 +37,30 @@ async function refreshSecureTransactions() {
       ? data.transactions
       : [];
 
+    if (!refreshSecureTransactions.requerying) {
+      const pending = transactions.filter(transaction =>
+        String(transaction.status || "").toLowerCase() === "pending" &&
+        /^\d{12}/.test(String(transaction.request_id || ""))
+      ).slice(0, 3);
+      if (pending.length) {
+        refreshSecureTransactions.requerying = true;
+        try {
+          const results = await Promise.all(pending.map(transaction => fetch("/api/vtpass-requery", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
+            body: JSON.stringify({ request_id: transaction.request_id })
+          }).then(response => response.json().catch(() => ({})))));
+          if (results.some(result => result.resolved)) {
+            if (typeof window.refreshSecureWallet === "function") await window.refreshSecureWallet();
+            refreshSecureTransactions.requerying = false;
+            return refreshSecureTransactions();
+          }
+        } finally {
+          refreshSecureTransactions.requerying = false;
+        }
+      }
+    }
+
     transactionsBox.innerHTML = "<h2>Recent Transactions</h2>";
 
     if (!transactions.length) {
