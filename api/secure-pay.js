@@ -184,6 +184,10 @@ export default async function handler(
       : "https://sandbox.vtpass.com/api")
   ).replace(/\/+$/, "");
 
+  const vtpassIsLive =
+    String(process.env.VTPASS_ENV || "").toLowerCase() === "live" ||
+    /^https:\/\/vtpass\.com\/api\/?$/i.test(vtpassBaseUrl);
+
   const authorization =
     req.headers.authorization;
 
@@ -253,6 +257,35 @@ export default async function handler(
     return res.status(400).json({
       error: "Invalid service"
     });
+  }
+
+  // Prevent confusing debits/refunds while testing. VTpass sandbox deliberately
+  // fails ordinary customer details and only accepts its documented simulators.
+  if (!vtpassIsLive) {
+    if ((airtimeServices.has(serviceID) || dataServices.has(serviceID)) && billersCode !== "08011111111") {
+      return res.status(400).json({
+        error: "VTpass test mode is active. Use 08011111111 for a successful airtime or data test. Your wallet was not debited.",
+        sandbox: true,
+        refunded: false
+      });
+    }
+    if (electricityServices.has(serviceID)) {
+      const expectedMeter = variation_code === "postpaid" ? "1010101010101" : "1111111111111";
+      if (billersCode !== expectedMeter) {
+        return res.status(400).json({
+          error: `VTpass test mode is active. Use ${expectedMeter} for a successful ${variation_code || "prepaid"} meter test. Your wallet was not debited.`,
+          sandbox: true,
+          refunded: false
+        });
+      }
+    }
+    if (tvServices.has(serviceID) && billersCode !== "1212121212") {
+      return res.status(400).json({
+        error: "VTpass test mode is active. Use 1212121212 for a successful TV decoder test. Your wallet was not debited.",
+        sandbox: true,
+        refunded: false
+      });
+    }
   }
 
 
