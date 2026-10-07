@@ -126,3 +126,10 @@ function removeDemoFundsControl() {
 
 removeDemoFundsControl();
 setTimeout(removeDemoFundsControl, 500); 
+// Open the dedicated gift-card experience instead of the legacy alert-only
+// dashboard popup. The page performs no wallet debit until a provider adapter
+// is configured and confirms a live quote.
+window.openGiftCards = function openGiftCardsPage() {
+    window.location.href = "gift-cards.html";
+};
+
