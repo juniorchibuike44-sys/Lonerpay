@@ -12,6 +12,12 @@ export default async function handler(req, res) {
   const supabaseSecretKey = process.env.SUPABASE_SECRET_KEY;
   const vtpassApiKey = process.env.VTPASS_API_KEY;
   const vtpassSecretKey = process.env.VTPASS_SECRET_KEY;
+  const vtpassBaseUrl = String(
+    process.env.VTPASS_BASE_URL ||
+    (String(process.env.VTPASS_ENV || "").toLowerCase() === "live"
+      ? "https://vtpass.com/api"
+      : "https://sandbox.vtpass.com/api")
+  ).replace(/\/+$/, "");
   const serviceID = String(req.body?.serviceID || "");
   const billersCode = String(req.body?.billersCode || "").trim();
 
@@ -41,7 +47,7 @@ export default async function handler(req, res) {
     }
 
     const providerResponse = await fetch(
-      "https://sandbox.vtpass.com/api/merchant-verify",
+      `${vtpassBaseUrl}/merchant-verify`,
       {
         method: "POST",
         headers: {
