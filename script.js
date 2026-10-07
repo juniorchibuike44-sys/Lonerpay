@@ -368,8 +368,13 @@ document.addEventListener("DOMContentLoaded", function () {
         { action: "status" },
         session.access_token
       );
-    } catch (_) {
-      return;
+    } catch (error) {
+      // Do not silently skip mandatory PIN setup. If the backend is not ready,
+      // keep the user on the login screen and show the real safe error message.
+      throw new Error(
+        error?.message ||
+        "Login PIN setup could not be loaded. Please try again."
+      );
     }
 
     if (status.has_pin && !forcePinSetup) {
@@ -394,7 +399,7 @@ document.addEventListener("DOMContentLoaded", function () {
           <input id="lpConfirmLoginPin" type="password" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="new-password" required>
           <p id="lpPinSetupError" role="status" style="min-height:20px;color:#b42318;font-size:13px;line-height:1.5"></p>
           <button type="submit" style="background:#0863d8;color:white;border:0;font-weight:bold">Save login PIN</button>
-          <button id="lpPinSetupSkip" type="button" style="margin-top:12px;background:transparent;color:#62718a;border:0">Maybe later</button>
+          <p style="margin-top:14px;color:#62718a;font-size:12px;line-height:1.5">For your security, complete this step before opening your dashboard.</p>
         </form>`;
 
       screen.querySelectorAll("input").forEach(input => {
@@ -421,9 +426,6 @@ document.addEventListener("DOMContentLoaded", function () {
         resolve();
       };
 
-      const skip = screen.querySelector("#lpPinSetupSkip");
-      skip.onclick = finish;
-
       screen.querySelector("form").onsubmit = async e => {
         e.preventDefault();
 
@@ -445,7 +447,6 @@ document.addEventListener("DOMContentLoaded", function () {
         }
 
         button.disabled = true;
-        skip.disabled = true;
         button.textContent = "Saving…";
         error.textContent = "";
 
@@ -467,7 +468,6 @@ document.addEventListener("DOMContentLoaded", function () {
           confirm.value = "";
         } finally {
           button.disabled = false;
-          skip.disabled = false;
           button.textContent = "Save login PIN";
         }
       };
