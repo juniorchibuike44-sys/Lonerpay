@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#061a37">
+  <title>Book Flights | LonerPay</title>
+  <style>
+    :root{--navy:#071a35;--blue:#0867df;--blue2:#2490ff;--ink:#12243c;--muted:#66758a;--line:#dce5f0;--bg:#f3f7fc;--white:#fff;--green:#079760;--shadow:0 14px 38px rgba(8,31,65,.12)}
+    *{box-sizing:border-box}html,body{margin:0;min-height:100%;overflow-x:hidden}body{font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;background:var(--bg);color:var(--ink)}
+    button,input,select{font:inherit}.app{width:100%;max-width:760px;min-height:100vh;margin:auto;padding-bottom:122px;background:linear-gradient(180deg,#eaf3ff 0,#f6f9fd 280px)}
+    .hero{padding:calc(18px + env(safe-area-inset-top)) 20px 92px;color:#fff;background:radial-gradient(circle at 88% 8%,rgba(51,149,255,.8),transparent 34%),linear-gradient(145deg,#06172f,#0b3d79);border-radius:0 0 34px 34px;position:relative;overflow:hidden}
+    .hero:after{content:"";position:absolute;width:210px;height:210px;border:1px solid rgba(255,255,255,.12);border-radius:50%;right:-70px;bottom:-120px}
+    .top{display:flex;align-items:center;gap:14px}.back{width:45px;height:45px;border:1px solid rgba(255,255,255,.25);border-radius:15px;background:rgba(255,255,255,.12);color:#fff;font-size:25px}.title h1{font-size:24px;margin:0}.title p{margin:3px 0 0;color:#c9daf1;font-size:14px}.shield{margin-left:auto;border-radius:999px;background:rgba(16,185,129,.16);padding:8px 11px;color:#bff8df;font-size:12px;font-weight:800}
+    .route-art{display:flex;align-items:center;justify-content:center;gap:18px;margin:27px 0 0}.route-art span{font-weight:850;font-size:13px;letter-spacing:.06em}.plane{font-size:36px;transform:rotate(-8deg);filter:drop-shadow(0 7px 8px rgba(0,0,0,.22))}
+    main{margin:-65px 16px 0;position:relative;z-index:2}.card{background:#fff;border:1px solid rgba(213,224,237,.9);border-radius:25px;padding:18px;box-shadow:var(--shadow);min-width:0}
+    .tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));padding:4px;background:#edf3fb;border-radius:15px;margin-bottom:20px}.tab{border:0;background:transparent;padding:11px 5px;border-radius:12px;color:#607086;font-weight:750;font-size:13px}.tab.active{background:#fff;color:var(--blue);box-shadow:0 4px 12px rgba(16,47,88,.1)}
+    .field{display:block;margin-top:15px;min-width:0}.field>span{display:block;margin:0 0 7px;font-size:13px;font-weight:800;color:#3d4e65}.control{width:100%;min-width:0;border:1.5px solid var(--line);background:#fbfdff;border-radius:15px;padding:15px 14px;color:var(--ink);outline:0}.control:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(8,103,223,.1)}
+    .route{display:grid;grid-template-columns:minmax(0,1fr) 42px minmax(0,1fr);gap:8px;align-items:end}.swap{height:48px;width:42px;border:0;border-radius:14px;background:#e9f3ff;color:var(--blue);font-size:20px;font-weight:900;margin-bottom:0}.route .field{min-width:0}.route input{font-size:14px}
+    .dates{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.check{display:flex;align-items:center;gap:10px;margin:18px 0 5px;color:#506077;font-size:13px}.check input{width:19px;height:19px;accent-color:var(--blue)}
+    .primary{width:100%;border:0;border-radius:16px;padding:16px;margin-top:18px;background:linear-gradient(135deg,var(--blue),var(--blue2));color:#fff;font-weight:850;font-size:16px;box-shadow:0 10px 22px rgba(8,103,223,.23)}.primary:active{transform:translateY(1px)}
+    .section{margin:22px 4px}.section h2{font-size:18px;margin:0 0 13px}.benefits{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.benefit{background:#fff;border:1px solid var(--line);border-radius:17px;padding:14px 10px;text-align:center;font-size:12px;color:#586980}.benefit b{display:block;color:var(--ink);font-size:13px;margin:6px 0 2px}.benefit i{font-style:normal;font-size:23px}
+    .notice{display:flex;gap:12px;background:#eef7ff;border:1px solid #cee7ff;color:#315477;border-radius:18px;padding:15px;font-size:12px;line-height:1.5}.notice strong{display:block;color:#153555;margin-bottom:2px}.notice .icon{font-size:22px}
+    .sheet{position:fixed;inset:0;z-index:30;display:none;align-items:flex-end;background:rgba(3,16,34,.62);backdrop-filter:blur(3px)}.sheet.open{display:flex}.panel{width:100%;max-width:760px;margin:auto;background:#fff;border-radius:28px 28px 0 0;padding:12px 20px calc(24px + env(safe-area-inset-bottom));animation:up .24s ease}.handle{width:48px;height:5px;border-radius:9px;background:#d9e0e9;margin:0 auto 17px}.panel h2{margin:0 0 4px;font-size:22px}.panel>p{color:var(--muted);margin:0 0 18px}.summary{border:1px solid var(--line);background:#f8fbff;border-radius:18px;padding:16px}.summary-row{display:flex;justify-content:space-between;gap:20px;padding:10px 0;border-bottom:1px solid #e6edf5;font-size:14px}.summary-row:last-child{border:0}.summary-row span{color:var(--muted)}.summary-row b{text-align:right}.panel-actions{display:grid;grid-template-columns:1fr 2fr;gap:10px;margin-top:15px}.secondary{border:1px solid var(--line);border-radius:15px;background:#fff;font-weight:800}.panel-actions .primary{margin:0}.provider-note{margin-top:13px!important;font-size:12px;text-align:center}
+    .toast{position:fixed;left:50%;bottom:24px;z-index:50;width:calc(100% - 32px);max-width:520px;transform:translate(-50%,130%);opacity:0;background:#071a35;color:#fff;border-radius:16px;padding:14px 16px;box-shadow:0 14px 38px rgba(0,0,0,.25);font-size:13px;font-weight:700;line-height:1.4;transition:.25s}.toast.show{transform:translate(-50%,0);opacity:1}@keyframes up{from{transform:translateY(50px);opacity:.5}}
+    @media(max-width:430px){.hero{padding-left:16px;padding-right:16px}.shield{display:none}main{margin-left:12px;margin-right:12px}.card{padding:15px}.route{grid-template-columns:minmax(0,1fr) 38px minmax(0,1fr);gap:6px}.swap{width:38px}.control{padding:14px 10px}.options{grid-template-columns:1fr}.benefit{padding:12px 5px}.benefit b{font-size:12px}}
+  </style>
+</head>
+<body>
+<div class="app">
+  <header class="hero">
+    <div class="top"><button class="back" type="button" onclick="history.back()" aria-label="Go back">‹</button><div class="title"><h1>Book Flights</h1><p>Local and international travel</p></div><span class="shield">✓ Secure booking</span></div>
+    <div class="route-art"><span>LOS</span><span class="plane">✈</span><span>WORLDWIDE</span></div>
+  </header>
+  <main>
+    <form class="card" id="flightForm">
+      <div class="tabs" aria-label="Trip type"><button type="button" class="tab active" data-trip="round">Round trip</button><button type="button" class="tab" data-trip="oneway">One way</button><button type="button" class="tab" data-trip="multi">Multi-city</button></div>
+      <div class="route">
+        <label class="field"><span>From</span><input class="control" id="from" list="airports" placeholder="City or airport" autocomplete="off" required></label>
+        <button type="button" class="swap" id="swap" aria-label="Swap airports">⇄</button>
+        <label class="field"><span>To</span><input class="control" id="to" list="airports" placeholder="City or airport" autocomplete="off" required></label>
+      </div>
+      <datalist id="airports"><option value="Lagos (LOS)"><option value="Abuja (ABV)"><option value="Port Harcourt (PHC)"><option value="Kano (KAN)"><option value="Enugu (ENU)"><option value="Owerri (QOW)"><option value="Benin City (BNI)"><option value="Uyo (QUO)"><option value="Accra (ACC)"><option value="London Heathrow (LHR)"><option value="Dubai (DXB)"><option value="Johannesburg (JNB)"><option value="New York JFK (JFK)"><option value="Toronto Pearson (YYZ)"></datalist>
+      <div class="dates"><label class="field"><span>Departure</span><input class="control" type="date" id="depart" required></label><label class="field" id="returnField"><span>Return</span><input class="control" type="date" id="returnDate" required></label></div>
+      <div class="options"><label class="field"><span>Travellers</span><select class="control" id="travellers"><option value="1 Adult">1 Adult</option><option value="2 Adults">2 Adults</option><option value="2 Adults, 1 Child">2 Adults, 1 Child</option><option value="Family / group">Family / group</option></select></label><label class="field"><span>Cabin class</span><select class="control" id="cabin"><option>Economy</option><option>Premium Economy</option><option>Business</option><option>First Class</option></select></label></div>
+      <label class="check"><input type="checkbox" id="direct"> Direct flights only</label>
+      <button class="primary" type="submit">Search flights</button>
+    </form>
+    <section class="section"><h2>Travel with confidence</h2><div class="benefits"><div class="benefit"><i>🔎</i><b>Clear options</b>Compare routes</div><div class="benefit"><i>🔒</i><b>Safe checkout</b>Protected payment</div><div class="benefit"><i>🎧</i><b>Trip support</b>Help when needed</div></div></section>
+    <section class="section notice"><span class="icon">ℹ️</span><div><strong>Flight provider connection pending</strong>Search and payment will go live only after an approved flight provider is connected. LonerPay will not debit your wallet without a confirmed fare and booking reference.</div></section>
+  </main>
+</div>
+<div class="sheet" id="reviewSheet" role="dialog" aria-modal="true" aria-labelledby="reviewTitle"><div class="panel"><div class="handle"></div><h2 id="reviewTitle">Review your search</h2><p>Confirm your route and travel preferences.</p><div class="summary" id="summary"></div><div class="panel-actions"><button class="secondary" type="button" id="editSearch">Edit</button><button class="primary" type="button" id="continueSearch">Find flights</button></div><p class="provider-note">No money will be deducted at this stage.</p></div></div>
+<div class="toast" id="toast" role="status"></div>
+<script>
+  (()=>{
+    const $=s=>document.querySelector(s), tabs=[...document.querySelectorAll('.tab')]; let trip='round';
+    const depart=$('#depart'),ret=$('#returnDate'),returnField=$('#returnField');
+    const localToday=new Date(Date.now()-new Date().getTimezoneOffset()*60000).toISOString().slice(0,10);depart.min=localToday;ret.min=localToday;
+    depart.addEventListener('change',()=>{ret.min=depart.value||localToday;if(ret.value&&ret.value<depart.value)ret.value=depart.value});
+    tabs.forEach(t=>t.addEventListener('click',()=>{tabs.forEach(x=>x.classList.remove('active'));t.classList.add('active');trip=t.dataset.trip;const one=trip==='oneway';returnField.style.opacity=one?'.45':'1';ret.disabled=one;ret.required=!one;if(trip==='multi')showToast('Multi-city itineraries will be enabled with the live flight provider. You can preview a standard route now.')}));
+    $('#swap').addEventListener('click',()=>{const a=$('#from');const b=$('#to');[a.value,b.value]=[b.value,a.value]});
+    function showToast(message){const el=$('#toast');el.textContent=message;el.classList.add('show');clearTimeout(showToast.t);showToast.t=setTimeout(()=>el.classList.remove('show'),4500)}
+    function prettyDate(v){if(!v)return 'Not selected';return new Date(v+'T12:00:00').toLocaleDateString('en-NG',{day:'numeric',month:'short',year:'numeric'})}
+    $('#flightForm').addEventListener('submit',e=>{e.preventDefault();const from=$('#from').value.trim(),to=$('#to').value.trim();if(!from||!to){showToast('Please select both departure and destination airports.');return}if(from.toLowerCase()===to.toLowerCase()){showToast('Departure and destination must be different.');return}if(trip==='round'&&ret.value<depart.value){showToast('Your return date must be after your departure date.');return}const type=trip==='oneway'?'One way':trip==='multi'?'Multi-city':'Round trip';$('#summary').innerHTML=`<div class="summary-row"><span>Route</span><b>${escapeHtml(from)} → ${escapeHtml(to)}</b></div><div class="summary-row"><span>Trip</span><b>${type}</b></div><div class="summary-row"><span>Departure</span><b>${prettyDate(depart.value)}</b></div>${trip==='round'?`<div class="summary-row"><span>Return</span><b>${prettyDate(ret.value)}</b></div>`:''}<div class="summary-row"><span>Passengers</span><b>${escapeHtml($('#travellers').value)}</b></div><div class="summary-row"><span>Cabin</span><b>${escapeHtml($('#cabin').value)}</b></div>`;$('#reviewSheet').classList.add('open')});
+    function escapeHtml(v){return v.replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]))}
+    $('#editSearch').addEventListener('click',()=>$('#reviewSheet').classList.remove('open'));
+    $('#reviewSheet').addEventListener('click',e=>{if(e.target.id==='reviewSheet')e.currentTarget.classList.remove('open')});
+    $('#continueSearch').addEventListener('click',()=>{showToast('Flight search is ready for provider activation. No money was deducted.');$('#reviewSheet').classList.remove('open')});
+  })();
+</script>
+</body>
+</html>
+
