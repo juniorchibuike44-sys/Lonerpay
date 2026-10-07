@@ -133,3 +133,27 @@ window.openGiftCards = function openGiftCardsPage() {
     window.location.href = "gift-cards.html";
 };
 
+window.openFlights = function openFlightsPage() {
+    window.location.href = "flights.html";
+};
+
+function addFlightsService() {
+    const services = Array.from(document.querySelectorAll(".service"));
+    if (services.some(service => service.querySelector("h3")?.textContent.trim() === "Flights")) return;
+
+    const giftCards = services.find(service => service.querySelector("h3")?.textContent.trim() === "Gift Cards");
+    if (!giftCards) return;
+
+    const flights = document.createElement("div");
+    flights.className = "service";
+    flights.setAttribute("onclick", "openFlights()");
+    flights.innerHTML = "<div>✈️</div><h3>Flights</h3><p>Local & international</p>";
+    giftCards.insertAdjacentElement("afterend", flights);
+}
+
+if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", addFlightsService, { once: true });
+} else {
+    addFlightsService();
+}
+
