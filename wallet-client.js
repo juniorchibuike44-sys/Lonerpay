@@ -266,6 +266,26 @@ function upgradeDashboardExperience() {
     document.getElementById("lpNotify")?.addEventListener("click", () => showToast("You're all caught up. No new notifications."));
     document.getElementById("lpProfile")?.addEventListener("click", () => location.href = "profile.html");
 
+    // Add PHED to the professional electricity sheet without duplicating the
+    // large dashboard implementation. VTpass service ID: portharcourt-electric.
+    const openElectricity = window.buyElectricity;
+    if (typeof openElectricity === "function" && !openElectricity.lpPhedReady) {
+        const enhancedElectricity = function () {
+            openElectricity();
+            setTimeout(() => {
+                const select = document.querySelector(".lp-elec-provider");
+                if (select && !select.querySelector('option[value="portharcourt-electric"]')) {
+                    const option = document.createElement("option");
+                    option.value = "portharcourt-electric";
+                    option.textContent = "Port Harcourt Electric (PHED)";
+                    select.appendChild(option);
+                }
+            }, 0);
+        };
+        enhancedElectricity.lpPhedReady = true;
+        window.buyElectricity = enhancedElectricity;
+    }
+
     const token = localStorage.getItem("lonerpay_access_token");
     if (token) fetch("/api/profile", {headers:{Authorization:`Bearer ${token}`},cache:"no-store"}).then(r => r.ok ? r.json() : null).then(data => {
         const name = String(data?.name || data?.full_name || "").trim().split(/\s+/)[0];
@@ -281,4 +301,3 @@ if (document.readyState === "loading") {
 } else {
     setTimeout(upgradeDashboardExperience, 0);
 }
-
