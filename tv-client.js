@@ -174,7 +174,6 @@
             variation_code: plan.value,
             amount: paymentAmount,
             phone: phoneNumber,
-            email: "sandbox@sandbox.com",
             subscription_type: "change",
             quantity: 1,
             pin: pin.value
