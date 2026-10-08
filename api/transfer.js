@@ -598,6 +598,39 @@ export default async function handler(req, res) {
         });
     }
 
+    // Keep the wallet transaction pending until Paystack sends a signed
+    // transfer.success, transfer.failed, or transfer.reversed webhook.
+    await fetch(
+      `${supabaseUrl}/rest/v1/wallet_transactions?user_id=eq.${encodeURIComponent(
+        user.id
+      )}&request_id=eq.${encodeURIComponent(requestId)}&transaction_type=eq.debit`,
+      {
+        method: "PATCH",
+        headers: {
+          apikey: supabaseKey,
+          Authorization: `Bearer ${supabaseKey}`,
+          "Content-Type": "application/json",
+          Prefer: "return=minimal"
+        },
+        body: JSON.stringify({
+          status:
+            transferData.data?.status === "success"
+              ? "successful"
+              : "pending",
+          details: {
+            bank_code: cleanBankCode,
+            account_number: cleanAccountNumber,
+            account_name: String(account_name).trim(),
+            provider: "paystack",
+            provider_status: transferData.data?.status || "pending",
+            transfer_code: transferData.data?.transfer_code || null,
+            provider_reference: transferData.data?.reference || requestId
+          },
+          updated_at: new Date().toISOString()
+        })
+      }
+    );
+
     /*
       Paystack has accepted the transfer.
 
@@ -613,7 +646,7 @@ export default async function handler(req, res) {
       status: true,
 
       message:
-        "Transfer submitted successfully",
+        "Transfer submitted to Paystack for processing",
 
       request_id:
         requestId,

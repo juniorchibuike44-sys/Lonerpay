@@ -56,6 +56,72 @@ async function updateVirtualAccount(
 return true; 
 }
 
+async function getWalletTransfer(
+  supabaseUrl,
+  supabaseSecretKey,
+  reference
+) {
+  const response = await fetch(
+    `${supabaseUrl}/rest/v1/wallet_transactions?request_id=eq.${encodeURIComponent(
+      reference
+    )}&transaction_type=eq.debit&service=eq.bank_transfer&select=user_id,status,details&limit=1`,
+    {
+      headers: {
+        apikey: supabaseSecretKey,
+        Authorization: `Bearer ${supabaseSecretKey}`,
+      },
+      cache: "no-store",
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error("Could not find the original bank transfer");
+  }
+
+  const rows = await response.json();
+  return Array.isArray(rows) ? rows[0] : null;
+}
+
+async function updateWalletTransfer(
+  supabaseUrl,
+  supabaseSecretKey,
+  reference,
+  transaction,
+  status,
+  eventData
+) {
+  const response = await fetch(
+    `${supabaseUrl}/rest/v1/wallet_transactions?request_id=eq.${encodeURIComponent(
+      reference
+    )}&transaction_type=eq.debit&service=eq.bank_transfer`,
+    {
+      method: "PATCH",
+      headers: {
+        apikey: supabaseSecretKey,
+        Authorization: `Bearer ${supabaseSecretKey}`,
+        "Content-Type": "application/json",
+        Prefer: "return=minimal",
+      },
+      body: JSON.stringify({
+        status,
+        details: {
+          ...(transaction?.details || {}),
+          provider: "paystack",
+          provider_status: String(eventData.status || status),
+          transfer_code: eventData.transfer_code || null,
+          provider_reference: reference,
+          gateway_response: eventData.gateway_response || null,
+        },
+        updated_at: new Date().toISOString(),
+      }),
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error("Could not update the bank transfer status");
+  }
+}
+
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
@@ -100,6 +166,111 @@ export default async function handler(req, res) {
     const eventType = event.event;
     const eventData = event.data || {};
 console.log("Paystack webhook event:", eventType); 
+
+    // -----------------------------------------
+    // OUTBOUND BANK TRANSFERS
+    // Paystack transfer initiation is not final. Only these signed
+    // webhook events may mark a transfer successful or refundable.
+    // -----------------------------------------
+
+    if (
+      eventType === "transfer.success" ||
+      eventType === "transfer.failed" ||
+      eventType === "transfer.reversed"
+    ) {
+      const reference = String(eventData.reference || "").trim();
+
+      if (!reference) {
+        return res.status(200).json({
+          received: true,
+          warning: "Transfer event received without a reference",
+        });
+      }
+
+      const transaction = await getWalletTransfer(
+        supabaseUrl,
+        supabaseSecretKey,
+        reference
+      );
+
+      if (!transaction?.user_id) {
+        return res.status(200).json({
+          received: true,
+          warning: "No matching LonerPay bank transfer",
+          reference,
+        });
+      }
+
+      if (eventType === "transfer.success") {
+        await updateWalletTransfer(
+          supabaseUrl,
+          supabaseSecretKey,
+          reference,
+          transaction,
+          "successful",
+          eventData
+        );
+
+        return res.status(200).json({
+          received: true,
+          transfer: "successful",
+          reference,
+        });
+      }
+
+      // Webhooks can be retried. Never issue a second wallet refund.
+      if (String(transaction.status).toLowerCase() === "refunded") {
+        return res.status(200).json({
+          received: true,
+          transfer: "already_refunded",
+          reference,
+        });
+      }
+
+      const refundResponse = await fetch(
+        `${supabaseUrl}/rest/v1/rpc/refund_wallet`,
+        {
+          method: "POST",
+          headers: {
+            apikey: supabaseSecretKey,
+            Authorization: `Bearer ${supabaseSecretKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            p_user_id: transaction.user_id,
+            p_request_id: reference,
+            p_reason:
+              eventData.gateway_response ||
+              eventData.reason ||
+              (eventType === "transfer.reversed"
+                ? "Paystack reversed the bank transfer"
+                : "Paystack reported the bank transfer failed"),
+          }),
+        }
+      );
+
+      const refundText = await refundResponse.text();
+
+      if (!refundResponse.ok) {
+        console.error("Bank transfer refund failed:", {
+          reference,
+          status: refundResponse.status,
+          error: refundText,
+        });
+
+        return res.status(500).json({
+          error: "Bank transfer failed but wallet refund is pending",
+          reference,
+        });
+      }
+
+      return res.status(200).json({
+        received: true,
+        transfer: "refunded",
+        reference,
+      });
+    }
+
     // -----------------------------------------
     // CUSTOMER IDENTIFICATION
     // -----------------------------------------
