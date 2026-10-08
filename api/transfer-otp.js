@@ -47,8 +47,8 @@ export default async function handler(req, res) {
   // The transfer code must belong to this signed-in user's pending debit.
   const transactionResponse = await fetch(
     `${supabaseUrl}/rest/v1/wallet_transactions?user_id=eq.${encodeURIComponent(user.id)}` +
-      `&transaction_type=eq.debit&service=eq.bank_transfer&status=eq.pending` +
-      `&details->>transfer_code=eq.${encodeURIComponent(transferCode)}&select=id,request_id&limit=1`,
+      `&transaction_type=eq.debit&service=eq.bank_transfer` +
+      `&select=id,request_id,status,details&order=created_at.desc&limit=20`,
     {
       headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}` },
       cache: "no-store"
@@ -56,7 +56,15 @@ export default async function handler(req, res) {
   );
   const transactions = await transactionResponse.json().catch(() => []);
 
-  if (!transactionResponse.ok || !Array.isArray(transactions) || !transactions[0]) {
+  const transaction = Array.isArray(transactions)
+    ? transactions.find(
+        (item) =>
+          String(item?.details?.transfer_code || "") === transferCode &&
+          ["pending", "successful"].includes(String(item?.status || "").toLowerCase())
+      )
+    : null;
+
+  if (!transactionResponse.ok || !transaction) {
     return res.status(403).json({ status: false, message: "This transfer cannot be finalized" });
   }
 
@@ -84,6 +92,6 @@ export default async function handler(req, res) {
     status: true,
     message: paystackData.message || "Transfer OTP verified",
     transfer_status: paystackData.data?.status || "pending",
-    reference: paystackData.data?.reference || transactions[0].request_id
+    reference: paystackData.data?.reference || transaction.request_id
   });
 }
