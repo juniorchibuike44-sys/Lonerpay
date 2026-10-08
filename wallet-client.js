@@ -336,3 +336,13 @@ if (document.readyState === "loading") {
 } else {
     setTimeout(upgradeDashboardExperience, 0);
 }
+
+// Load the dedicated professional match-centre module after the dashboard's
+// legacy AI Tips handler so the upgraded experience becomes authoritative.
+if (!document.querySelector('script[data-lp-ai-tips]')) {
+    const aiTipsScript = document.createElement("script");
+    aiTipsScript.src = "ai-tips-client.js";
+    aiTipsScript.defer = true;
+    aiTipsScript.dataset.lpAiTips = "true";
+    document.head.appendChild(aiTipsScript);
+}
