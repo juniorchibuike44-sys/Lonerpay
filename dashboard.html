@@ -1361,6 +1361,7 @@ function showTransferOtpStep(overlay, transfer, data, accessToken) {
         body: JSON.stringify({
           transfer_code: data.transfer_code,
           reference: data.request_id,
+          finalize_token: data.finalize_token,
           otp
         })
       });

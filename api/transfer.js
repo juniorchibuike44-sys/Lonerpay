@@ -1,4 +1,4 @@
-import { pbkdf2Sync, timingSafeEqual, randomUUID } from "node:crypto";
+import { createHmac, pbkdf2Sync, timingSafeEqual, randomUUID } from "node:crypto";
 
 function verifyStoredPin(pin, storedHash) {
   try {
@@ -642,6 +642,13 @@ export default async function handler(req, res) {
 
     debitCompleted = false;
 
+    const transferCode = transferData.data?.transfer_code || null;
+    const finalizeToken = transferCode
+      ? createHmac("sha256", paystackSecretKey)
+          .update(`${user.id}|${requestId}|${transferCode}`)
+          .digest("hex")
+      : null;
+
     return res.status(200).json({
       status: true,
 
@@ -652,8 +659,10 @@ export default async function handler(req, res) {
         requestId,
 
       transfer_code:
-        transferData.data
-          ?.transfer_code || null,
+        transferCode,
+
+      finalize_token:
+        finalizeToken,
 
       reference:
         transferData.data
