@@ -1086,7 +1086,7 @@ function openTransfer(prefill=null) {
         <div class="lp-field"><label>Account number</label><input id="transferAccount" type="tel" inputmode="numeric" maxlength="10" autocomplete="off" placeholder="Enter 10-digit account number" value="${safeTransferText(prefill?.account || "")}"></div>
         <div class="lp-field"><label>Bank</label><button class="lp-bank-pick" id="chooseTransferBank" type="button"><span id="chosenBankLogo"></span><span id="chosenBankName">${safeTransferText(prefill?.bankName || "Select Bank")}</span><span class="lp-chevron">›</span></button></div>
         <div class="lp-account-result" id="transferAccountName"></div>
-        <div class="lp-field"><label>Amount</label><input id="transferAmount" type="number" min="1" inputmode="decimal" placeholder="₦ 0.00"></div>
+        <div class="lp-field"><label>Amount</label><input id="transferAmount" type="number" min="1" inputmode="decimal" placeholder="₦ 0.00" value="${safeTransferText(prefill?.amount || "")}"></div>
         <button class="lp-transfer-primary" id="transferContinue" disabled>Next</button>
       </section>
       <section class="lp-transfer-card">
@@ -1101,18 +1101,18 @@ function openTransfer(prefill=null) {
   paintBank();
   accountInput.oninput=()=>{accountInput.value=accountInput.value.replace(/\D/g,"").slice(0,10);overlay.querySelector("#transferAccountName").textContent="";update()};
   overlay.querySelector("#transferAmount").oninput=update;
-  overlay.querySelector("#chooseTransferBank").onclick=()=>showBankSelector(bank=>{state.bank=bank;paintBank()});
+  overlay.querySelector("#chooseTransferBank").onclick=showBankSelector;
   overlay.querySelector("#transferClose").onclick=()=>overlay.remove();
   overlay.querySelector("#transferHistory").onclick=()=>{overlay.remove();window.openTransactionHistory?.()};
   overlay.querySelectorAll("[data-recent]").forEach(btn=>btn.onclick=()=>{const r=recents[Number(btn.dataset.recent)];overlay.remove();openTransfer(r)});
   next.onclick=()=>continueTransfer(state.bank);
 }
 
-function showBankSelector(onSelect) {
+function showBankSelector() {
   const overlay=document.getElementById("transferOverlay"); if(!overlay)return;
   overlay.innerHTML=transferShell(`<header class="lp-transfer-head"><button class="lp-head-btn" id="bankBack">×</button><h2>Select Bank</h2><span style="width:40px"></span></header><main class="lp-transfer-body"><div class="lp-bank-search">⌕<input id="bankSearch" placeholder="Search bank name" autocomplete="off"></div><div class="lp-card-title">Frequently Used Banks</div><div class="lp-bank-grid" id="frequentBanks"></div><div id="allBanks"></div></main>`);
   const frequent=["999992","044","033","011","058","057"].map(c=>LONERPAY_BANKS.find(b=>b.code===c)).filter(Boolean);
-  const choose=bank=>{onSelect(bank);openTransferWithSelectedBank(bank)};
+  const choose=bank=>openTransferWithSelectedBank(bank);
   const render=(query="")=>{
     const q=query.trim().toLowerCase(),banks=LONERPAY_BANKS.filter(b=>b.name.toLowerCase().includes(q));
     overlay.querySelector("#frequentBanks").style.display=q?"none":"grid";
@@ -1129,9 +1129,9 @@ function showBankSelector(onSelect) {
 }
 
 function openTransferWithSelectedBank(bank){
-  const draft=window.__lpTransferDraft||{}; openTransfer({bankCode:bank.code,bankName:bank.name,account:draft.account});
-  const overlay=document.getElementById("transferOverlay"); const amount=overlay?.querySelector("#transferAmount"); if(amount)amount.value=draft.amount||"";
-  amount?.dispatchEvent(new Event("input")); window.__lpTransferDraft=null;
+  const draft=window.__lpTransferDraft||{};
+  openTransfer({bankCode:bank.code,bankName:bank.name,account:draft.account,amount:draft.amount});
+  window.__lpTransferDraft=null;
 }
 
 async function continueTransfer(bank) {
@@ -1154,7 +1154,7 @@ function showTransferReview(transfer) {
     <section class="lp-transfer-card"><div class="lp-review-bank">${transferBankLogo(transfer.bank,54)}<div><strong>${safeTransferText(transfer.accountName)}</strong><small>${safeTransferText(transfer.account)} · ${safeTransferText(transfer.bankName)}</small></div></div><div class="lp-review-amount">₦${Number(transfer.amount).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</div><div class="lp-detail-row"><span>Transfer fee</span><strong>Paystack fee applies</strong></div><div class="lp-detail-row"><span>Description</span><strong>Bank transfer</strong></div></section>
     <section class="lp-transfer-card"><div class="lp-card-title">Enter Payment PIN</div><input class="lp-pin" id="transferPin" type="password" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="••••"><div class="lp-error" id="transferError"></div><button class="lp-transfer-primary" id="confirmTransfer">Confirm & Send</button><div class="lp-secure">Protected with encryption. Never share your payment PIN.</div></section>
   </main>`);
-  overlay.querySelector("#backTransfer").onclick=()=>openTransfer({bankCode:transfer.bankCode,bankName:transfer.bankName,account:transfer.account});
+  overlay.querySelector("#backTransfer").onclick=()=>openTransfer({bankCode:transfer.bankCode,bankName:transfer.bankName,account:transfer.account,amount:transfer.amount});
   overlay.querySelector("#confirmTransfer").onclick=()=>submitTransfer(transfer);
 }
 
