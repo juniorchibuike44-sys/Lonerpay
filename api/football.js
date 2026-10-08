@@ -34,8 +34,20 @@ export default async function handler(req, res) {
     const data = await response.json();
 
     if (!response.ok || (data.errors && Object.keys(data.errors).length)) {
-      return res.status(response.status).json({
-        error: "Football API request failed"
+      const providerErrors = data?.errors && typeof data.errors === "object"
+        ? Object.values(data.errors).filter(Boolean).map(String)
+        : [];
+      const providerStatus = Number(response.status || 502);
+      let reason = "The football-data provider rejected the request.";
+      if (providerStatus === 401) reason = "The football-data API key is invalid or inactive.";
+      if (providerStatus === 403) reason = "The football-data subscription does not allow this request.";
+      if (providerStatus === 429) reason = "The football-data daily request limit has been reached.";
+      if (providerErrors.length) reason = providerErrors.join(" ").slice(0, 300);
+      console.error("API-Football request rejected", { status: providerStatus, errors: providerErrors });
+      return res.status(providerStatus >= 400 ? providerStatus : 502).json({
+        error: "Football matches are temporarily unavailable",
+        provider_status: providerStatus,
+        provider_reason: reason
       });
     }
 
