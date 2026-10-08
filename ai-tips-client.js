@@ -56,7 +56,7 @@
 
     async function load() {
       list.innerHTML = skeleton();
-      try { const response=await fetch("/api/football",{cache:"no-store"}); const data=await response.json().catch(()=>({})); if(!response.ok) throw new Error(data.error||"Unable to load matches"); fixtures=Array.isArray(data.response)?data.response:[]; render(); }
+      try { const response=await fetch("/api/football",{cache:"no-store"}); const data=await response.json().catch(()=>({})); if(!response.ok) throw new Error(data.provider_reason||data.error||"Unable to load matches"); fixtures=Array.isArray(data.response)?data.response:[]; render(); }
       catch(error){ list.innerHTML=`<div class="ai2-error"><b>Matches could not be loaded</b><br>${escapeHtml(error.message)}<br><button class="ai2-retry">Try again</button></div>`; list.querySelector(".ai2-retry").onclick=load; }
     }
 
