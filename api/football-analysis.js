@@ -13,7 +13,7 @@ export default async function handler(req, res) {
 
   const { fixture } = req.query;
 
-  if (!fixture) {
+  if (!fixture || !/^\d+$/.test(String(fixture))) {
     return res.status(400).json({
       error: "Fixture ID is required"
     });
@@ -51,21 +51,25 @@ export default async function handler(req, res) {
         error: "Match information not found"
       });
     }
-const statsResponse = await fetch(
-  `https://v3.football.api-sports.io/fixtures/statistics?fixture=${fixture}`,
-  {
-    headers: {
-      "x-apisports-key": apiKey
-    }
-  }
-);
+const headers = { "x-apisports-key": apiKey };
+const [statsResponse, predictionResponse] = await Promise.all([
+  fetch(`https://v3.football.api-sports.io/fixtures/statistics?fixture=${fixture}`, { headers }),
+  fetch(`https://v3.football.api-sports.io/predictions?fixture=${fixture}`, { headers })
+]);
 
-const statsData = await statsResponse.json();
+const [statsData, predictionData] = await Promise.all([
+  statsResponse.json().catch(() => ({})),
+  predictionResponse.json().catch(() => ({}))
+]);
 
 const statistics =
   statsResponse.ok && Array.isArray(statsData.response)
     ? statsData.response
     : []; 
+    const prediction = predictionResponse.ok && Array.isArray(predictionData.response)
+      ? predictionData.response[0] || null
+      : null;
+    res.setHeader("Cache-Control", "s-maxage=120, stale-while-revalidate=300");
     return res.status(200).json({
       fixture: {
         id: match.fixture.id,
@@ -91,7 +95,9 @@ const statistics =
       },
 
   status: match.fixture.status?.long || "Scheduled",
-statistics: statistics
+  goals: match.goals || { home: null, away: null },
+  statistics: statistics,
+  prediction
 }); 
   } catch (error) {
     console.error("Football analysis error:", error);
