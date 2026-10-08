@@ -1110,6 +1110,9 @@ function openTransfer(prefill=null) {
 
 function showBankSelector() {
   const overlay=document.getElementById("transferOverlay"); if(!overlay)return;
+  const oldAccount=overlay.querySelector("#transferAccount")?.value||"";
+  const oldAmount=overlay.querySelector("#transferAmount")?.value||"";
+  window.__lpTransferDraft={account:oldAccount,amount:oldAmount};
   overlay.innerHTML=transferShell(`<header class="lp-transfer-head"><button class="lp-head-btn" id="bankBack">×</button><h2>Select Bank</h2><span style="width:40px"></span></header><main class="lp-transfer-body"><div class="lp-bank-search">⌕<input id="bankSearch" placeholder="Search bank name" autocomplete="off"></div><div class="lp-card-title">Frequently Used Banks</div><div class="lp-bank-grid" id="frequentBanks"></div><div id="allBanks"></div></main>`);
   const frequent=["999992","044","033","011","058","057"].map(c=>LONERPAY_BANKS.find(b=>b.code===c)).filter(Boolean);
   const choose=bank=>openTransferWithSelectedBank(bank);
@@ -1122,9 +1125,7 @@ function showBankSelector() {
     overlay.querySelector("#allBanks").innerHTML=banks.length?banks.map(b=>{const l=b.name.charAt(0).toUpperCase(),head=l!==letter?(letter=l,`<div class="lp-bank-letter">${l}</div>`):"";return head+`<button class="lp-bank-row" data-code="${b.code}">${transferBankLogo(b,44)}<span>${safeTransferText(b.name)}</span><span class="lp-chevron">›</span></button>`}).join(""):'<div class="lp-empty">No bank found.</div>';
     overlay.querySelectorAll("[data-code]").forEach(btn=>btn.onclick=()=>choose(LONERPAY_BANKS.find(b=>b.code===btn.dataset.code)));
   };
-  const oldAccount=document.querySelector("#transferAccount")?.value||"",oldAmount=document.querySelector("#transferAmount")?.value||"";
-  window.__lpTransferDraft={account:oldAccount,amount:oldAmount};
-  overlay.querySelector("#bankBack").onclick=()=>openTransfer();
+  overlay.querySelector("#bankBack").onclick=()=>{const draft=window.__lpTransferDraft||{};window.__lpTransferDraft=null;openTransfer(draft)};
   overlay.querySelector("#bankSearch").oninput=e=>render(e.target.value); render();
 }
 
