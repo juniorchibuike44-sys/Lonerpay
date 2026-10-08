@@ -1358,7 +1358,11 @@ function showTransferOtpStep(overlay, transfer, data, accessToken) {
       const response = await fetch("/api/transfer-otp", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
-        body: JSON.stringify({ transfer_code: data.transfer_code, otp })
+        body: JSON.stringify({
+          transfer_code: data.transfer_code,
+          reference: data.reference || data.request_id,
+          otp
+        })
       });
       input.value = "";
       const result = await response.json().catch(() => ({}));
