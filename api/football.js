@@ -22,12 +22,8 @@ export default async function handler(req, res) {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(requestedDate)) {
       return res.status(400).json({ error: "Invalid match date" });
     }
-    const centre = new Date(`${requestedDate}T12:00:00Z`);
-    const formatDate = value => value.toISOString().slice(0, 10);
-    const from = formatDate(new Date(centre.getTime() - 86400000));
-    const to = formatDate(new Date(centre.getTime() + 2 * 86400000));
     const response = await fetch(
-      `https://v3.football.api-sports.io/fixtures?from=${from}&to=${to}&timezone=Africa%2FLagos`,
+      `https://v3.football.api-sports.io/fixtures?date=${requestedDate}&timezone=Africa%2FLagos`,
       {
         headers: {
           "x-apisports-key": apiKey
@@ -44,7 +40,7 @@ export default async function handler(req, res) {
     }
 
     res.setHeader("Cache-Control", "s-maxage=60, stale-while-revalidate=180");
-    return res.status(200).json({ ...data, range: { from, to, timezone: "Africa/Lagos" } });
+    return res.status(200).json({ ...data, range: { date: requestedDate, timezone: "Africa/Lagos" } });
   } catch (error) {
     console.error("Football API error:", error);
 
