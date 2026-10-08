@@ -600,19 +600,22 @@ export default async function handler(req, res) {
 
     // Keep the wallet transaction pending until Paystack sends a signed
     // transfer.success, transfer.failed, or transfer.reversed webhook.
-    await fetch(
-      `${supabaseUrl}/rest/v1/wallet_transactions?user_id=eq.${encodeURIComponent(
-        user.id
-      )}&request_id=eq.${encodeURIComponent(requestId)}&transaction_type=eq.debit`,
+    const transactionSaveResponse = await fetch(
+      `${supabaseUrl}/rest/v1/wallet_transactions?on_conflict=request_id`,
       {
-        method: "PATCH",
+        method: "POST",
         headers: {
           apikey: supabaseKey,
           Authorization: `Bearer ${supabaseKey}`,
           "Content-Type": "application/json",
-          Prefer: "return=minimal"
+          Prefer: "resolution=merge-duplicates,return=minimal"
         },
         body: JSON.stringify({
+          user_id: user.id,
+          request_id: requestId,
+          transaction_type: "debit",
+          service: "bank_transfer",
+          amount: amountNaira,
           status:
             transferData.data?.status === "success"
               ? "successful"
@@ -630,6 +633,15 @@ export default async function handler(req, res) {
         })
       }
     );
+
+    if (!transactionSaveResponse.ok) {
+      const saveError = await transactionSaveResponse.text();
+      console.error("TRANSFER RECORD SAVE ERROR", {
+        status_code: transactionSaveResponse.status,
+        reference: requestId,
+        message: saveError
+      });
+    }
 
     /*
       Paystack has accepted the transfer.
