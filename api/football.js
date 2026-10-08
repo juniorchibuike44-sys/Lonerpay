@@ -9,7 +9,18 @@ export default async function handler(req, res) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(requestedDate)) return res.status(400).json({ error: "Invalid match date" });
 
   try {
-    const payload = await sportmonksRequest(`/fixtures/date/${requestedDate}`, {
+    const explicitDate = Boolean(req.query?.date);
+    const shiftDate = (date, days) => {
+      const value = new Date(`${date}T12:00:00Z`);
+      value.setUTCDate(value.getUTCDate() + days);
+      return value.toISOString().slice(0, 10);
+    };
+    const startDate = explicitDate ? requestedDate : shiftDate(requestedDate, -3);
+    const endDate = explicitDate ? requestedDate : shiftDate(requestedDate, 7);
+    const path = explicitDate
+      ? `/fixtures/date/${requestedDate}`
+      : `/fixtures/between/${startDate}/${endDate}`;
+    const payload = await sportmonksRequest(path, {
       include: "participants;league.country;state;scores;periods",
       per_page: 100
     });
@@ -19,7 +30,7 @@ export default async function handler(req, res) {
       response: fixtures,
       provider: "sportmonks",
       results: fixtures.length,
-      range: { date: requestedDate, timezone: "Africa/Lagos" }
+      range: { start: startDate, end: endDate, timezone: "Africa/Lagos" }
     });
   } catch (error) {
     const status = Number(error?.status || 500);
