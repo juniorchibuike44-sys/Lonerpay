@@ -33,9 +33,13 @@ async function refreshSecureTransactions() {
       throw new Error(data.error || "Could not load transactions");
     }
 
-    const transactions = Array.isArray(data.transactions)
+    const transactions = (Array.isArray(data.transactions)
       ? data.transactions
-      : [];
+      : []).slice().sort((a, b) => {
+        const aTime = Date.parse(a?.created_at || "") || 0;
+        const bTime = Date.parse(b?.created_at || "") || 0;
+        return bTime - aTime;
+      });
 
     if (!refreshSecureTransactions.requerying) {
       const pending = transactions.filter(transaction =>
@@ -86,13 +90,18 @@ const serviceName =
     ? "Wallet Funding"
     : service; 
       const detailText = phone ? `Phone: ${phone}` : "Secure wallet payment";
+      const createdAt = transaction.created_at || "";
+      const readableDate = createdAt && !Number.isNaN(Date.parse(createdAt))
+        ? new Date(createdAt).toLocaleString("en-NG", { dateStyle: "medium", timeStyle: "short" })
+        : "";
 
       transactionsBox.insertAdjacentHTML(
         "beforeend",
-        `<div class="transaction">
+        `<div class="transaction" data-transaction-date="${escapeTransactionText(createdAt)}" data-receipt-id="${escapeTransactionText(requestId)}">
           <strong>${escapeTransactionText(serviceName)}</strong><br>
           ₦${Number(transaction.amount).toFixed(2)}<br>
           <small>${escapeTransactionText(detailText)}</small><br>
+          ${readableDate ? `<small>${escapeTransactionText(readableDate)}</small><br>` : ""}
           <small><strong>Status: ${escapeTransactionText(
             transactionStatusLabel(transaction.status)
           )}</strong></small>
