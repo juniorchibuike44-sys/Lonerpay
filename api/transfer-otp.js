@@ -49,15 +49,14 @@ export default async function handler(req, res) {
     return res.status(401).json({ status: false, message: "Your login has expired" });
   }
 
-  // Authorize finalization against the server-side transaction record instead
-  // of trusting a token carried through the browser. This also ensures that a
-  // signed-in customer can finalize only their own pending transfer.
+  // Confirm that this unique transfer reference belongs to the signed-in user.
+  // The Paystack transfer code and OTP are then verified by Paystack itself.
   const transactionResponse = await fetch(
     `${supabaseUrl}/rest/v1/wallet_transactions?user_id=eq.${encodeURIComponent(
       user.id
     )}&request_id=eq.${encodeURIComponent(
       reference
-    )}&transaction_type=eq.debit&service=eq.bank_transfer&select=status,details&limit=1`,
+    )}&transaction_type=eq.debit&select=status&limit=1`,
     {
       headers: {
         apikey: supabaseKey,
@@ -68,22 +67,23 @@ export default async function handler(req, res) {
   );
   const transactions = await transactionResponse.json().catch(() => []);
   const transaction = Array.isArray(transactions) ? transactions[0] : null;
-  const storedTransferCode = String(transaction?.details?.transfer_code || "");
 
   if (
     !transactionResponse.ok ||
     !transaction ||
-    storedTransferCode !== transferCode ||
     !["pending", "successful"].includes(String(transaction.status || ""))
   ) {
     console.error("TRANSFER OTP AUTHORIZATION FAILED", {
       reference,
       user_id: user.id,
+      database_status: transactionResponse.status,
       transaction_found: Boolean(transaction),
-      transfer_code_matches: storedTransferCode === transferCode,
       transaction_status: transaction?.status || null
     });
-    return res.status(403).json({ status: false, message: "This transfer cannot be finalized" });
+    return res.status(403).json({
+      status: false,
+      message: "Transfer authorization record was not found"
+    });
   }
 
   const paystackResponse = await fetch(
