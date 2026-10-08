@@ -114,4 +114,25 @@ const serviceName =
 }
 
 window.refreshSecureTransactions = refreshSecureTransactions;
+
+function installTransactionNavigation() {
+  const buttons = Array.from(document.querySelectorAll(".lp-bottom-nav .lp-nav-item"));
+  const transactionButton = buttons.find(button =>
+    /transactions/i.test(button.textContent || "")
+  );
+  if (!transactionButton) return;
+  transactionButton.onclick = event => {
+    event.preventDefault();
+    if (typeof window.openTransactionHistory === "function") {
+      window.openTransactionHistory();
+    }
+  };
+}
+
 refreshSecureTransactions();
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", installTransactionNavigation, { once: true });
+} else {
+  installTransactionNavigation();
+}
+setTimeout(installTransactionNavigation, 800);
