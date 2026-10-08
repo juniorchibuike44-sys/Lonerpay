@@ -1,5 +1,5 @@
 export default async function handler(req, res) {
-  if (req.method !== "POST") {
+  if (req.method !== "GET" && req.method !== "POST") {
     return res.status(405).json({
       success: false,
       message: "Method not allowed"
@@ -17,13 +17,6 @@ export default async function handler(req, res) {
     return res.status(500).json({
       success: false,
       message: "Server authentication is not configured"
-    });
-  }
-
-  if (!secretKey || !secretKey.startsWith("sk_live_")) {
-    return res.status(500).json({
-      success: false,
-      message: "Paystack is not using a Live Secret Key"
     });
   }
 
@@ -52,6 +45,40 @@ export default async function handler(req, res) {
     }
 
     const user = await userResponse.json();
+
+    if (req.method === "GET") {
+      const accountResponse = await fetch(
+        `${supabaseUrl}/rest/v1/virtual_accounts?user_id=eq.${encodeURIComponent(user.id)}&select=provider,bank_name,account_number,account_name,status,assignment_status,updated_at&order=updated_at.desc&limit=1`,
+        {
+          headers: {
+            apikey: supabaseKey,
+            Authorization: `Bearer ${supabaseKey}`
+          },
+          cache: "no-store"
+        }
+      );
+
+      if (!accountResponse.ok) {
+        console.error("Virtual account lookup failed:", await accountResponse.text());
+        return res.status(500).json({ success: false, message: "Unable to load virtual account" });
+      }
+
+      const accounts = await accountResponse.json();
+      const account = accounts?.[0] || null;
+
+      return res.status(200).json({
+        success: true,
+        virtual_account: account,
+        assignment_status: account?.assignment_status || "not_requested"
+      });
+    }
+
+    if (!secretKey || !secretKey.startsWith("sk_live_")) {
+      return res.status(500).json({
+        success: false,
+        message: "Paystack is not using a Live Secret Key"
+      });
+    }
 
     const email = user.email;
 
