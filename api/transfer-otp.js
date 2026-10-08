@@ -1,5 +1,3 @@
-import { createHmac, timingSafeEqual } from "node:crypto";
-
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ status: false, message: "Method not allowed" });
@@ -27,7 +25,6 @@ export default async function handler(req, res) {
   const otp = String(req.body?.otp || "").replace(/\D/g, "");
   const transferCode = String(req.body?.transfer_code || "").trim();
   const reference = String(req.body?.reference || "").trim();
-  const finalizeToken = String(req.body?.finalize_token || "").trim();
 
   if (!/^\d{6}$/.test(otp)) {
     return res.status(400).json({ status: false, message: "Enter the 6-digit Paystack OTP" });
@@ -41,10 +38,6 @@ export default async function handler(req, res) {
     return res.status(400).json({ status: false, message: "Invalid transfer reference" });
   }
 
-  if (!/^[0-9a-f]{64}$/i.test(finalizeToken)) {
-    return res.status(403).json({ status: false, message: "Invalid transfer authorization" });
-  }
-
   const token = authorization.slice(7);
   const userResponse = await fetch(`${supabaseUrl}/auth/v1/user`, {
     headers: { apikey: supabaseKey, Authorization: `Bearer ${token}` },
@@ -56,16 +49,40 @@ export default async function handler(req, res) {
     return res.status(401).json({ status: false, message: "Your login has expired" });
   }
 
-  const expectedToken = createHmac("sha256", paystackSecretKey)
-    .update(`${user.id}|${reference}|${transferCode}`)
-    .digest("hex");
-  const suppliedBuffer = Buffer.from(finalizeToken, "hex");
-  const expectedBuffer = Buffer.from(expectedToken, "hex");
+  // Authorize finalization against the server-side transaction record instead
+  // of trusting a token carried through the browser. This also ensures that a
+  // signed-in customer can finalize only their own pending transfer.
+  const transactionResponse = await fetch(
+    `${supabaseUrl}/rest/v1/wallet_transactions?user_id=eq.${encodeURIComponent(
+      user.id
+    )}&request_id=eq.${encodeURIComponent(
+      reference
+    )}&transaction_type=eq.debit&service=eq.bank_transfer&select=status,details&limit=1`,
+    {
+      headers: {
+        apikey: supabaseKey,
+        Authorization: `Bearer ${supabaseKey}`
+      },
+      cache: "no-store"
+    }
+  );
+  const transactions = await transactionResponse.json().catch(() => []);
+  const transaction = Array.isArray(transactions) ? transactions[0] : null;
+  const storedTransferCode = String(transaction?.details?.transfer_code || "");
 
   if (
-    suppliedBuffer.length !== expectedBuffer.length ||
-    !timingSafeEqual(suppliedBuffer, expectedBuffer)
+    !transactionResponse.ok ||
+    !transaction ||
+    storedTransferCode !== transferCode ||
+    !["pending", "successful"].includes(String(transaction.status || ""))
   ) {
+    console.error("TRANSFER OTP AUTHORIZATION FAILED", {
+      reference,
+      user_id: user.id,
+      transaction_found: Boolean(transaction),
+      transfer_code_matches: storedTransferCode === transferCode,
+      transaction_status: transaction?.status || null
+    });
     return res.status(403).json({ status: false, message: "This transfer cannot be finalized" });
   }
 
@@ -83,6 +100,12 @@ export default async function handler(req, res) {
   const paystackData = await paystackResponse.json().catch(() => ({}));
 
   if (!paystackResponse.ok || !paystackData.status) {
+    console.error("PAYSTACK TRANSFER OTP ERROR", {
+      status_code: paystackResponse.status,
+      message: paystackData.message || null,
+      reference,
+      transfer_code: transferCode
+    });
     return res.status(paystackResponse.status || 400).json({
       status: false,
       message: paystackData.message || "Paystack could not verify the OTP"
