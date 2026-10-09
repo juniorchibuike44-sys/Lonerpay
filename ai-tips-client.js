@@ -1,4 +1,25 @@
 (function () {
+  const releaseAiScrollLock = () => {
+    document.documentElement.classList.remove("lp-ai-open");
+    document.body.classList.remove("lp-ai-open");
+  };
+  window.addEventListener("pageshow", () => {
+    if (!document.getElementById("lpAiCentre")) releaseAiScrollLock();
+  });
+  function installSecurityHighlight() {
+    const slide = document.querySelector(".lp-founder-slide");
+    if (!slide) return;
+    slide.className = "lp-slide lp-security-slide";
+    slide.setAttribute("aria-label", "LonerPay account security reminder");
+    slide.innerHTML = '<div class="lp-slide-copy"><span class="lp-slide-badge">ACCOUNT SECURITY</span><h3>Protect every payment</h3><p>Keep your PIN, password and OTP private. LonerPay support will never ask for them.</p></div><div class="lp-security-visual" aria-hidden="true">🛡️</div>';
+    if (!document.getElementById("lpSecurityHighlightStyle")) {
+      const style = document.createElement("style");
+      style.id = "lpSecurityHighlightStyle";
+      style.textContent = '.lp-security-slide{background:linear-gradient(135deg,#06254f 0%,#075fc3 58%,#08a977 145%)}.lp-security-visual{position:absolute;right:18px;top:20px;width:94px;height:94px;border-radius:28px;background:rgba(255,255,255,.13);border:1px solid rgba(255,255,255,.22);display:grid;place-items:center;font-size:48px;box-shadow:0 16px 36px rgba(0,0,0,.16)}.lp-security-slide .lp-slide-copy{padding-right:105px;background:linear-gradient(90deg,rgba(3,25,59,.96),rgba(3,50,110,.76),rgba(3,50,110,.18))}.lp-security-slide .lp-slide-copy h3,.lp-security-slide .lp-slide-copy p{max-width:100%}@media(max-width:380px){.lp-security-visual{width:76px;height:76px;font-size:39px;right:13px}.lp-security-slide .lp-slide-copy{padding-right:88px}}';
+      document.head.appendChild(style);
+    }
+  }
+  installSecurityHighlight();
   const escapeHtml = value => String(value ?? "").replace(/[&<>"']/g, char => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[char]);
   const liveCodes = new Set(["1H","HT","2H","ET","BT","P","SUSP","INT","LIVE"]);
   const resultCodes = new Set(["FT","AET","PEN"]);
@@ -12,13 +33,15 @@
 
   window.openAITips = function openProfessionalAITips() {
     document.getElementById("lpAiCentre")?.remove();
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
+    releaseAiScrollLock();
+    document.documentElement.classList.add("lp-ai-open");
+    document.body.classList.add("lp-ai-open");
     const root = document.createElement("div");
     root.id = "lpAiCentre";
     root.innerHTML = `
       <style>
-        #lpAiCentre{position:fixed;inset:0;z-index:32000;background:#f1f6fc;color:#10213b;font-family:Arial,sans-serif;overflow:auto}
+        html.lp-ai-open,body.lp-ai-open{overflow:hidden!important;overscroll-behavior:none}
+        #lpAiCentre{position:fixed;inset:0;z-index:32000;background:#f1f6fc;color:#10213b;font-family:Arial,sans-serif;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;touch-action:pan-y}
         #lpAiCentre *{box-sizing:border-box}#lpAiCentre button{font:inherit}
         .ai2-shell{max-width:700px;margin:auto;min-height:100vh;padding-bottom:46px}
         .ai2-hero{position:sticky;top:0;z-index:5;background:radial-gradient(circle at 90% 0,#1989ef 0,transparent 42%),linear-gradient(145deg,#051a37,#073c7e);color:#fff;padding:18px 16px 20px;box-shadow:0 8px 24px rgba(5,28,60,.18)}
@@ -35,9 +58,19 @@
     const list = root.querySelector(".ai2-list");
     const tabs = [...root.querySelectorAll(".ai2-tab")];
     let fixtures = [], selected = "upcoming";
-    const close = () => { root.remove(); document.body.style.overflow = previousOverflow; document.removeEventListener("keydown", onKey); };
+    let closed = false;
+    const close = () => {
+      if (closed) return;
+      closed = true;
+      root.remove();
+      releaseAiScrollLock();
+      document.removeEventListener("keydown", onKey);
+      window.removeEventListener("popstate", onPopState);
+    };
+    const onPopState = () => close();
     const onKey = event => { if (event.key === "Escape") close(); };
     document.addEventListener("keydown", onKey);
+    window.addEventListener("popstate", onPopState, { once: true });
     root.querySelector("#ai2Close").onclick = close;
 
     function render() {
