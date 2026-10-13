@@ -2,147 +2,38 @@ import { enforceRateLimit, hardenResponse, requireUser } from "./_security.js";
 import { pairgateRequest } from "./_pairgate.js";
 
 const CEO_EMAIL = "juniorchibuike44@gmail.com";
+const money = value => value === null || value === undefined || value === "" ? null : (Number.isFinite(Number(value)) ? Math.round(Number(value) * 100) / 100 : null);
+function dayKey(value) { const date = new Date(value); return Number.isNaN(date.getTime()) ? "Unknown" : new Intl.DateTimeFormat("en-CA", { timeZone: "Africa/Lagos", year: "numeric", month: "2-digit", day: "2-digit" }).format(date); }
+function providerName(row) { const explicit = String(row?.details?.provider || "").trim().toLowerCase(); if (explicit) return explicit === "vtpass" ? "VTpass" : explicit[0].toUpperCase() + explicit.slice(1); const service = String(row?.service || "").toLowerCase(); if (service.includes("paystack") || service === "bank_transfer") return "Paystack"; if (service.includes("bet")) return "Pairgate"; return "Other"; }
+function serviceName(value) { const service = String(value || "Transaction").toLowerCase(); const names = { mtn:"MTN Airtime",airtel:"Airtel Airtime",glo:"Glo Airtime",etisalat:"9mobile Airtime","9mobile":"9mobile Airtime","paystack_wallet_funding":"Wallet Funding","bank_transfer":"Bank Transfer","bet-funding":"Bet Funding" }; return names[service] || service.replace(/[-_]/g," ").replace(/\b\w/g,char=>char.toUpperCase()); }
 
-function money(value) {
-  if (value === null || value === undefined || value === "") return null;
-  const number = Number(value);
-  return Number.isFinite(number) ? Math.round(number * 100) / 100 : null;
+async function transactionRows(auth) {
+  const query = new URLSearchParams({ select:"request_id,transaction_type,service,amount,status,details,created_at", order:"created_at.desc", limit:"2000" });
+  let response = await fetch(`${auth.supabaseUrl}/rest/v1/wallet_transactions?${query}`, { headers:{ apikey:auth.secretKey, Authorization:`Bearer ${auth.secretKey}`, Accept:"application/json" }, cache:"no-store" });
+  let rows = await response.json().catch(()=>[]); let scope="company";
+  if (!response.ok) { response = await fetch(`${auth.supabaseUrl}/rest/v1/wallet_transactions?${query}`, { headers:{ apikey:auth.secretKey, Authorization:auth.authorization, Accept:"application/json" }, cache:"no-store" }); rows = await response.json().catch(()=>[]); scope="founder_account"; }
+  if (!response.ok) throw new Error(rows?.message || rows?.error || "Supabase rejected the report query");
+  return { rows:Array.isArray(rows)?rows:[], scope };
 }
 
-function dayKey(value) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "Unknown";
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Africa/Lagos",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit"
-  }).format(date);
+async function providerBalances() {
+  let pairgate=null,paystack=null;
+  try { const result=await pairgateRequest("/wallet/balance",{method:"GET"}); pairgate=money(result.data?.data?.balance??result.data?.balance); } catch {}
+  try { const key=process.env.PAYSTACK_SECRET_KEY; if(key){ const response=await fetch("https://api.paystack.co/balance",{headers:{Authorization:`Bearer ${key}`},cache:"no-store"}); const data=await response.json().catch(()=>({})); const balances=Array.isArray(data?.data)?data.data:[]; paystack=money(balances.filter(item=>String(item.currency).toUpperCase()==="NGN").reduce((sum,item)=>sum+Number(item.balance||0)/100,0)); } } catch {}
+  return {pairgate,paystack};
 }
 
-export default async function handler(req, res) {
-  hardenResponse(res);
-  if (req.method !== "GET") return res.status(405).json({ error: "Method not allowed" });
-  if (!enforceRateLimit(req, res, { key: "ceo-profit", limit: 30, windowMs: 60_000 })) return;
-
-  const auth = await requireUser(req, res);
-  if (!auth) return;
-  if (String(auth.user.email || "").trim().toLowerCase() !== CEO_EMAIL) {
-    return res.status(403).json({ error: "CEO access only" });
-  }
-
-  const days = Math.min(90, Math.max(1, Number(req.query?.days || 30)));
-  const since = new Date(Date.now() - days * 86_400_000).toISOString();
-  const headers = {
-    apikey: auth.secretKey,
-    Authorization: `Bearer ${auth.secretKey}`
-  };
-
-  try {
-    const query = new URLSearchParams({
-      select: "request_id,service,amount,status,details,created_at",
-      order: "created_at.desc",
-      limit: "1000"
-    });
-    let transactionResponse = await fetch(
-      `${auth.supabaseUrl}/rest/v1/wallet_transactions?${query}`,
-      { headers, cache: "no-store" }
-    );
-    let rows = await transactionResponse.json().catch(() => []);
-    let reportScope = "company";
-
-    // Some Supabase projects use a non-JWT secret key that is valid as an
-    // apikey but cannot be placed in the Authorization bearer header. Fall
-    // back to the founder's proven authenticated/RLS query in that case.
-    if (!transactionResponse.ok) {
-      transactionResponse = await fetch(
-        `${auth.supabaseUrl}/rest/v1/wallet_transactions?${query}`,
-        {
-          headers: {
-            apikey: auth.secretKey,
-            Authorization: auth.authorization,
-            Accept: "application/json"
-          },
-          cache: "no-store"
-        }
-      );
-      rows = await transactionResponse.json().catch(() => []);
-      reportScope = "founder_account";
-    }
-    if (!transactionResponse.ok) {
-      return res.status(502).json({
-        error: "Could not load profit records",
-        message: rows?.message || rows?.error || "Supabase rejected the report query"
-      });
-    }
-
-    const transactions = (Array.isArray(rows) ? rows : [])
-      .filter(row =>
-        String(row?.status || "").toLowerCase() === "successful" &&
-        String(row?.details?.provider || "").toLowerCase() === "pairgate" &&
-        Date.parse(row?.created_at || "") >= Date.parse(since)
-      )
-      .map(row => {
-        const sale = money(row.details?.sale_amount ?? row.amount) ?? 0;
-        const cost = money(row.details?.provider_cost);
-        const profit = money(row.details?.gross_profit ?? (cost === null ? null : sale - cost));
-        return {
-          reference: row.request_id,
-          network: String(row.service || "").toUpperCase().replace("ETISALAT", "9MOBILE"),
-          sale,
-          provider_cost: cost,
-          gross_profit: profit,
-          date: row.created_at
-        };
-      });
-
-    const dailyMap = new Map();
-    for (const item of transactions) {
-      const day = dayKey(item.date);
-      const current = dailyMap.get(day) || { date: day, transactions: 0, sales: 0, provider_cost: 0, gross_profit: 0, unpriced: 0 };
-      current.transactions += 1;
-      current.sales += item.sale;
-      if (item.provider_cost === null || item.gross_profit === null) current.unpriced += 1;
-      else {
-        current.provider_cost += item.provider_cost;
-        current.gross_profit += item.gross_profit;
-      }
-      dailyMap.set(day, current);
-    }
-
-    const priced = transactions.filter(item => item.provider_cost !== null && item.gross_profit !== null);
-    const totals = {
-      transactions: transactions.length,
-      sales: money(transactions.reduce((sum, item) => sum + item.sale, 0)),
-      provider_cost: money(priced.reduce((sum, item) => sum + item.provider_cost, 0)),
-      gross_profit: money(priced.reduce((sum, item) => sum + item.gross_profit, 0)),
-      unpriced: transactions.length - priced.length
-    };
-
-    let providerBalance = null;
-    try {
-      const balanceResult = await pairgateRequest("/wallet/balance", { method: "GET" });
-      const value = balanceResult.data?.data?.balance ?? balanceResult.data?.balance;
-      providerBalance = money(value);
-    } catch {
-      providerBalance = null;
-    }
-
-    return res.status(200).json({
-      period_days: days,
-      report_scope: reportScope,
-      generated_at: new Date().toISOString(),
-      provider_balance: providerBalance,
-      totals,
-      daily: [...dailyMap.values()].sort((a, b) => b.date.localeCompare(a.date)).map(day => ({
-        ...day,
-        sales: money(day.sales),
-        provider_cost: money(day.provider_cost),
-        gross_profit: money(day.gross_profit)
-      })),
-      transactions: transactions.slice(0, 100)
-    });
-  } catch (error) {
-    return res.status(500).json({ error: "Could not prepare CEO profit report", message: error.message });
-  }
+export default async function handler(req,res){
+  hardenResponse(res); if(req.method!=="GET")return res.status(405).json({error:"Method not allowed"}); if(!enforceRateLimit(req,res,{key:"ceo-profit",limit:30,windowMs:60_000}))return;
+  const auth=await requireUser(req,res); if(!auth)return; if(String(auth.user.email||"").trim().toLowerCase()!==CEO_EMAIL)return res.status(403).json({error:"CEO access only"});
+  const days=Math.min(90,Math.max(1,Number(req.query?.days||30))),since=Date.now()-days*86_400_000;
+  try{
+    const [{rows,scope},balances]=await Promise.all([transactionRows(auth),providerBalances()]);
+    const activity=rows.filter(row=>Date.parse(row.created_at||"")>=since).map(row=>{const amount=money(row.amount)??0,providerCost=money(row.details?.provider_cost),grossProfit=money(row.details?.gross_profit??(providerCost===null?null:amount-providerCost));return{reference:row.request_id,transaction_type:String(row.transaction_type||"").toLowerCase(),service:serviceName(row.service),provider:providerName(row),amount,status:String(row.status||"unknown").toLowerCase(),provider_cost:providerCost,gross_profit:grossProfit,date:row.created_at};});
+    const credits=activity.filter(x=>x.transaction_type==="credit"&&x.status==="successful"),debits=activity.filter(x=>x.transaction_type==="debit"&&x.status==="successful"),refundRows=activity.filter(x=>x.transaction_type==="refund"||x.status==="refunded"),priced=debits.filter(x=>x.gross_profit!==null);
+    const totals={activity:activity.length,wallet_inflows:money(credits.reduce((s,x)=>s+x.amount,0)),service_sales:money(debits.reduce((s,x)=>s+x.amount,0)),refunds:money(refundRows.reduce((s,x)=>s+x.amount,0)),gross_profit:money(priced.reduce((s,x)=>s+x.gross_profit,0)),pending:activity.filter(x=>x.status==="pending").length,failed:activity.filter(x=>x.status==="failed").length,unpriced_sales:debits.length-priced.length};
+    const groups=new Map(); for(const x of activity){const g=groups.get(x.provider)||{provider:x.provider,transactions:0,volume:0,profit:0,pending:0,refunds:0};g.transactions++;g.volume+=x.amount;if(x.gross_profit!==null&&x.status==="successful")g.profit+=x.gross_profit;if(x.status==="pending")g.pending++;if(x.status==="refunded"||x.transaction_type==="refund")g.refunds+=x.amount;groups.set(x.provider,g);}
+    const dailyMap=new Map(); for(const x of activity){const key=dayKey(x.date),d=dailyMap.get(key)||{date:key,transactions:0,inflows:0,sales:0,refunds:0,profit:0};d.transactions++;if(x.status==="successful"&&x.transaction_type==="credit")d.inflows+=x.amount;if(x.status==="successful"&&x.transaction_type==="debit")d.sales+=x.amount;if(x.status==="refunded"||x.transaction_type==="refund")d.refunds+=x.amount;if(x.status==="successful"&&x.gross_profit!==null)d.profit+=x.gross_profit;dailyMap.set(key,d);}
+    return res.status(200).json({period_days:days,report_scope:scope,generated_at:new Date().toISOString(),provider_balances:balances,totals,providers:[...groups.values()].map(g=>({...g,volume:money(g.volume),profit:money(g.profit),refunds:money(g.refunds)})).sort((a,b)=>b.volume-a.volume),daily:[...dailyMap.values()].map(d=>({...d,inflows:money(d.inflows),sales:money(d.sales),refunds:money(d.refunds),profit:money(d.profit)})).sort((a,b)=>b.date.localeCompare(a.date)),transactions:activity.slice(0,100)});
+  }catch(error){return res.status(502).json({error:"Could not load business activity",message:error.message});}
 }
