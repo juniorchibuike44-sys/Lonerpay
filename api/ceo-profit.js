@@ -42,7 +42,6 @@ export default async function handler(req, res) {
       status: "eq.successful",
       transaction_type: "eq.debit",
       created_at: `gte.${since}`,
-      service: "in.(mtn,airtel,glo,etisalat,9mobile)",
       select: "request_id,service,amount,status,details,created_at",
       order: "created_at.desc",
       limit: "1000"
