@@ -23,6 +23,7 @@
       throw new Error("Please log in again.");
     }
 
+    const cacheKey = `lonerpay_data_plans_${String(network).toLowerCase()}`;
     const response = await fetch(
       `/api/variations?serviceID=${encodeURIComponent(serviceID)}`,
       {
@@ -36,6 +37,10 @@
     const data = await response.json();
 
     if (!response.ok) {
+      try {
+        const cached = JSON.parse(localStorage.getItem(cacheKey) || "null");
+        if (cached?.savedAt && Date.now() - cached.savedAt < 30 * 60_000 && Array.isArray(cached.plans) && cached.plans.length) return cached.plans;
+      } catch {}
       throw new Error(
         data.error ||
         data.message ||
@@ -43,7 +48,7 @@
       );
     }
 
-    return (Array.isArray(data.variations)
+    const plans = (Array.isArray(data.variations)
       ? data.variations
       : []
     )
@@ -60,6 +65,10 @@
         network: network,
         serviceID: serviceID
       }));
+    if (plans.length) {
+      try { localStorage.setItem(cacheKey, JSON.stringify({ savedAt: Date.now(), plans })); } catch {}
+    }
+    return plans;
   }
 
   async function purchaseData({
