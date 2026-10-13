@@ -44,13 +44,36 @@ export default async function handler(req, res) {
       order: "created_at.desc",
       limit: "1000"
     });
-    const transactionResponse = await fetch(
+    let transactionResponse = await fetch(
       `${auth.supabaseUrl}/rest/v1/wallet_transactions?${query}`,
       { headers, cache: "no-store" }
     );
-    const rows = await transactionResponse.json().catch(() => []);
+    let rows = await transactionResponse.json().catch(() => []);
+    let reportScope = "company";
+
+    // Some Supabase projects use a non-JWT secret key that is valid as an
+    // apikey but cannot be placed in the Authorization bearer header. Fall
+    // back to the founder's proven authenticated/RLS query in that case.
     if (!transactionResponse.ok) {
-      return res.status(502).json({ error: "Could not load profit records" });
+      transactionResponse = await fetch(
+        `${auth.supabaseUrl}/rest/v1/wallet_transactions?${query}`,
+        {
+          headers: {
+            apikey: auth.secretKey,
+            Authorization: auth.authorization,
+            Accept: "application/json"
+          },
+          cache: "no-store"
+        }
+      );
+      rows = await transactionResponse.json().catch(() => []);
+      reportScope = "founder_account";
+    }
+    if (!transactionResponse.ok) {
+      return res.status(502).json({
+        error: "Could not load profit records",
+        message: rows?.message || rows?.error || "Supabase rejected the report query"
+      });
     }
 
     const transactions = (Array.isArray(rows) ? rows : [])
@@ -107,6 +130,7 @@ export default async function handler(req, res) {
 
     return res.status(200).json({
       period_days: days,
+      report_scope: reportScope,
       generated_at: new Date().toISOString(),
       provider_balance: providerBalance,
       totals,
