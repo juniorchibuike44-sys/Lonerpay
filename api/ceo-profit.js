@@ -4,6 +4,7 @@ import { pairgateRequest } from "./_pairgate.js";
 const CEO_EMAIL = "juniorchibuike44@gmail.com";
 
 function money(value) {
+  if (value === null || value === undefined || value === "") return null;
   const number = Number(value);
   return Number.isFinite(number) ? Math.round(number * 100) / 100 : null;
 }
@@ -39,9 +40,6 @@ export default async function handler(req, res) {
 
   try {
     const query = new URLSearchParams({
-      status: "eq.successful",
-      transaction_type: "eq.debit",
-      created_at: `gte.${since}`,
       select: "request_id,service,amount,status,details,created_at",
       order: "created_at.desc",
       limit: "1000"
@@ -56,7 +54,11 @@ export default async function handler(req, res) {
     }
 
     const transactions = (Array.isArray(rows) ? rows : [])
-      .filter(row => String(row?.details?.provider || "").toLowerCase() === "pairgate")
+      .filter(row =>
+        String(row?.status || "").toLowerCase() === "successful" &&
+        String(row?.details?.provider || "").toLowerCase() === "pairgate" &&
+        Date.parse(row?.created_at || "") >= Date.parse(since)
+      )
       .map(row => {
         const sale = money(row.details?.sale_amount ?? row.amount) ?? 0;
         const cost = money(row.details?.provider_cost);
