@@ -1113,11 +1113,28 @@ export default async function handler(
         });
       }
 
-      const query = await pairgateRequest(
-        `/transaction/status?reference_code=${encodeURIComponent(providerReference)}`,
-        { method: "GET" }
-      );
-      const finalStatus = pairgateStatus(query.data);
+      // Pairgate accepts airtime immediately, but its status endpoint can remain
+      // "processing" for a few seconds even when delivery succeeds. Poll briefly
+      // on the server so the customer receives the real final result instead of
+      // an avoidable pending screen.
+      let query;
+      let finalStatus = "";
+      for (let attempt = 0; attempt < 8; attempt += 1) {
+        if (attempt > 0) {
+          await new Promise((resolve) => setTimeout(resolve, 500));
+        }
+        query = await pairgateRequest(
+          `/transaction/status?reference_code=${encodeURIComponent(providerReference)}`,
+          { method: "GET" }
+        );
+        finalStatus = pairgateStatus(query.data);
+        if (
+          (query.response.ok && isPairgateSuccessfulStatus(finalStatus)) ||
+          (query.response.ok && isPairgateFailedStatus(finalStatus))
+        ) {
+          break;
+        }
+      }
       const combinedData = {
         ...purchase.data,
         data: {
