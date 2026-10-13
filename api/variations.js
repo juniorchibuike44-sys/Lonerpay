@@ -1,3 +1,5 @@
+import { pairgateRequest } from "./_pairgate.js";
+
 const allowedServices = new Set([
   // Data
   "mtn-data",
@@ -10,6 +12,9 @@ const allowedServices = new Set([
   "waec-registration",
   "jamb"
 ]);
+
+const dataServices = new Set(["mtn-data", "airtel-data", "glo-data", "etisalat-data"]);
+const pairgatePlanTypes = ["CG", "CG_LITE", "SME", "GIFTING", "AWOOF"];
 
 export default async function handler(req, res) {
   if (req.method !== "GET") {
@@ -43,12 +48,8 @@ export default async function handler(req, res) {
   }
 
   // Make sure required server environment variables exist
-  if (
-    !supabaseUrl ||
-    !supabaseSecretKey ||
-    !vtpassApiKey ||
-    !vtpassSecretKey
-  ) {
+  if (!supabaseUrl || !supabaseSecretKey ||
+      (dataServices.has(serviceID) ? !process.env.PAIRGATE_API_KEY : (!vtpassApiKey || !vtpassSecretKey))) {
     return res.status(500).json({
       error: "Server configuration is missing"
     });
@@ -77,6 +78,36 @@ export default async function handler(req, res) {
       return res.status(401).json({
         error: "Invalid or expired login"
       });
+    }
+
+    if (dataServices.has(serviceID)) {
+      const providerId = serviceID === "etisalat-data" ? "9mobile" : serviceID.replace(/-data$/, "");
+      const results = await Promise.all(pairgatePlanTypes.map(planType =>
+        pairgateRequest(`/data-plans?provider_id=${encodeURIComponent(providerId)}&plan_type=${encodeURIComponent(planType)}`, { method: "GET" })
+          .then(result => ({ ...result, planType }))
+      ));
+      const plans = [];
+      for (const result of results) {
+        if (!result.response.ok || result.data?.status !== "success") continue;
+        const payload = result.data?.data;
+        const list = Array.isArray(payload)
+          ? payload
+          : Object.values(payload || {}).find(value => Array.isArray(value)) || [];
+        for (const plan of list) {
+          const id = String(plan?.plan_id || plan?.id || "").trim();
+          const price = Number(plan?.price || plan?.amount);
+          if (!id || !Number.isFinite(price) || price <= 0) continue;
+          plans.push({
+            code: id,
+            name: `${String(plan?.name || "Data plan")} · ${Number(plan?.duration || 0) || "—"} days · ${result.planType}`,
+            amount: price
+          });
+        }
+      }
+      const unique = [...new Map(plans.map(plan => [plan.code, plan])).values()]
+        .sort((a, b) => a.amount - b.amount);
+      if (!unique.length) return res.status(502).json({ error: "Pairgate did not return data plans for this network" });
+      return res.status(200).json({ serviceID, serviceName: `${providerId.toUpperCase()} Data`, provider: "pairgate", variations: unique });
     }
 
     // Get service variations from VTpass
