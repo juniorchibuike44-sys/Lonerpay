@@ -475,25 +475,21 @@ export default async function handler(
     if (!(dataServices.has(serviceID) || tvServices.has(serviceID))) return;
     if (dataServices.has(serviceID)) {
       const network = serviceID === "etisalat-data" ? "9mobile" : serviceID.replace(/-data$/, "");
-      const normalize = value => String(value || "").toLowerCase().replace(/[^a-z0-9]/g, "").replace("etisalat", "9mobile");
-      const categoriesResult = await pairgateRequest("/data-plans/categories", { method: "GET" });
-      const categories = Array.isArray(categoriesResult.data?.data) ? categoriesResult.data.data : [];
-      const matching = categories.filter(item => normalize(item?.provider_name) === normalize(network));
-      pairgateDataProviderId = String(matching[0]?.provider_id || "");
-      const planTypes = [...new Set(matching.map(item => String(item?.plan_type || "").trim()).filter(Boolean))];
-      if (!categoriesResult.response.ok || !pairgateDataProviderId || !planTypes.length) {
-        const error = new Error(`Pairgate has no active ${network.toUpperCase()} data plans for this API account.`);
-        error.statusCode = 503; throw error;
-      }
-      const results = await Promise.all(planTypes.map(planType =>
+      pairgateDataProviderId = network;
+      const planTypes = ["CG", "CG_LITE", "SME", "GIFTING", "AWOOF"];
+      const settledResults = await Promise.allSettled(planTypes.map(planType =>
         pairgateRequest(`/data-plans?provider_id=${encodeURIComponent(pairgateDataProviderId)}&plan_type=${encodeURIComponent(planType)}`, { method: "GET" })
       ));
+      const results = settledResults
+        .filter(result => result.status === "fulfilled")
+        .map(result => result.value);
       let selected = null;
       for (const result of results) {
+        if (!result.response.ok || result.data?.status !== "success") continue;
         const payload = result.data?.data;
         const plans = Array.isArray(payload)
           ? payload
-          : Object.values(payload || {}).find(value => Array.isArray(value)) || [];
+          : Object.values(payload || {}).flatMap(value => Array.isArray(value) ? value : []);
         selected = plans.find(item => String(item?.plan_id || item?.id || "") === String(variation_code || ""));
         if (selected) break;
       }
