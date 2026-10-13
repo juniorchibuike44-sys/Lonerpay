@@ -123,6 +123,36 @@ export default async function handler(req, res) {
       .toLowerCase()
       .trim();
 
+    if (status === "successful" && event.reference) {
+      const supabaseUrl = process.env.SUPABASE_URL;
+      const supabaseKey = process.env.SUPABASE_SECRET_KEY;
+
+      if (!supabaseUrl || !supabaseKey) {
+        throw new Error("Supabase configuration missing");
+      }
+
+      const updateResponse = await fetch(
+        `${supabaseUrl}/rest/v1/wallet_transactions?request_id=eq.${encodeURIComponent(event.reference)}&status=eq.pending`,
+        {
+          method: "PATCH",
+          headers: {
+            apikey: supabaseKey,
+            Authorization: `Bearer ${supabaseKey}`,
+            "Content-Type": "application/json",
+            Prefer: "return=minimal"
+          },
+          body: JSON.stringify({
+            status: "successful",
+            updated_at: new Date().toISOString()
+          })
+        }
+      );
+
+      if (!updateResponse.ok) {
+        throw new Error("Could not finalize successful Pairgate transaction");
+      }
+    }
+
     if (status === "failed" && event.reference) {
       const supabaseUrl = process.env.SUPABASE_URL;
       const supabaseKey = process.env.SUPABASE_SECRET_KEY;
