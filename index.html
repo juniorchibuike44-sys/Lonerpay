@@ -36,6 +36,15 @@
 #lpWelcomeError:empty{display:none!important}
 #lpWelcomeError{padding:10px!important;background:#fff1f0!important;border-radius:10px!important}
 #lpWelcomeSwitch{margin-top:8px!important;font-size:12px!important}
+#lpAuthGateway{position:fixed;inset:0;z-index:19000;display:flex;align-items:center;justify-content:center;overflow:auto;padding:24px;background:radial-gradient(circle at 85% 10%,rgba(0,207,143,.18),transparent 32%),linear-gradient(155deg,#061a35 0%,#07346e 58%,#0874db 100%);font-family:Arial,sans-serif}
+.lp-gateway-card{width:100%;max-width:430px;min-height:610px;display:flex;flex-direction:column;color:#fff;padding:22px 8px 12px;box-sizing:border-box}
+.lp-gateway-brand{display:flex;align-items:center;gap:11px;font-size:21px;font-weight:800;letter-spacing:-.3px}.lp-gateway-mark{width:44px;height:44px;display:grid;place-items:center;border-radius:15px;background:linear-gradient(145deg,#02d391,#00a96f);box-shadow:0 10px 28px rgba(0,0,0,.2);font-size:25px}
+.lp-gateway-visual{margin:auto 0 30px;padding-top:44px}.lp-gateway-kicker{display:inline-flex;align-items:center;gap:7px;padding:7px 11px;border:1px solid rgba(255,255,255,.18);border-radius:999px;background:rgba(255,255,255,.08);font-size:11px;font-weight:800;letter-spacing:.7px}.lp-gateway-visual h1{font-size:42px;line-height:1.05;letter-spacing:-1.6px;margin:18px 0 14px;max-width:360px}.lp-gateway-visual p{font-size:15px;line-height:1.65;color:#d8e8fb;max-width:350px;margin:0}.lp-gateway-trust{display:flex;gap:15px;margin-top:24px;color:#d8e8fb;font-size:12px}.lp-gateway-trust span{display:flex;align-items:center;gap:6px}.lp-gateway-dot{width:7px;height:7px;border-radius:50%;background:#14dda0;box-shadow:0 0 0 4px rgba(20,221,160,.13)}
+.lp-gateway-actions{background:#fff;color:var(--lp-navy);border-radius:24px;padding:18px;box-shadow:0 18px 50px rgba(1,15,35,.3)}.lp-gateway-actions button{width:100%;min-height:54px;border-radius:14px;font-size:15px;font-weight:800;cursor:pointer}.lp-gateway-primary{border:0;background:#0863d8;color:#fff;box-shadow:0 8px 20px rgba(8,99,216,.22)}.lp-gateway-secondary{margin-top:10px;border:1px solid #d8e2ef;background:#fff;color:#12345b}.lp-gateway-legal{text-align:center;color:#77869a;font-size:10.5px;line-height:1.5;margin:13px 8px 0}
+#authStatus{display:none;margin:0 0 13px;padding:11px 12px;border-radius:11px;background:#fff1f0;color:#b42318;font-size:12.5px;line-height:1.45}
+#authModeSwitch{text-align:center;color:var(--lp-muted);font-size:13px;margin:17px 0 0}#authModeSwitch button,#forgotPasswordButton{border:0;background:transparent;color:var(--lp-blue);font-weight:800;cursor:pointer;padding:5px}
+#forgotPasswordButton{display:block;margin:-5px 0 10px auto;font-size:12px}
+.lp-auth-step{display:flex;align-items:center;gap:7px;margin:-12px 0 20px}.lp-auth-step span{height:4px;flex:1;border-radius:99px;background:#e3eaf3}.lp-auth-step span.active{background:#0863d8}
 @media(max-width:480px){#modal{padding:28px 22px!important}#modal>.modal-card{border:0!important;background:transparent!important;box-shadow:none!important;padding:22px 0!important;max-width:390px!important;margin:0 auto!important}#modal>.modal-card>.close{top:22px!important;right:0!important}#lpAuthBrand{margin-bottom:48px}#biometricModal>.modal-card{border:0!important;box-shadow:none!important;background:transparent!important;padding:24px 8px!important}}
 </style>
 <script id="lp-auth-copy-v2">
@@ -87,6 +96,22 @@ document.addEventListener('DOMContentLoaded',function(){
 
 </head>
 <body>
+  <section id="lpAuthGateway" aria-label="Welcome to LonerPay">
+    <div class="lp-gateway-card">
+      <div class="lp-gateway-brand"><span class="lp-gateway-mark">L</span> LonerPay</div>
+      <div class="lp-gateway-visual">
+        <span class="lp-gateway-kicker">● ONE APP. EVERYDAY PAYMENTS.</span>
+        <h1>Your money.<br>Your payments.<br>One secure place.</h1>
+        <p>Pay bills, manage your wallet and keep clear records of every transaction.</p>
+        <div class="lp-gateway-trust"><span><i class="lp-gateway-dot"></i> Secure access</span><span><i class="lp-gateway-dot"></i> Clear receipts</span></div>
+      </div>
+      <div class="lp-gateway-actions">
+        <button id="lpGatewaySignup" class="lp-gateway-primary" type="button">Create an account</button>
+        <button id="lpGatewayLogin" class="lp-gateway-secondary" type="button">Log in</button>
+        <p class="lp-gateway-legal">By continuing, you agree to LonerPay’s Terms and Privacy Policy.</p>
+      </div>
+    </div>
+  </section>
   <header class="nav">
     <a class="brand" href="#"><span class="logo">L</span> Loner<span>Pay</span></a>
     <nav>
@@ -158,6 +183,8 @@ document.addEventListener('DOMContentLoaded',function(){
       <h2 id="modalTitle">Welcome to LonerPay</h2>
       <p id="modalText">Create your LonerPay account to get started.</p> 
       <form id="authForm">
+        <div class="lp-auth-step" id="signupProgress" aria-label="Signup progress"><span class="active"></span><span></span></div>
+        <div id="authStatus" role="status" aria-live="polite"></div>
         <div id="signupNameFields">
   <input
     type="text"
@@ -165,7 +192,6 @@ document.addEventListener('DOMContentLoaded',function(){
     placeholder="First Name"
     autocomplete="given-name"
   >
-
   <input
     type="text"
     name="lastName"
@@ -188,6 +214,7 @@ document.addEventListener('DOMContentLoaded',function(){
     minlength="6"
     required
   >
+  <button type="button" id="forgotPasswordButton" style="display:none">Forgot password?</button>
   <button type="submit" class="primary full">
     Continue
   </button>
@@ -228,6 +255,7 @@ document.addEventListener('DOMContentLoaded',function(){
   <p id="passkeyHelp" style="display:none;font-size:12px;opacity:.75;margin-top:8px;">
     Uses your phone's passkey security. LonerPay never receives your fingerprint or face data.
   </p>
+  <p id="authModeSwitch">Already have an account? <button type="button" data-mode="login">Log in</button></p>
       </form> 
   </div>
     <!-- Professional Biometric Setup Modal -->
