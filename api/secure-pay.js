@@ -203,7 +203,8 @@ export default async function handler(
   const authorization =
     req.headers.authorization;
 
-  const usesPairgate = airtimeServices.has(String(req.body?.serviceID || ""));
+  const usesPairgate = airtimeServices.has(String(req.body?.serviceID || "")) ||
+    dataServices.has(String(req.body?.serviceID || ""));
 
 
   if (
@@ -470,6 +471,32 @@ export default async function handler(
 
   async function validateFixedVariation() {
     if (!(dataServices.has(serviceID) || tvServices.has(serviceID))) return;
+    if (dataServices.has(serviceID)) {
+      const providerId = serviceID === "etisalat-data" ? "9mobile" : serviceID.replace(/-data$/, "");
+      const planTypes = ["CG", "CG_LITE", "SME", "GIFTING", "AWOOF"];
+      const results = await Promise.all(planTypes.map(planType =>
+        pairgateRequest(`/data-plans?provider_id=${encodeURIComponent(providerId)}&plan_type=${encodeURIComponent(planType)}`, { method: "GET" })
+      ));
+      let selected = null;
+      for (const result of results) {
+        const payload = result.data?.data;
+        const plans = Array.isArray(payload)
+          ? payload
+          : Object.values(payload || {}).find(value => Array.isArray(value)) || [];
+        selected = plans.find(item => String(item?.plan_id || item?.id || "") === String(variation_code || ""));
+        if (selected) break;
+      }
+      const expectedAmount = Number(selected?.price || selected?.amount);
+      if (!selected || !Number.isFinite(expectedAmount) || expectedAmount <= 0) {
+        const error = new Error("The selected data plan is no longer available. Refresh the plans and try again.");
+        error.statusCode = 409; throw error;
+      }
+      if (Math.abs(expectedAmount - paymentAmount) > 0.01) {
+        const error = new Error("The data plan price has changed. Refresh the plans before payment.");
+        error.statusCode = 409; throw error;
+      }
+      return;
+    }
     const response = await fetch(
       `${vtpassBaseUrl}/service-variations?serviceID=${encodeURIComponent(serviceID)}`,
       {
@@ -1083,6 +1110,58 @@ export default async function handler(
 
 
     debitCompleted = true;
+
+    /* =========================
+       PAIRGATE DATA
+    ========================= */
+
+    if (dataServices.has(serviceID)) {
+      const providerId = serviceID === "etisalat-data" ? "9mobile" : serviceID.replace(/-data$/, "");
+      providerRequestStarted = true;
+      const purchase = await pairgateRequest("/data/purchase", {
+        method: "POST",
+        body: JSON.stringify({
+          provider_id: providerId,
+          plan_id: String(variation_code),
+          recipient: String(billersCode),
+          reference: requestId
+        })
+      });
+      providerResponseReceived = true;
+      if (!isPairgateAccepted(purchase.response, purchase.data)) {
+        const refund = await refundWallet(pairgateMessage(purchase.data, "Pairgate rejected the data purchase"));
+        await updateTransaction("refunded", purchase.data, "pairgate");
+        return res.status(purchase.response.status >= 400 ? 502 : 400).json({
+          error: pairgateMessage(purchase.data, "Data purchase failed"), request_id: requestId,
+          refunded: refund.success, refund_error: refund.success ? null : refund.message,
+          wallet: Number.isFinite(refund.balance) ? { balance: refund.balance } : undefined
+        });
+      }
+      const providerReference = pairgateReference(purchase.data);
+      if (!providerReference) {
+        await updateTransaction("pending", purchase.data, "pairgate");
+        return res.status(202).json({ code: "099", pending: true, message: "Data purchase was accepted and is awaiting confirmation", request_id: requestId, wallet: { balance: Number(debit.new_balance), transaction_id: debit.transaction_id } });
+      }
+      let query, finalStatus = "";
+      for (let attempt = 0; attempt < 8; attempt += 1) {
+        if (attempt > 0) await new Promise(resolve => setTimeout(resolve, 500));
+        query = await pairgateRequest(`/transaction/status?reference_code=${encodeURIComponent(providerReference)}`, { method: "GET" });
+        finalStatus = pairgateStatus(query.data);
+        if ((query.response.ok && isPairgateSuccessfulStatus(finalStatus)) || (query.response.ok && isPairgateFailedStatus(finalStatus))) break;
+      }
+      const combinedData = { ...purchase.data, data: { ...(purchase.data?.data || {}), ...(query.data?.data || {}), reference_code: providerReference } };
+      if (query.response.ok && isPairgateSuccessfulStatus(finalStatus)) {
+        await updateTransaction("successful", combinedData, "pairgate");
+        return res.status(200).json({ code: "000", content: { transactions: { status: "delivered" } }, request_id: requestId, pairgate_reference: providerReference, pending: false, wallet: { balance: Number(debit.new_balance), transaction_id: debit.transaction_id } });
+      }
+      if (query.response.ok && isPairgateFailedStatus(finalStatus)) {
+        const refund = await refundWallet(pairgateMessage(query.data, "Pairgate data transaction failed"));
+        await updateTransaction("refunded", combinedData, "pairgate");
+        return res.status(502).json({ error: pairgateMessage(query.data, "Data purchase failed"), request_id: requestId, pairgate_reference: providerReference, refunded: refund.success, refund_error: refund.success ? null : refund.message, wallet: Number.isFinite(refund.balance) ? { balance: refund.balance } : undefined });
+      }
+      await updateTransaction("pending", combinedData, "pairgate");
+      return res.status(202).json({ code: "099", content: { transactions: { status: finalStatus || "pending" } }, request_id: requestId, pairgate_reference: providerReference, pending: true, message: "Data purchase is processing", wallet: { balance: Number(debit.new_balance), transaction_id: debit.transaction_id } });
+    }
 
     /* =========================
        PAIRGATE AIRTIME
