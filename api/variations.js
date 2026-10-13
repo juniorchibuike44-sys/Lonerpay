@@ -22,8 +22,11 @@ const allowedServices = new Set([
 ]);
 
 const dataServices = new Set(["mtn-data", "airtel-data", "glo-data", "etisalat-data"]);
-function normalizedNetwork(value) {
-  return String(value || "").toLowerCase().replace(/[^a-z0-9]/g, "").replace("etisalat", "9mobile");
+const pairgateDataPlanTypes = ["CG", "CG_LITE", "SME", "GIFTING", "AWOOF"];
+
+function pairgatePlans(payload) {
+  if (Array.isArray(payload)) return payload;
+  return Object.values(payload || {}).flatMap(value => Array.isArray(value) ? value : []);
 }
 
 export default async function handler(req, res) {
@@ -94,38 +97,27 @@ export default async function handler(req, res) {
       const network = serviceID === "etisalat-data" ? "9mobile" : serviceID.replace(/-data$/, "");
       const cachedPlans = cacheGet(`plans:${network}`, 10 * 60_000);
       if (cachedPlans) return res.status(200).json({ serviceID, serviceName: `${network.toUpperCase()} Data`, provider: "pairgate", cached: true, variations: cachedPlans });
-      let categories = cacheGet("categories", 10 * 60_000);
-      let categoriesResult = null;
-      if (!categories) {
-        categoriesResult = await pairgateRequest("/data-plans/categories", { method: "GET" });
-        categories = Array.isArray(categoriesResult.data?.data) ? categoriesResult.data.data : [];
-        if (categories.length) cacheSet("categories", categories);
-      }
-      const networkCategories = categories.filter(item => normalizedNetwork(item?.provider_name) === normalizedNetwork(network));
-      const providerId = String(networkCategories[0]?.provider_id || "");
-      const planTypes = [...new Set(networkCategories.map(item => String(item?.plan_type || "").trim()).filter(Boolean))];
-      if ((categoriesResult && !categoriesResult.response.ok) || !providerId || !planTypes.length) {
-        return res.status(502).json({ error: `Pairgate has no active ${network.toUpperCase()} data categories for this API account` });
-      }
-      const results = await Promise.all(planTypes.map(planType =>
-        pairgateRequest(`/data-plans?provider_id=${encodeURIComponent(providerId)}&plan_type=${encodeURIComponent(planType)}`, { method: "GET" })
+      // Pairgate's documented provider_id is the network slug itself. Query every
+      // supported plan family directly; the category endpoint is not the catalogue.
+      const settledResults = await Promise.allSettled(pairgateDataPlanTypes.map(planType =>
+        pairgateRequest(`/data-plans?provider_id=${encodeURIComponent(network)}&plan_type=${encodeURIComponent(planType)}`, { method: "GET" })
           .then(result => ({ ...result, planType }))
       ));
+      const results = settledResults
+        .filter(result => result.status === "fulfilled")
+        .map(result => result.value);
       const plans = [];
       for (const result of results) {
         if (!result.response.ok || result.data?.status !== "success") continue;
-        const payload = result.data?.data;
-        const list = Array.isArray(payload)
-          ? payload
-          : Object.values(payload || {}).find(value => Array.isArray(value)) || [];
-        for (const plan of list) {
+        for (const plan of pairgatePlans(result.data?.data)) {
           const id = String(plan?.plan_id || plan?.id || "").trim();
           const price = Number(plan?.price || plan?.amount);
           if (!id || !Number.isFinite(price) || price <= 0) continue;
           plans.push({
             code: id,
             name: `${String(plan?.name || "Data plan")} · ${Number(plan?.duration || 0) || "—"} days`,
-            amount: price
+            amount: price,
+            planType: result.planType
           });
         }
       }
