@@ -231,6 +231,15 @@
     overlay.querySelector(".ld-close").onclick = close;
 
     function renderPlans() {
+      const availablePeriods = new Set(plans.map(plan => planPeriod(plan.name)));
+      overlay.querySelectorAll(".ld-filter").forEach(button => {
+        const available = button.dataset.filter === "All" || availablePeriods.has(button.dataset.filter);
+        button.hidden = !available;
+      });
+      if (filter !== "All" && !availablePeriods.has(filter)) {
+        filter = "All";
+        overlay.querySelectorAll(".ld-filter").forEach(button => button.classList.toggle("on", button.dataset.filter === "All"));
+      }
       const visible = plans.filter(plan => filter === "All" || planPeriod(plan.name) === filter);
       grid.innerHTML = visible.length ? visible.map(plan => `<button class="ld-plan ${selected?.code===plan.code?"on":""}" data-code="${escapeText(plan.code)}" type="button"><b>${escapeText(plan.name)}</b><strong>${money(plan.amount)}</strong></button>`).join("") : '<div class="ld-state">No plans match this filter.</div>';
       grid.querySelectorAll(".ld-plan").forEach(button => button.onclick = () => {
