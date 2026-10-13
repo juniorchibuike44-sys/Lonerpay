@@ -14,7 +14,9 @@ const allowedServices = new Set([
 ]);
 
 const dataServices = new Set(["mtn-data", "airtel-data", "glo-data", "etisalat-data"]);
-const pairgatePlanTypes = ["CG", "CG_LITE", "SME", "GIFTING", "AWOOF"];
+function normalizedNetwork(value) {
+  return String(value || "").toLowerCase().replace(/[^a-z0-9]/g, "").replace("etisalat", "9mobile");
+}
 
 export default async function handler(req, res) {
   if (req.method !== "GET") {
@@ -81,8 +83,16 @@ export default async function handler(req, res) {
     }
 
     if (dataServices.has(serviceID)) {
-      const providerId = serviceID === "etisalat-data" ? "9mobile" : serviceID.replace(/-data$/, "");
-      const results = await Promise.all(pairgatePlanTypes.map(planType =>
+      const network = serviceID === "etisalat-data" ? "9mobile" : serviceID.replace(/-data$/, "");
+      const categoriesResult = await pairgateRequest("/data-plans/categories", { method: "GET" });
+      const categories = Array.isArray(categoriesResult.data?.data) ? categoriesResult.data.data : [];
+      const networkCategories = categories.filter(item => normalizedNetwork(item?.provider_name) === normalizedNetwork(network));
+      const providerId = String(networkCategories[0]?.provider_id || "");
+      const planTypes = [...new Set(networkCategories.map(item => String(item?.plan_type || "").trim()).filter(Boolean))];
+      if (!categoriesResult.response.ok || !providerId || !planTypes.length) {
+        return res.status(502).json({ error: `Pairgate has no active ${network.toUpperCase()} data categories for this API account` });
+      }
+      const results = await Promise.all(planTypes.map(planType =>
         pairgateRequest(`/data-plans?provider_id=${encodeURIComponent(providerId)}&plan_type=${encodeURIComponent(planType)}`, { method: "GET" })
           .then(result => ({ ...result, planType }))
       ));
@@ -107,7 +117,7 @@ export default async function handler(req, res) {
       const unique = [...new Map(plans.map(plan => [plan.code, plan])).values()]
         .sort((a, b) => a.amount - b.amount);
       if (!unique.length) return res.status(502).json({ error: "Pairgate did not return data plans for this network" });
-      return res.status(200).json({ serviceID, serviceName: `${providerId.toUpperCase()} Data`, provider: "pairgate", variations: unique });
+      return res.status(200).json({ serviceID, serviceName: `${network.toUpperCase()} Data`, provider: "pairgate", variations: unique });
     }
 
     // Get service variations from VTpass
