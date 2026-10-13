@@ -1,3 +1,11 @@
+import {
+  isPairgateFailedStatus,
+  isPairgateSuccessfulStatus,
+  pairgateMessage,
+  pairgateRequest,
+  pairgateStatus
+} from "./_pairgate.js";
+
 const definitiveFailureCodes = new Set([
   "010", "011", "012", "013", "015", "016", "017", "018",
   "032", "034", "035", "040", "083", "087", "091"
@@ -20,7 +28,7 @@ export default async function handler(req, res) {
       : "https://sandbox.vtpass.com/api")
   ).replace(/\/+$/, "");
 
-  if (!supabaseUrl || !secretKey || !apiKey || !vtpassSecretKey) {
+  if (!supabaseUrl || !secretKey) {
     return res.status(500).json({ error: "Server payment configuration is missing" });
   }
   if (!authorization?.startsWith("Bearer ")) return res.status(401).json({ error: "Login required" });
@@ -47,6 +55,63 @@ export default async function handler(req, res) {
     if (!transactionResponse.ok || !transaction) return res.status(404).json({ error: "Transaction not found" });
     if (String(transaction.status).toLowerCase() !== "pending") {
       return res.status(200).json({ resolved: true, status: transaction.status });
+    }
+
+    if (String(transaction.details?.provider || "").toLowerCase() === "pairgate") {
+      const providerReference = String(transaction.details?.provider_reference || "").trim();
+      if (!providerReference) {
+        return res.status(202).json({ resolved: false, status: "pending" });
+      }
+
+      const providerResult = await pairgateRequest(
+        `/transaction/status?reference_code=${encodeURIComponent(providerReference)}`,
+        { method: "GET" }
+      );
+      const providerStatus = pairgateStatus(providerResult.data);
+
+      if (providerResult.response.ok && isPairgateSuccessfulStatus(providerStatus)) {
+        await fetch(
+          `${supabaseUrl}/rest/v1/wallet_transactions?user_id=eq.${encodeURIComponent(user.id)}&request_id=eq.${encodeURIComponent(requestId)}`,
+          {
+            method: "PATCH",
+            headers: { ...serviceHeaders, Prefer: "return=minimal" },
+            body: JSON.stringify({
+              status: "successful",
+              details: {
+                ...(transaction.details || {}),
+                provider: "pairgate",
+                provider_status: providerStatus,
+                provider_reference: providerReference
+              },
+              updated_at: new Date().toISOString()
+            })
+          }
+        );
+        return res.status(200).json({ resolved: true, status: "successful" });
+      }
+
+      if (providerResult.response.ok && isPairgateFailedStatus(providerStatus)) {
+        const refundResponse = await fetch(`${supabaseUrl}/rest/v1/rpc/refund_wallet`, {
+          method: "POST",
+          headers: serviceHeaders,
+          body: JSON.stringify({
+            p_user_id: user.id,
+            p_request_id: requestId,
+            p_reason: pairgateMessage(providerResult.data, "Pairgate transaction failed")
+          })
+        });
+        const refund = await refundResponse.json().catch(() => null);
+        if (!refundResponse.ok) {
+          return res.status(500).json({ error: "Transaction failed but refund confirmation is pending" });
+        }
+        return res.status(200).json({ resolved: true, status: "refunded", refund });
+      }
+
+      return res.status(202).json({ resolved: false, status: "pending" });
+    }
+
+    if (!apiKey || !vtpassSecretKey) {
+      return res.status(500).json({ error: "VTpass payment configuration is missing" });
     }
 
     const providerResponse = await fetch(`${baseUrl}/requery`, {
