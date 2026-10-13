@@ -1,5 +1,13 @@
 import { pairgateRequest } from "./_pairgate.js";
 
+const dataPlanCache = globalThis.__lonerPayDataPlanCache || new Map();
+globalThis.__lonerPayDataPlanCache = dataPlanCache;
+const cacheGet = (key, maxAge) => {
+  const item = dataPlanCache.get(key);
+  return item && Date.now() - item.savedAt < maxAge ? item.value : null;
+};
+const cacheSet = (key, value) => { dataPlanCache.set(key, { savedAt: Date.now(), value }); return value; };
+
 const allowedServices = new Set([
   // Data
   "mtn-data",
@@ -84,12 +92,19 @@ export default async function handler(req, res) {
 
     if (dataServices.has(serviceID)) {
       const network = serviceID === "etisalat-data" ? "9mobile" : serviceID.replace(/-data$/, "");
-      const categoriesResult = await pairgateRequest("/data-plans/categories", { method: "GET" });
-      const categories = Array.isArray(categoriesResult.data?.data) ? categoriesResult.data.data : [];
+      const cachedPlans = cacheGet(`plans:${network}`, 10 * 60_000);
+      if (cachedPlans) return res.status(200).json({ serviceID, serviceName: `${network.toUpperCase()} Data`, provider: "pairgate", cached: true, variations: cachedPlans });
+      let categories = cacheGet("categories", 10 * 60_000);
+      let categoriesResult = null;
+      if (!categories) {
+        categoriesResult = await pairgateRequest("/data-plans/categories", { method: "GET" });
+        categories = Array.isArray(categoriesResult.data?.data) ? categoriesResult.data.data : [];
+        if (categories.length) cacheSet("categories", categories);
+      }
       const networkCategories = categories.filter(item => normalizedNetwork(item?.provider_name) === normalizedNetwork(network));
       const providerId = String(networkCategories[0]?.provider_id || "");
       const planTypes = [...new Set(networkCategories.map(item => String(item?.plan_type || "").trim()).filter(Boolean))];
-      if (!categoriesResult.response.ok || !providerId || !planTypes.length) {
+      if ((categoriesResult && !categoriesResult.response.ok) || !providerId || !planTypes.length) {
         return res.status(502).json({ error: `Pairgate has no active ${network.toUpperCase()} data categories for this API account` });
       }
       const results = await Promise.all(planTypes.map(planType =>
@@ -117,6 +132,7 @@ export default async function handler(req, res) {
       const unique = [...new Map(plans.map(plan => [plan.code, plan])).values()]
         .sort((a, b) => a.amount - b.amount);
       if (!unique.length) return res.status(502).json({ error: "Pairgate did not return data plans for this network" });
+      cacheSet(`plans:${network}`, unique);
       return res.status(200).json({ serviceID, serviceName: `${network.toUpperCase()} Data`, provider: "pairgate", variations: unique });
     }
 
