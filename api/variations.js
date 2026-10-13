@@ -109,7 +109,7 @@ export default async function handler(req, res) {
           if (!id || !Number.isFinite(price) || price <= 0) continue;
           plans.push({
             code: id,
-            name: `${String(plan?.name || "Data plan")} · ${Number(plan?.duration || 0) || "—"} days · ${result.planType}`,
+            name: `${String(plan?.name || "Data plan")} · ${Number(plan?.duration || 0) || "—"} days`,
             amount: price
           });
         }
