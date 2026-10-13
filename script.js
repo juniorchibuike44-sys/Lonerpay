@@ -63,6 +63,9 @@ document.addEventListener("DOMContentLoaded", function () {
         hasLoginPin:
           previous?.userId === user.id &&
           previous.hasLoginPin === true,
+        pinPromptDismissed:
+          previous?.userId === user.id &&
+          previous.pinPromptDismissed === true,
         passkeyEnabled:
           passkeyEnabled === true ||
           (
@@ -103,6 +106,7 @@ document.addEventListener("DOMContentLoaded", function () {
     if (!remembered) return;
 
     remembered.hasLoginPin = true;
+    remembered.pinPromptDismissed = false;
 
     try {
       localStorage.setItem(DEVICE_KEY, JSON.stringify(remembered));
@@ -406,6 +410,10 @@ document.addEventListener("DOMContentLoaded", function () {
       return;
     }
 
+    if (!forcePinSetup && rememberedUser()?.pinPromptDismissed === true) {
+      return;
+    }
+
     await new Promise(resolve => {
       const screen = document.createElement("section");
       screen.id = "lpLoginPinSetup";
@@ -423,7 +431,8 @@ document.addEventListener("DOMContentLoaded", function () {
           <input id="lpConfirmLoginPin" type="password" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="new-password" required>
           <p id="lpPinSetupError" role="status" style="min-height:20px;color:#b42318;font-size:13px;line-height:1.5"></p>
           <button type="submit" style="background:#0863d8;color:white;border:0;font-weight:bold">Save login PIN</button>
-          <p style="margin-top:14px;color:#62718a;font-size:12px;line-height:1.5">For your security, complete this step before opening your dashboard.</p>
+          <button id="lpSkipLoginPin" type="button" style="background:white;color:#52647d;border:1px solid #d8e2ef;font-weight:bold;margin-top:10px">Not now — continue to dashboard</button>
+          <p style="margin-top:14px;color:#62718a;font-size:12px;line-height:1.5">This PIN is optional and is used only for faster login on this phone. Your payment PIN stays separate.</p>
         </form>`;
 
       screen.querySelectorAll("input").forEach(input => {
@@ -448,6 +457,17 @@ document.addEventListener("DOMContentLoaded", function () {
         screen.remove();
         forcePinSetup = false;
         resolve();
+      };
+
+      screen.querySelector("#lpSkipLoginPin").onclick = () => {
+        const remembered = rememberedUser();
+        if (remembered) {
+          remembered.pinPromptDismissed = true;
+          try {
+            localStorage.setItem(DEVICE_KEY, JSON.stringify(remembered));
+          } catch (_) {}
+        }
+        finish();
       };
 
       screen.querySelector("form").onsubmit = async e => {

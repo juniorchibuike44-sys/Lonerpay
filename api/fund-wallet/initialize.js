@@ -75,7 +75,7 @@ if (!paystackSecretKey.startsWith("sk_live_")) {
           email: user.email,
           amount: String(Math.round(amount * 100)),
           reference,
-          callback_url: `${String(process.env.LONERPAY_ORIGIN || "https://lonerpayvercelfixed.vercel.app").replace(/\/$/, "")}/dashboard.html",
+          callback_url: `${String(process.env.LONERPAY_ORIGIN || "https://lonerpayvercelfixed.vercel.app").replace(/\/$/, "")}/dashboard.html`,
           metadata: JSON.stringify({
             user_id: user.id,
             wallet_amount: amount
@@ -104,4 +104,4 @@ if (!paystackSecretKey.startsWith("sk_live_")) {
       message: error.message
     });
   }
-      } 
+}
