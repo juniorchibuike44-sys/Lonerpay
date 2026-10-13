@@ -1,7 +1,11 @@
+import { enforceRateLimit, hardenResponse } from "../_security.js";
+
 export default async function handler(req, res) {
+  hardenResponse(res);
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
+  if (!enforceRateLimit(req, res, { key: "fund-wallet", limit: 10, windowMs: 60_000 })) return;
 
   res.setHeader("Cache-Control", "no-store");
 
@@ -28,9 +32,9 @@ if (!paystackSecretKey.startsWith("sk_live_")) {
 
   const amount = Number(req.body?.amount);
 
-  if (!Number.isFinite(amount) || amount < 100) {
+  if (!Number.isFinite(amount) || amount < 100 || amount > 1_000_000) {
     return res.status(400).json({
-      error: "Minimum funding amount is ₦100"
+      error: "Funding amount must be between ₦100 and ₦1,000,000"
     });
   }
 
@@ -71,7 +75,7 @@ if (!paystackSecretKey.startsWith("sk_live_")) {
           email: user.email,
           amount: String(Math.round(amount * 100)),
           reference,
-                  callback_url: `${req.headers.origin}/dashboard.html`, 
+          callback_url: `${String(process.env.LONERPAY_ORIGIN || "https://lonerpayvercelfixed.vercel.app").replace(/\/$/, "")}/dashboard.html",
           metadata: JSON.stringify({
             user_id: user.id,
             wallet_amount: amount

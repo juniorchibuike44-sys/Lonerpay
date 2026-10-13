@@ -3,6 +3,7 @@ import {
   randomBytes,
   timingSafeEqual
 } from "node:crypto";
+import { enforceRateLimit, hardenResponse } from "./_security.js";
 
 const ITERATIONS = 210000;
 const MAX_FAILED_ATTEMPTS = 5;
@@ -29,9 +30,11 @@ function verifyPin(pin, storedHash) {
 }
 
 export default async function handler(req, res) {
+  hardenResponse(res);
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
+  if (!enforceRateLimit(req, res, { key: "payment-pin", limit: 12, windowMs: 15 * 60_000 })) return;
 
   res.setHeader("Cache-Control", "no-store");
 

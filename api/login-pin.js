@@ -1,4 +1,5 @@
 import { createHash, createHmac, randomBytes, randomUUID } from 'node:crypto';
+import { enforceRateLimit, hardenResponse } from './_security.js';
 
 const COOKIE = '__Host-lonerpay_login_device';
 const MAX_AGE = 30 * 24 * 60 * 60;
@@ -26,6 +27,7 @@ function mfaEnabled(user) {
 }
 
 export default async function handler(req, res) {
+  hardenResponse(res);
   res.setHeader('Cache-Control', 'no-store');
   res.setHeader('Pragma', 'no-cache');
   res.setHeader('X-Content-Type-Options', 'nosniff');
@@ -36,6 +38,7 @@ export default async function handler(req, res) {
     res.setHeader('Allow', 'POST');
     return fail(405, 'Method not allowed');
   }
+  if (!enforceRateLimit(req, res, { key: 'login-pin', limit: 15, windowMs: 15 * 60_000 })) return;
 
   const url = process.env.SUPABASE_URL?.replace(/\/$/, '');
   const key = process.env.SUPABASE_SECRET_KEY;

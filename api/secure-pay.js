@@ -1,4 +1,5 @@
 import { pbkdf2Sync, timingSafeEqual } from "node:crypto";
+import { enforceRateLimit, hardenResponse } from "./_security.js";
 
 function verifyStoredPin(pin, storedHash) {
   try {
@@ -150,11 +151,13 @@ export default async function handler(
   req,
   res
 ) {
+  hardenResponse(res);
   if (req.method !== "POST") {
     return res.status(405).json({
       error: "Method not allowed"
     });
   }
+  if (!enforceRateLimit(req, res, { key: "secure-pay", limit: 20, windowMs: 60_000 })) return;
 
   res.setHeader(
     "Cache-Control",

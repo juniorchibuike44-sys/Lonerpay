@@ -1,7 +1,11 @@
+import { enforceRateLimit, hardenResponse } from "../_security.js";
+
 export default async function handler(req, res) {
+  hardenResponse(res);
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
+  if (!enforceRateLimit(req, res, { key: "verify-funding", limit: 15, windowMs: 60_000 })) return;
 
   res.setHeader("Cache-Control", "no-store");
 
@@ -98,6 +102,13 @@ export default async function handler(req, res) {
     if (!Number.isFinite(walletAmount) || walletAmount < 100) {
       return res.status(400).json({
         error: "Invalid wallet funding amount"
+      });
+    }
+
+    const paidAmount = Number(transaction.amount) / 100;
+    if (!Number.isFinite(paidAmount) || paidAmount !== walletAmount) {
+      return res.status(400).json({
+        error: "Payment amount does not match the wallet funding request"
       });
     }
 

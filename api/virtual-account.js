@@ -1,10 +1,14 @@
+import { enforceRateLimit, hardenResponse } from "./_security.js";
+
 export default async function handler(req, res) {
+  hardenResponse(res);
   if (req.method !== "GET" && req.method !== "POST") {
     return res.status(405).json({
       success: false,
       message: "Method not allowed"
     });
   }
+  if (!enforceRateLimit(req, res, { key: "virtual-account", limit: 12, windowMs: 10 * 60_000 })) return;
 
   const supabaseUrl = process.env.SUPABASE_URL;
   const supabaseKey =

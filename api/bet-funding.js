@@ -1,4 +1,5 @@
 import { pbkdf2Sync, timingSafeEqual } from "crypto"; 
+import { enforceRateLimit, hardenResponse } from "./_security.js";
 function verifyStoredPin(pin, storedHash) {
   try {
     const [algorithm, iterationsText, salt, expectedHex] =
@@ -54,12 +55,14 @@ async function callRpc(name, params) {
   return Array.isArray(data) ? data[0] : data; 
 } 
 export default async function handler(req, res) {
+  hardenResponse(res);
   if (req.method !== "POST") {
     return res.status(405).json({
       success: false,
       message: "Method not allowed"
     });
   }
+  if (!enforceRateLimit(req, res, { key: "bet-funding", limit: 12, windowMs: 60_000 })) return;
 let debitCompleted = false; 
   let user = null;
 let reference = null;
