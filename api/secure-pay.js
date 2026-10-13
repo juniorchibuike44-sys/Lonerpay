@@ -422,6 +422,17 @@ export default async function handler(
   async function updateTransaction(status, providerData = {}, providerName = "vtpass") {
     if (!user?.id || !requestId) return;
     try {
+      const providerDetails = providerData?.data || {};
+      const balanceBefore = Number(providerDetails.balance_before);
+      const balanceAfter = Number(providerDetails.balance_after);
+      const balanceCharge = balanceBefore - balanceAfter;
+      const providerCost = providerName === "pairgate" && Number.isFinite(balanceCharge) && balanceCharge > 0
+        ? balanceCharge
+        : null;
+      const grossProfit = providerCost !== null
+        ? Math.max(0, Number(paymentAmount) - providerCost)
+        : null;
+
       await fetch(
         `${supabaseUrl}/rest/v1/wallet_transactions?user_id=eq.${encodeURIComponent(user.id)}&request_id=eq.${encodeURIComponent(requestId)}`,
         {
@@ -443,6 +454,9 @@ export default async function handler(
               provider_code: String(providerData?.code || ""),
               provider_status: String(providerData?.content?.transactions?.status || providerData?.data?.status || ""),
               provider_reference: String(providerData?.requestId || providerData?.request_id || providerData?.data?.reference_code || providerData?.reference_code || ""),
+              provider_cost: providerCost,
+              gross_profit: grossProfit,
+              sale_amount: Number(paymentAmount),
               purchased_code: String(providerData?.purchased_code || providerData?.token || "")
             },
             updated_at: new Date().toISOString()
