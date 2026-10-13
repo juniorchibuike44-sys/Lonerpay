@@ -126,37 +126,6 @@ function removeDemoFundsControl() {
 
 removeDemoFundsControl();
 setTimeout(removeDemoFundsControl, 500); 
-// Open the dedicated gift-card experience instead of the legacy alert-only
-// dashboard popup. The page performs no wallet debit until a provider adapter
-// is configured and confirms a live quote.
-window.openGiftCards = function openGiftCardsPage() {
-    window.location.href = "gift-cards.html";
-};
-
-window.openFlights = function openFlightsPage() {
-    window.location.href = "flights.html";
-};
-
-function addFlightsService() {
-    const services = Array.from(document.querySelectorAll(".service"));
-    if (services.some(service => service.querySelector("h3")?.textContent.trim() === "Flights")) return;
-
-    const giftCards = services.find(service => service.querySelector("h3")?.textContent.trim() === "Gift Cards");
-    if (!giftCards) return;
-
-    const flights = document.createElement("div");
-    flights.className = "service";
-    flights.setAttribute("onclick", "openFlights()");
-    flights.innerHTML = "<div>✈️</div><h3>Flights</h3><p>Local & international</p>";
-    giftCards.insertAdjacentElement("afterend", flights);
-}
-
-if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", addFlightsService, { once: true });
-} else {
-    addFlightsService();
-}
-
 // Premium dashboard shell. This is intentionally presentation-only: existing
 // wallet and payment handlers remain the source of truth for every transaction.
 function upgradeDashboardExperience() {
@@ -244,13 +213,12 @@ function upgradeDashboardExperience() {
     container.insertBefore(tools, title || services);
     container.insertBefore(serviceTitle, services);
 
-    const categoryMap = {"Airtime":"bills","Data":"bills","Electricity":"bills","TV":"bills","Education":"lifestyle","Transfer":"money","Bet Funding":"lifestyle","Gift Cards":"lifestyle","Flights":"lifestyle","AI Tips":"smart"};
+    const categoryMap = {"Airtime":"bills","Data":"bills","Electricity":"bills","TV":"bills","Education":"lifestyle","Bet Funding":"lifestyle","AI Tips":"smart"};
     const cards = Array.from(services.querySelectorAll(".service"));
     cards.forEach(card => {
         const name = card.querySelector("h3")?.textContent.trim() || "";
         card.dataset.category = categoryMap[name] || "all";
         card.dataset.name = `${name} ${card.querySelector("p")?.textContent || ""}`.toLowerCase();
-        if (["Flights","Gift Cards"].includes(name)) card.classList.add("lp-featured");
     });
 
     let selected = "all";
