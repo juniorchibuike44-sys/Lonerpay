@@ -3211,7 +3211,7 @@ function openAITips() {
 
           if (!paymentConfirmed && initiallyPending) {
             showInline(err,"The provider is still confirming this payment. Do not pay again; check Recent Transactions shortly.","info");
-            button.disabled=false; button.textContent="Check Again"; return;
+            button.disabled=true; button.textContent="Still Processing"; return;
           }
           if (!paymentConfirmed) throw new Error("Airtime payment failed.");
           if (typeof recordTransaction === "function") recordTransaction("Airtime",a,`Network: ${network} | Phone: ${p}`);
