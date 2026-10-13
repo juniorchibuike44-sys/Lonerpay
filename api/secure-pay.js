@@ -1,5 +1,14 @@
 import { pbkdf2Sync, timingSafeEqual } from "node:crypto";
 import { enforceRateLimit, hardenResponse } from "./_security.js";
+import {
+  isPairgateAccepted,
+  isPairgateFailedStatus,
+  isPairgateSuccessfulStatus,
+  pairgateMessage,
+  pairgateReference,
+  pairgateRequest,
+  pairgateStatus
+} from "./_pairgate.js";
 
 function verifyStoredPin(pin, storedHash) {
   try {
@@ -194,12 +203,14 @@ export default async function handler(
   const authorization =
     req.headers.authorization;
 
+  const usesPairgate = airtimeServices.has(String(req.body?.serviceID || ""));
+
 
   if (
     !supabaseUrl ||
     !secretKey ||
-    !vtpassApiKey ||
-    !vtpassSecretKey
+    (!usesPairgate && (!vtpassApiKey || !vtpassSecretKey)) ||
+    (usesPairgate && !process.env.PAIRGATE_API_KEY)
   ) {
     return res.status(500).json({
       error:
@@ -264,8 +275,8 @@ export default async function handler(
 
   // Prevent confusing debits/refunds while testing. VTpass sandbox deliberately
   // fails ordinary customer details and only accepts its documented simulators.
-  if (!vtpassIsLive) {
-    if ((airtimeServices.has(serviceID) || dataServices.has(serviceID)) && billersCode !== "08011111111") {
+  if (!usesPairgate && !vtpassIsLive) {
+    if (dataServices.has(serviceID) && billersCode !== "08011111111") {
       return res.status(400).json({
         error: "VTpass test mode is active. Use 08011111111 for a successful airtime or data test. Your wallet was not debited.",
         sandbox: true,
@@ -329,6 +340,15 @@ export default async function handler(
       error:
         "Select an education option"
     });
+  }
+
+  if (airtimeServices.has(serviceID)) {
+    if (!/^0\d{10}$/.test(String(billersCode))) {
+      return res.status(400).json({ error: "Enter a valid 11-digit Nigerian phone number" });
+    }
+    if (paymentAmount < 50) {
+      return res.status(400).json({ error: "Minimum airtime purchase is ₦50" });
+    }
   }
 
 
@@ -399,7 +419,7 @@ export default async function handler(
       : data;
   }
 
-  async function updateTransaction(status, providerData = {}) {
+  async function updateTransaction(status, providerData = {}, providerName = "vtpass") {
     if (!user?.id || !requestId) return;
     try {
       await fetch(
@@ -415,14 +435,14 @@ export default async function handler(
           body: JSON.stringify({
             status,
             details: {
-              provider: "vtpass",
+              provider: providerName,
               serviceID,
               billersCode,
               variation_code: variation_code || "",
               phone: phone || "",
               provider_code: String(providerData?.code || ""),
-              provider_status: String(providerData?.content?.transactions?.status || ""),
-              provider_reference: String(providerData?.requestId || providerData?.request_id || ""),
+              provider_status: String(providerData?.content?.transactions?.status || providerData?.data?.status || ""),
+              provider_reference: String(providerData?.requestId || providerData?.request_id || providerData?.data?.reference_code || providerData?.reference_code || ""),
               purchased_code: String(providerData?.purchased_code || providerData?.token || "")
             },
             updated_at: new Date().toISOString()
@@ -798,6 +818,26 @@ export default async function handler(
 
     await validateFixedVariation();
 
+    if (airtimeServices.has(serviceID)) {
+      const providerId = serviceID === "etisalat" ? "9mobile" : serviceID;
+      const providerList = await pairgateRequest("/providers/airtime", { method: "GET" });
+      const providers = Array.isArray(providerList.data?.data) ? providerList.data.data : [];
+      const networkAvailable = providerList.response.ok &&
+        providerList.data?.status === "success" &&
+        providers.some(item => {
+          const id = String(item?.slug || item?.id || item?.name || "").toLowerCase();
+          const name = String(item?.name || "").toLowerCase();
+          return id === providerId || name === providerId || name.includes(providerId);
+        });
+
+      if (!networkAvailable) {
+        return res.status(503).json({
+          error: "The selected airtime network is temporarily unavailable",
+          refunded: false
+        });
+      }
+    }
+
 
     /* =========================
        ELECTRICITY VERIFY
@@ -1029,6 +1069,100 @@ export default async function handler(
 
 
     debitCompleted = true;
+
+    /* =========================
+       PAIRGATE AIRTIME
+    ========================= */
+
+    if (airtimeServices.has(serviceID)) {
+      const providerId = serviceID === "etisalat" ? "9mobile" : serviceID;
+
+      providerRequestStarted = true;
+      const purchase = await pairgateRequest("/airtime/purchase", {
+        method: "POST",
+        body: JSON.stringify({
+          provider_id: providerId,
+          amount: paymentAmount,
+          recipient: String(billersCode),
+          reference: requestId
+        })
+      });
+      providerResponseReceived = true;
+
+      if (!isPairgateAccepted(purchase.response, purchase.data)) {
+        const refund = await refundWallet(pairgateMessage(purchase.data, "Pairgate rejected the airtime purchase"));
+        await updateTransaction("refunded", purchase.data, "pairgate");
+        return res.status(purchase.response.status >= 400 ? 502 : 400).json({
+          error: pairgateMessage(purchase.data, "Airtime purchase failed"),
+          request_id: requestId,
+          refunded: refund.success,
+          refund_error: refund.success ? null : refund.message,
+          wallet: Number.isFinite(refund.balance) ? { balance: refund.balance } : undefined
+        });
+      }
+
+      const providerReference = pairgateReference(purchase.data);
+      if (!providerReference) {
+        await updateTransaction("pending", purchase.data, "pairgate");
+        return res.status(202).json({
+          code: "099",
+          pending: true,
+          message: "Airtime purchase was accepted and is awaiting confirmation",
+          request_id: requestId,
+          wallet: { balance: Number(debit.new_balance), transaction_id: debit.transaction_id }
+        });
+      }
+
+      const query = await pairgateRequest(
+        `/transaction/status?reference_code=${encodeURIComponent(providerReference)}`,
+        { method: "GET" }
+      );
+      const finalStatus = pairgateStatus(query.data);
+      const combinedData = {
+        ...purchase.data,
+        data: {
+          ...(purchase.data?.data || {}),
+          ...(query.data?.data || {}),
+          reference_code: providerReference
+        }
+      };
+
+      if (query.response.ok && isPairgateSuccessfulStatus(finalStatus)) {
+        await updateTransaction("successful", combinedData, "pairgate");
+        return res.status(200).json({
+          code: "000",
+          content: { transactions: { status: "delivered" } },
+          request_id: requestId,
+          pairgate_reference: providerReference,
+          pending: false,
+          wallet: { balance: Number(debit.new_balance), transaction_id: debit.transaction_id }
+        });
+      }
+
+      if (query.response.ok && isPairgateFailedStatus(finalStatus)) {
+        const refund = await refundWallet(pairgateMessage(query.data, "Pairgate airtime transaction failed"));
+        await updateTransaction("refunded", combinedData, "pairgate");
+        return res.status(502).json({
+          error: pairgateMessage(query.data, "Airtime purchase failed"),
+          request_id: requestId,
+          pairgate_reference: providerReference,
+          refunded: refund.success,
+          refund_error: refund.success ? null : refund.message,
+          wallet: Number.isFinite(refund.balance) ? { balance: refund.balance } : undefined
+        });
+      }
+
+      await updateTransaction("pending", combinedData, "pairgate");
+      return res.status(202).json({
+        code: "099",
+        content: { transactions: { status: finalStatus || "pending" } },
+        request_id: requestId,
+        pairgate_reference: providerReference,
+        pending: true,
+        message: "Airtime purchase is processing",
+        wallet: { balance: Number(debit.new_balance), transaction_id: debit.transaction_id }
+      });
+    }
 
 
     /* =========================
