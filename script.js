@@ -10,6 +10,13 @@ document.addEventListener("DOMContentLoaded", function () {
   const biometricModal = document.getElementById("biometricModal");
   const enableBiometricButton = document.getElementById("enableBiometricButton");
   const skipBiometricButton = document.getElementById("skipBiometricButton");
+  const authGateway = document.getElementById("lpAuthGateway");
+  const gatewaySignup = document.getElementById("lpGatewaySignup");
+  const gatewayLogin = document.getElementById("lpGatewayLogin");
+  const authStatus = document.getElementById("authStatus");
+  const signupProgress = document.getElementById("signupProgress");
+  const forgotPasswordButton = document.getElementById("forgotPasswordButton");
+  const authModeSwitch = document.getElementById("authModeSwitch");
 
   const DEVICE_KEY = "lonerpay_returning_user_v1";
   let signupStep = 1;
@@ -19,6 +26,22 @@ document.addEventListener("DOMContentLoaded", function () {
   let forcePinSetup = false;
   let configPromise;
   let supabaseClientPromise;
+
+  function setAuthStatus(message = "", type = "error") {
+    if (!authStatus) return;
+    authStatus.textContent = message;
+    authStatus.style.display = message ? "block" : "none";
+    authStatus.style.background = type === "success" ? "#eaf8f1" : "#fff1f0";
+    authStatus.style.color = type === "success" ? "#087452" : "#b42318";
+  }
+
+  function showGateway() {
+    if (authGateway) authGateway.style.display = "flex";
+  }
+
+  function hideGateway() {
+    if (authGateway) authGateway.style.display = "none";
+  }
 
   function rememberedUser() {
     try {
@@ -165,6 +188,7 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   function showWelcome() {
+    hideGateway();
     if (!welcomeScreen) {
       welcomeScreen = document.createElement("section");
       welcomeScreen.id = "lpWelcomeBack";
@@ -515,9 +539,12 @@ document.addEventListener("DOMContentLoaded", function () {
   window.showModal = function (type) {
     if (!modal || !form || passkeyBusy || pinBusy) return;
 
+    hideGateway();
     if (welcomeScreen) welcomeScreen.style.display = "none";
     modal.dataset.authMode = type;
     modal.style.display = "flex";
+    form.reset();
+    setAuthStatus();
 
     const title = modal.querySelector("#modalTitle");
     const text = modal.querySelector("#modalText");
@@ -527,6 +554,8 @@ document.addEventListener("DOMContentLoaded", function () {
 
     if (email) email.style.display = "";
     if (password) password.style.display = "";
+    if (email) email.required = true;
+    if (password) password.required = true;
 
     if (submitButton) {
       submitButton.style.display = "";
@@ -543,6 +572,9 @@ document.addEventListener("DOMContentLoaded", function () {
       }
 
       if (password) password.autocomplete = "current-password";
+      if (forgotPasswordButton) forgotPasswordButton.style.display = "block";
+      if (signupProgress) signupProgress.style.display = "none";
+      if (authModeSwitch) authModeSwitch.innerHTML = 'New to LonerPay? <button type="button" data-mode="signup">Create account</button>';
     } else {
       if (title) title.textContent = "Create your LonerPay account";
 
@@ -551,6 +583,12 @@ document.addEventListener("DOMContentLoaded", function () {
       }
 
       if (password) password.autocomplete = "new-password";
+      if (forgotPasswordButton) forgotPasswordButton.style.display = "none";
+      if (signupProgress) {
+        signupProgress.style.display = "flex";
+        signupProgress.querySelectorAll("span").forEach((item, index) => item.classList.toggle("active", index === 0));
+      }
+      if (authModeSwitch) authModeSwitch.innerHTML = 'Already have an account? <button type="button" data-mode="login">Log in</button>';
     }
 
     signupStep = 1;
@@ -568,7 +606,45 @@ document.addEventListener("DOMContentLoaded", function () {
 
   window.closeModal = function () {
     if (modal) modal.style.display = "none";
+    if (rememberedUser()) showWelcome();
+    else showGateway();
   };
+
+  gatewaySignup?.addEventListener("click", () => window.showModal("signup"));
+  gatewayLogin?.addEventListener("click", () => window.showModal("login"));
+
+  authModeSwitch?.addEventListener("click", event => {
+    const button = event.target.closest("[data-mode]");
+    if (button) window.showModal(button.dataset.mode);
+  });
+
+  forgotPasswordButton?.addEventListener("click", async () => {
+    const email = form.querySelector("input[name='email']")?.value.trim();
+    if (!email) {
+      setAuthStatus("Enter your email address first, then tap Forgot password.");
+      form.querySelector("input[name='email']")?.focus();
+      return;
+    }
+    forgotPasswordButton.disabled = true;
+    forgotPasswordButton.textContent = "Sending reset link…";
+    setAuthStatus();
+    try {
+      const config = await getConfig();
+      const response = await fetch(config.supabaseUrl + "/auth/v1/recover", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", apikey: config.supabasePublishableKey },
+        body: JSON.stringify({ email })
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.msg || data.message || data.error || "Could not send the reset link.");
+      setAuthStatus("Password reset link sent. Check your email inbox.", "success");
+    } catch (error) {
+      setAuthStatus(error.message || "Could not send the reset link.");
+    } finally {
+      forgotPasswordButton.disabled = false;
+      forgotPasswordButton.textContent = "Forgot password?";
+    }
+  });
 
   if (modal) {
     modal.addEventListener("click", function (event) {
@@ -615,6 +691,8 @@ document.addEventListener("DOMContentLoaded", function () {
 
   if (rememberedUser() || localStorage.getItem("lonerpay_access_token")) {
     showWelcome();
+  } else {
+    showGateway();
   }
 
   if (!form) return;
@@ -634,16 +712,17 @@ document.addEventListener("DOMContentLoaded", function () {
         form.querySelector("input[name='lastName']").value.trim();
 
       if (!firstName || !lastName || !email || !password) {
-        alert("Please complete your first name, last name, email and password.");
+        setAuthStatus("Please complete your first name, last name, email and password.");
         return;
       }
 
       if (password.length < 6) {
-        alert("Password must contain at least 6 characters.");
+        setAuthStatus("Password must contain at least 6 characters.");
         return;
       }
 
       signupStep = 2;
+      setAuthStatus();
 
       if (signupNameFields) signupNameFields.style.display = "none";
       if (signupExtraFields) signupExtraFields.style.display = "block";
@@ -662,6 +741,7 @@ document.addEventListener("DOMContentLoaded", function () {
       }
 
       submitButton.textContent = "Sign Up";
+      signupProgress?.querySelectorAll("span").forEach(item => item.classList.add("active"));
       return;
     }
 
@@ -672,22 +752,23 @@ document.addEventListener("DOMContentLoaded", function () {
         form.querySelector("input[name='phone']").value.trim();
 
       if (!country || !phone) {
-        alert("Please enter your country and phone number.");
+        setAuthStatus("Please enter your country and phone number.");
         return;
       }
     }
 
     if (!email || !password) {
-      alert("Please enter your email and password.");
+      setAuthStatus("Please enter your email and password.");
       return;
     }
 
     if (password.length < 6) {
-      alert("Password must contain at least 6 characters.");
+      setAuthStatus("Password must contain at least 6 characters.");
       return;
     }
 
     submitButton.disabled = true;
+    setAuthStatus();
     submitButton.textContent =
       mode === "login" ? "Logging in..." : "Creating account...";
 
@@ -821,7 +902,7 @@ document.addEventListener("DOMContentLoaded", function () {
         return;
       }
     } catch (error) {
-      alert(error.message);
+      setAuthStatus(error.message || "We could not complete your request. Please try again.");
     } finally {
       submitButton.disabled = false;
 
