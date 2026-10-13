@@ -199,9 +199,9 @@
 
   function planPeriod(name) {
     const text = String(name || "").toLowerCase();
-    if (/daily|day|24\s*hour/.test(text)) return "Daily";
-    if (/weekly|week|7\s*day/.test(text)) return "Weekly";
-    if (/monthly|month|30\s*day/.test(text)) return "Monthly";
+    if (/monthly|month|(?:28|30|31)\s*days?/.test(text)) return "Monthly";
+    if (/weekly|week|7\s*days?/.test(text)) return "Weekly";
+    if (/daily|(?:^|\D)1\s*day|24\s*hours?/.test(text)) return "Daily";
     return "Other";
   }
 
