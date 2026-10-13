@@ -136,3 +136,38 @@ if (document.readyState === "loading") {
   installTransactionNavigation();
 }
 setTimeout(installTransactionNavigation, 800);
+
+// Some older transaction rows are flattened by mobile browsers when the
+// professional receipt reads innerText. Repair that legacy row before opening
+// the receipt so its service and metadata appear as separate receipt fields.
+window.addEventListener("load", () => {
+  const openReceipt = window.showDigitalReceipt;
+  if (typeof openReceipt !== "function" || openReceipt.__lonerPayRowRepair) return;
+
+  const repairedReceipt = function repairFlattenedReceipt(raw = {}) {
+    const value = raw && typeof raw === "object" ? { ...raw } : raw;
+    const flattened = String(value?.type || "");
+
+    if (/view receipt/i.test(flattened) && /airtime/i.test(flattened)) {
+      const network = flattened.match(/Network:\s*([^|]+?)(?=\s*\|\s*Phone:|Phone:|Status:|View Receipt|$)/i)?.[1]?.trim();
+      const phone = flattened.match(/Phone:\s*(\d{10,14})/i)?.[1];
+      const status = flattened.match(/Status:\s*([A-Za-z]+)/i)?.[1];
+      const details = value.details && typeof value.details === "object"
+        ? { ...value.details }
+        : {};
+
+      if (network) details.Network = network;
+      if (phone) details.Phone = phone;
+      value.type = network ? `${network} Airtime` : "Airtime";
+      value.service = value.type;
+      value.details = details;
+      if (phone) value.recipient = phone;
+      if (status) value.status = status;
+    }
+
+    return openReceipt(value);
+  };
+
+  repairedReceipt.__lonerPayRowRepair = true;
+  window.showDigitalReceipt = repairedReceipt;
+}, { once: true });
