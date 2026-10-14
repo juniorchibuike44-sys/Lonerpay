@@ -17,13 +17,14 @@ export function getPairgateConfig() {
 
 export async function pairgateRequest(path, options = {}) {
   const { apiKey, baseUrl } = getPairgateConfig();
+  const isFormData = typeof FormData !== "undefined" && options.body instanceof FormData;
   const response = await fetch(`${baseUrl}${path}`, {
     ...options,
     headers: {
       Authorization: `Bearer ${apiKey}`,
       Accept: "application/json",
       "Cache-Control": "no-cache",
-      ...(options.body ? { "Content-Type": "application/json" } : {}),
+      ...(options.body && !isFormData ? { "Content-Type": "application/json" } : {}),
       ...(options.headers || {})
     }
   });
