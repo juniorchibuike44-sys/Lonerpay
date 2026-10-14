@@ -1060,7 +1060,7 @@ export default async function handler(
       const orderQuantity = Number(quantity);
 
       const available = await pairgateRequest(
-        `/recharge-pins/denominations?provider_id=${encodeURIComponent(network)}`,
+        `/epin/denominations?provider_id=${encodeURIComponent(network)}`,
         { method: "GET" }
       );
       const denominations = Array.isArray(available.data?.data)
