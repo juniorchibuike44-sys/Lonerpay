@@ -71,3 +71,13 @@ export function isPairgateFailedStatus(status) {
     String(status || "").toLowerCase()
   );
 }
+
+export function pairgateEpinDenominations(data, network) {
+  const payload = data?.data;
+  const key = String(network || "").trim().toLowerCase();
+  const group = payload && !Array.isArray(payload) && typeof payload === "object"
+    ? Object.keys(payload).find(name => name.toLowerCase() === key) : null;
+  const rows = Array.isArray(payload) ? payload : group && Array.isArray(payload[group]) ? payload[group] : [];
+  return [...new Set(rows.map(row => Number(row?.denomination ?? row?.id))
+    .filter(value => Number.isInteger(value) && value > 0))].sort((a, b) => a - b);
+}
