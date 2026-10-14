@@ -123,14 +123,34 @@ export default async function handler(req, res) {
       .toLowerCase()
       .trim();
 
-    if (status === "successful" && event.reference) {
-      const supabaseUrl = process.env.SUPABASE_URL;
-      const supabaseKey = process.env.SUPABASE_SECRET_KEY;
+    const supabaseUrl = process.env.SUPABASE_URL;
+    const supabaseKey = process.env.SUPABASE_SECRET_KEY;
+    if (!supabaseUrl || !supabaseKey) {
+      throw new Error("Supabase configuration missing");
+    }
 
-      if (!supabaseUrl || !supabaseKey) {
-        throw new Error("Supabase configuration missing");
+    // Electricity webhooks may contain only Pairgate's reference_code. Resolve
+    // it back to LonerPay's original request_id before finalizing or refunding.
+    let matchedTransaction = null;
+    if (!event.reference && event.reference_code) {
+      const lookupUrl =
+        `${supabaseUrl}/rest/v1/wallet_transactions?select=id,user_id,request_id,details,status` +
+        `&details-%3E%3Eprovider_reference=eq.${encodeURIComponent(event.reference_code)}` +
+        `&order=created_at.desc&limit=1`;
+      const lookupResponse = await fetch(lookupUrl, {
+        headers: {
+          apikey: supabaseKey,
+          Authorization: `Bearer ${supabaseKey}`
+        }
+      });
+      if (lookupResponse.ok) {
+        const rows = await lookupResponse.json();
+        matchedTransaction = rows[0] || null;
+        if (matchedTransaction?.request_id) event.reference = matchedTransaction.request_id;
       }
+    }
 
+    if (status === "successful" && event.reference) {
       const updateResponse = await fetch(
         `${supabaseUrl}/rest/v1/wallet_transactions?request_id=eq.${encodeURIComponent(event.reference)}&status=eq.pending`,
         {
@@ -143,6 +163,15 @@ export default async function handler(req, res) {
           },
           body: JSON.stringify({
             status: "successful",
+            ...(event.pin ? {
+              details: {
+                ...(matchedTransaction?.details || {}),
+                provider: "pairgate",
+                provider_reference: String(event.reference_code || ""),
+                provider_status: status,
+                purchased_code: String(event.pin)
+              }
+            } : {}),
             updated_at: new Date().toISOString()
           })
         }
@@ -154,13 +183,6 @@ export default async function handler(req, res) {
     }
 
     if (status === "failed" && event.reference) {
-      const supabaseUrl = process.env.SUPABASE_URL;
-      const supabaseKey = process.env.SUPABASE_SECRET_KEY;
-
-      if (!supabaseUrl || !supabaseKey) {
-        throw new Error("Supabase configuration missing");
-      }
-
       const transactionResponse = await fetch(
         `${supabaseUrl}/rest/v1/wallet_transactions?request_id=eq.${encodeURIComponent(
           event.reference
