@@ -1,17 +1,17 @@
 (function installSecureElectricityPayment() {
   const providers = [
-    ["Ikeja Electric (IKEDC)", "ikeja-electric"],
-    ["Eko Electric (EKEDC)", "eko-electric"],
-    ["Abuja Electric (AEDC)", "abuja-electric"],
-    ["Ibadan Electric (IBEDC)", "ibadan-electric"],
-    ["Enugu Electric (EEDC)", "enugu-electric"],
-    ["Benin Electric (BEDC)", "benin-electric"],
-    ["Kaduna Electric (KAEDCO)", "kaduna-electric"],
-    ["Kano Electric (KEDCO)", "kano-electric"],
-    ["Port Harcourt Electric (PHED)", "portharcourt-electric"],
-    ["Jos Electric (JED)", "jos-electric"],
-    ["Yola Electric (YEDC)", "yola-electric"],
-    ["Aba Electric", "aba-electric"]
+    ["Ikeja Electric (IKEDC)", "ikedc"],
+    ["Eko Electric (EKEDC)", "eko"],
+    ["Abuja Electric (AEDC)", "aedc"],
+    ["Ibadan Electric (IBEDC)", "ibedc"],
+    ["Enugu Electric (EEDC)", "enugu"],
+    ["Benin Electric (BEDC)", "benin"],
+    ["Kaduna Electric (KAEDCO)", "kaduna"],
+    ["Kano Electric (KEDCO)", "kedco"],
+    ["Port Harcourt Electric (PHED)", "ph"],
+    ["Jos Electric (JED)", "jedc"],
+    ["Yola Electric (YEDC)", "yola"],
+    ["Aba Electric", "aba"]
   ];
 
   function escapeElectricityText(value) {
@@ -111,7 +111,7 @@
         const response = await fetch("/api/verify-meter", {
           method: "POST",
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
-          body: JSON.stringify({ serviceID: provider.value, billersCode: meterNumber, type: type.value })
+          body: JSON.stringify({ provider_id: provider.value, meter_number: meterNumber, meter_type: type.value })
         });
         const data = await response.json();
         if (!response.ok) throw new Error(data.error || data.message || "Meter verification failed");
@@ -154,7 +154,8 @@
             variation_code: verifiedDetails.type,
             amount: paymentAmount,
             phone: phoneNumber,
-            pin: pin.value
+            pin: pin.value,
+            recipient_name: verifiedDetails.customerName
           })
         });
         const data = await response.json();
@@ -166,13 +167,13 @@
           throw new Error((data.error || data.message || "Payment failed") + refundText);
         }
 
-        const providerStatus = String(data?.content?.transactions?.status || "").toLowerCase();
-        if (data.code === "099" || providerStatus === "pending" || providerStatus === "initiated") {
+        const providerStatus = String(data?.content?.transactions?.status || data?.data?.status || "").toLowerCase();
+        if (data.code === "099" || data.pending || providerStatus === "pending" || providerStatus === "processing" || providerStatus === "initiated") {
           alert("Payment is pending. Please check Recent Transactions shortly.");
           overlay.remove();
           return;
         }
-        if (String(data.code) !== "000" || (providerStatus && providerStatus !== "delivered")) {
+        if (String(data.code) !== "000" || (providerStatus && !["delivered", "successful", "success", "completed"].includes(providerStatus))) {
           throw new Error("Electricity payment failed");
         }
 
