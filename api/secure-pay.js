@@ -138,13 +138,21 @@ const educationRetailPrices = {
   nabt: Number(process.env.LONERPAY_NABTEB_PRICE || 1500)
 };
 
+const epinServices = new Set([
+  "epin-mtn",
+  "epin-airtel",
+  "epin-glo",
+  "epin-9mobile"
+]);
+
 
 const allowedPaymentServices = new Set([
   ...airtimeServices,
   ...dataServices,
   ...electricityServices,
   ...tvServices,
-  ...educationServices
+  ...educationServices,
+  ...epinServices
 ]);
 
 
@@ -203,7 +211,8 @@ export default async function handler(
     dataServices.has(String(req.body?.serviceID || "")) ||
     electricityServices.has(String(req.body?.serviceID || "")) ||
     tvServices.has(String(req.body?.serviceID || "")) ||
-    educationServices.has(String(req.body?.serviceID || ""));
+    educationServices.has(String(req.body?.serviceID || "")) ||
+    epinServices.has(String(req.body?.serviceID || ""));
 
 
   if (
@@ -364,6 +373,20 @@ export default async function handler(
     }
   }
 
+  if (epinServices.has(serviceID)) {
+    const denomination = Number(variation_code);
+    const orderQuantity = Number(quantity);
+    if (!Number.isInteger(denomination) || denomination <= 0) {
+      return res.status(400).json({ error: "Select a valid recharge-card denomination" });
+    }
+    if (!Number.isInteger(orderQuantity) || orderQuantity < 1 || orderQuantity > 20) {
+      return res.status(400).json({ error: "Quantity must be between 1 and 20 cards" });
+    }
+    if (Math.abs(paymentAmount - denomination * orderQuantity) > 0.01) {
+      return res.status(409).json({ error: "The recharge-card total is incorrect. Refresh and try again." });
+    }
+  }
+
   if (airtimeServices.has(serviceID)) {
     if (!/^0\d{10}$/.test(String(billersCode))) {
       return res.status(400).json({ error: "Enter a valid 11-digit Nigerian phone number" });
@@ -450,7 +473,10 @@ export default async function handler(
       const balanceBefore = Number(providerDetails.balance_before);
       const balanceAfter = Number(providerDetails.balance_after);
       const balanceCharge = balanceBefore - balanceAfter;
-      const reportedCost = Number(providerDetails.total_amount || providerDetails.unit_price);
+      const pinCost = Array.isArray(providerDetails.pins)
+        ? providerDetails.pins.reduce((sum, item) => sum + Number(item?.price || 0), 0)
+        : 0;
+      const reportedCost = Number(providerDetails.total_amount || providerDetails.unit_price || pinCost);
       const providerCost = providerName === "pairgate" && Number.isFinite(balanceCharge) && balanceCharge > 0
         ? balanceCharge
         : providerName === "pairgate" && Number.isFinite(reportedCost) && reportedCost > 0
@@ -484,7 +510,8 @@ export default async function handler(
               provider_cost: providerCost,
               gross_profit: grossProfit,
               sale_amount: Number(paymentAmount),
-              purchased_code: String(providerData?.purchased_code || providerData?.token || "")
+              purchased_code: String(providerData?.purchased_code || providerData?.token || ""),
+              batch_id: String(providerData?.data?.batch_id || "")
             },
             updated_at: new Date().toISOString()
           })
@@ -1022,6 +1049,72 @@ export default async function handler(
 
 
     debitCompleted = true;
+
+    /* =========================
+       PAIRGATE RECHARGE e-PINS
+    ========================= */
+
+    if (epinServices.has(serviceID)) {
+      const network = serviceID.replace(/^epin-/, "");
+      const denomination = Number(variation_code);
+      const orderQuantity = Number(quantity);
+
+      const available = await pairgateRequest(
+        `/recharge-pins/denominations?provider_id=${encodeURIComponent(network)}`,
+        { method: "GET" }
+      );
+      const denominations = Array.isArray(available.data?.data)
+        ? available.data.data.map(item => Number(item?.denomination))
+        : [];
+      if (!available.response.ok || available.data?.status !== "success" || !denominations.includes(denomination)) {
+        const refund = await refundWallet("Selected recharge-card denomination is unavailable");
+        await updateTransaction("refunded", available.data, "pairgate");
+        return res.status(409).json({
+          error: "This recharge-card denomination is no longer available. Refresh and try again.",
+          request_id: requestId,
+          refunded: refund.success,
+          refund_error: refund.success ? null : refund.message
+        });
+      }
+
+      providerRequestStarted = true;
+      const form = new FormData();
+      form.append("provider_id", network);
+      form.append("quantity", String(orderQuantity));
+      form.append("denomination", String(denomination));
+      form.append("reference", requestId);
+      const purchase = await pairgateRequest("/epin/purchase", { method: "POST", body: form });
+      providerResponseReceived = true;
+
+      const pins = Array.isArray(purchase.data?.data?.pins) ? purchase.data.data.pins : [];
+      const delivered = purchase.response.ok && purchase.data?.status === "success" && pins.length === orderQuantity;
+      if (!delivered) {
+        const refund = await refundWallet(pairgateMessage(purchase.data, "Pairgate rejected the recharge-card purchase"));
+        await updateTransaction("refunded", purchase.data, "pairgate");
+        return res.status(502).json({
+          error: pairgateMessage(purchase.data, "Recharge-card purchase failed"),
+          request_id: requestId,
+          refunded: refund.success,
+          refund_error: refund.success ? null : refund.message,
+          wallet: Number.isFinite(refund.balance) ? { balance: refund.balance } : undefined
+        });
+      }
+
+      const purchasedCode = pins.map((item, index) =>
+        `${index + 1}. PIN: ${String(item?.pin || "")} | Serial: ${String(item?.serial || "")}`
+      ).join("\n");
+      const completedData = { ...purchase.data, purchased_code: purchasedCode };
+      await updateTransaction("successful", completedData, "pairgate");
+      return res.status(200).json({
+        code: "000",
+        content: { transactions: { status: "delivered" } },
+        request_id: requestId,
+        batch_id: String(purchase.data?.data?.batch_id || ""),
+        pins,
+        purchased_code: purchasedCode,
+        wallet: { balance: Number(debit.new_balance), transaction_id: debit.transaction_id }
+      });
+    }
 
     /* =========================
        PAIRGATE DATA
