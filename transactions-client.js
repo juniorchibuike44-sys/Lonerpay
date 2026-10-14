@@ -65,6 +65,9 @@ async function refreshSecureTransactions() {
       }
     }
 
+    // Ignore a response if the signed-in session changed during the request.
+    if (localStorage.getItem("lonerpay_access_token") !== accessToken) return;
+    refreshSecureTransactions.snapshot = { accessToken, transactions };
     transactionsBox.innerHTML = "<h2>Recent Transactions</h2>";
 
     if (!transactions.length) {
@@ -171,3 +174,9 @@ window.addEventListener("load", () => {
   repairedReceipt.__lonerPayRowRepair = true;
   window.showDigitalReceipt = repairedReceipt;
 }, { once: true });
+
+window.getSecureTransactionHistory = function () {
+  const snapshot = refreshSecureTransactions.snapshot;
+  const token = localStorage.getItem("lonerpay_access_token");
+  return snapshot && token && snapshot.accessToken === token ? snapshot.transactions.slice() : null;
+};
