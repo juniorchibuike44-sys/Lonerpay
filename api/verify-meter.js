@@ -1,126 +1,62 @@
-const allowedElectricityServices = new Set([
-  "aba-electric",
-  "abuja-electric",
-  "benin-electric",
-  "eko-electric",
-  "enugu-electric",
-  "ibadan-electric",
-  "ikeja-electric",
-  "jos-electric",
-  "kaduna-electric",
-  "kano-electric",
-  "portharcourt-electric",
-  "yola-electric"
+import { enforceRateLimit, hardenResponse } from "./_security.js";
+import { pairgateMessage, pairgateRequest } from "./_pairgate.js";
+
+const allowedProviders = new Set([
+  "ikedc", "eko", "enugu", "yola", "benin", "ph",
+  "aba", "aedc", "kaduna", "kedco", "ibedc", "jedc"
 ]);
 
 export default async function handler(req, res) {
-  if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method not allowed" });
-  }
-
+  hardenResponse(res);
+  if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
+  if (!enforceRateLimit(req, res, { key: "verify-meter", limit: 20, windowMs: 60_000 })) return;
   res.setHeader("Cache-Control", "no-store");
 
   const authorization = req.headers.authorization;
   const supabaseUrl = process.env.SUPABASE_URL;
   const supabaseSecretKey = process.env.SUPABASE_SECRET_KEY;
-  const vtpassApiKey = process.env.VTPASS_API_KEY;
-  const vtpassSecretKey = process.env.VTPASS_SECRET_KEY;
-  const vtpassBaseUrl = String(
-    process.env.VTPASS_BASE_URL ||
-    (String(process.env.VTPASS_ENV || "").toLowerCase() === "live"
-      ? "https://vtpass.com/api"
-      : "https://sandbox.vtpass.com/api")
-  ).replace(/\/+$/, "");
-  const serviceID = String(req.body?.serviceID || "");
-  const billersCode = String(req.body?.billersCode || "").trim();
-  const type = String(req.body?.type || "").toLowerCase();
+  const providerId = String(req.body?.provider_id || req.body?.serviceID || "").trim().toLowerCase();
+  const meterNumber = String(req.body?.meter_number || req.body?.billersCode || "").trim();
+  const meterTypeText = String(req.body?.meter_type || req.body?.type || "").trim().toLowerCase();
+  const meterType = meterTypeText === "prepaid" || meterTypeText === "1" ? 1
+    : meterTypeText === "postpaid" || meterTypeText === "2" ? 2 : 0;
 
-  if (!allowedElectricityServices.has(serviceID)) {
-    return res.status(400).json({ error: "Invalid electricity provider" });
-  }
-
-  if (!/^\d{6,15}$/.test(billersCode)) {
-    return res.status(400).json({ error: "Enter a valid meter number" });
-  }
-
-  if (type !== "prepaid" && type !== "postpaid") {
-    return res.status(400).json({ error: "Invalid meter type" });
-  }
-
-  if (!supabaseUrl || !supabaseSecretKey || !vtpassApiKey || !vtpassSecretKey) {
+  if (!allowedProviders.has(providerId)) return res.status(400).json({ error: "Invalid electricity provider" });
+  if (!/^\d{6,20}$/.test(meterNumber)) return res.status(400).json({ error: "Enter a valid meter number" });
+  if (!meterType) return res.status(400).json({ error: "Invalid meter type" });
+  if (!supabaseUrl || !supabaseSecretKey || !process.env.PAIRGATE_API_KEY) {
     return res.status(500).json({ error: "Server configuration is missing" });
   }
-
-  if (!authorization?.startsWith("Bearer ")) {
-    return res.status(401).json({ error: "Login required" });
-  }
+  if (!authorization?.startsWith("Bearer ")) return res.status(401).json({ error: "Login required" });
 
   try {
     const userResponse = await fetch(`${supabaseUrl}/auth/v1/user`, {
-      headers: {
-        apikey: supabaseSecretKey,
-        Authorization: authorization
-      }
+      headers: { apikey: supabaseSecretKey, Authorization: authorization }
     });
+    if (!userResponse.ok) return res.status(401).json({ error: "Invalid or expired login" });
 
-    if (!userResponse.ok) {
-      return res.status(401).json({ error: "Invalid or expired login" });
-    }
-
-    const providerResponse = await fetch(
-      `${vtpassBaseUrl}/merchant-verify`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "api-key": vtpassApiKey,
-          "secret-key": vtpassSecretKey
-        },
-        body: JSON.stringify({ serviceID, billersCode, type })
-      }
-    );
-
-    const responseText = await providerResponse.text();
-    let providerData;
-
-    try {
-      providerData = responseText ? JSON.parse(responseText) : {};
-    } catch {
-      providerData = { response_description: responseText };
-    }
-
-    if (!providerResponse.ok || String(providerData.code || "") !== "000") {
-      return res.status(422).json({
-        error:
-          providerData.response_description ||
-          providerData.message ||
-          "Meter verification failed"
-      });
-    }
-
-    const content = providerData.content || {};
-    if (content.WrongBillersCode === true || content.Can_Vend === "no") {
-      return res.status(422).json({ error: "This meter cannot be used for payment" });
+    const verification = await pairgateRequest("/electricity/verify", {
+      method: "POST",
+      body: JSON.stringify({ provider_id: providerId, meter_number: meterNumber, meter_type: meterType })
+    });
+    const verified = verification.response.ok && verification.data?.status === "success" &&
+      verification.data?.data?.status === true;
+    if (!verified) {
+      return res.status(422).json({ error: pairgateMessage(verification.data, "Meter verification failed") });
     }
 
     return res.status(200).json({
       verified: true,
-      customerName: content.Customer_Name || content.CustomerName || "Verified customer",
-      address: content.Address || "",
-      meterNumber:
-        content.Meter_Number ||
-        content.MeterNumber ||
-        content.Account_Number ||
-        billersCode,
-      meterType: content.Meter_Type || type,
-      minimumAmount: Number(
-        content.Min_Purchase_Amount || content.Minimum_Amount || 0
-      ) || 0
+      customerName: String(verification.data?.data?.customer_name || "Verified customer"),
+      address: String(verification.data?.data?.address || ""),
+      meterNumber,
+      meterType: meterType === 1 ? "prepaid" : "postpaid",
+      minimumAmount: 1000,
+      provider: "pairgate"
     });
   } catch (error) {
-    return res.status(500).json({
-      error: "Meter verification request failed",
-      message: error.message
+    return res.status(Number(error?.statusCode) || 500).json({
+      error: error?.message || "Meter verification request failed"
     });
   }
 }
