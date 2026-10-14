@@ -33,7 +33,7 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "Invalid network" });
     }
     const suffix = provider ? `?provider_id=${encodeURIComponent(provider)}` : "";
-    const result = await pairgateRequest(`/recharge-pins/denominations${suffix}`, { method: "GET" });
+    const result = await pairgateRequest(`/epin/denominations${suffix}`, { method: "GET" });
     const rows = Array.isArray(result.data?.data) ? result.data.data : [];
     const denominations = [...new Set(rows.map(row => Number(row?.denomination)).filter(value => Number.isInteger(value) && value > 0))].sort((a,b) => a-b);
     if (!result.response.ok || result.data?.status !== "success" || !denominations.length) {
