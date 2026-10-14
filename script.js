@@ -380,7 +380,7 @@ document.addEventListener("DOMContentLoaded", function () {
           : "Phone-security login was not completed. Try again, or use email and password to set it up.";
 
       if (errorElement) errorElement.textContent = message;
-      else alert(message);
+      else await window.lpNotice(message);
     } finally {
       passkeyBusy = false;
       button.disabled = false;
@@ -880,11 +880,11 @@ document.addEventListener("DOMContentLoaded", function () {
 
               rememberUser(active.session, true);
 
-              alert(
+              await window.lpNotice(
                 "Phone-security login is now set up. Next time, unlock with your registered passkey."
               );
             } catch (passkeyError) {
-              alert(
+              await window.lpNotice(
                 "Your normal login succeeded, but biometric setup was not completed: " +
                 (passkeyError.message || "Unknown passkey error")
               );
