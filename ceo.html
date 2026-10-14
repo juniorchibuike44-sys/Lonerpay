@@ -16,6 +16,11 @@ html{scroll-behavior:smooth}body{background:var(--bg);color:var(--ink);font-fami
 @media(max-width:850px){main{padding-left:160px;padding-right:22px}.ceo-side{width:138px;padding:25px 12px}.ceo-side .logo{font-size:17px}.card strong{font-size:17px}.grid{gap:10px}}
 @media(max-width:600px){.ceo-side{position:static;width:100%;padding:17px 18px;display:block;border-right:0;border-bottom:1px solid #304969}.ceo-side small,.ceo-side footer{display:none}.ceo-side .logo{margin:0}.ceo-side nav{display:flex;overflow:auto;gap:6px;margin:14px 0 0}.ceo-side a{white-space:nowrap;padding:9px 10px;font-size:11px}main{padding:22px 15px 45px}.top strong{font-size:18px}.top a{font-size:11px;padding:9px}.hero h1{font-size:29px}.grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.card{min-height:100px}.card strong{font-size:18px}.row{padding:14px 12px;gap:7px}.row strong{font-size:12px}.row small{font-size:10px}}
 </style>
+
+<style id="ceo-navy-gold">
+:root{--bg:#061426;--ink:#f4f6fb;--muted:#8999b1;--line:#21334e;--green:#a0dcaa;--blue:#e5c57f}
+body{background:#061426}.ceo-side{background:linear-gradient(#092540,#09213b);border-color:#233c56}.ceo-side .logo{color:#e5c57f;letter-spacing:1px}.ceo-side small{color:#a2afc3}.ceo-side a:first-child,.ceo-side a:hover{background:#9b8350;color:white}.top{border-color:#21334e}.brand{color:#e5c57f}.top a{border-color:#826e45;color:#f2d38b;background:#19283b}.hero{background:linear-gradient(130deg,#10243e,#0d1c32);border-color:#263952;border-radius:10px}.hero h1{color:#f1d18b}.hero small{color:#a8b6cb}.card{background:linear-gradient(140deg,#11223a,#0d1b2f);border-color:#24364e;border-radius:9px}.card span{color:#9aaac0}.card strong{color:#f8fafc}.card:before{content:"◇";color:#e5c57f;font-size:23px;margin-bottom:13px}.toolbar h2{color:white}.toolbar select{background:#112138;border-color:#736341;color:#efcf87}.table{background:#0d1d33;border-color:#23354f;border-radius:9px}.row{border-color:#23334b}.notice.scope{background:#10243e;color:#b5c7e0;border-color:#2b4260}.ceo-chart{background:#0d1d33;border:1px solid #23354f;border-radius:10px;padding:22px;margin-top:25px}.ceo-chart h2{font-size:18px;color:#fff}.ceo-chart p{font-size:12px;color:#9daec6;margin:8px 0 20px}.ceo-chart svg{width:100%;height:auto;display:block}.ceo-chart figcaption{display:flex;justify-content:space-between;color:#9daec6;font-size:11px;padding-top:12px}.ceo-chart .chart-empty{padding:35px 0;color:#91a4be;text-align:center}.ceo-chart-note{font-size:11px;color:#c4b083;margin-top:15px}
+</style>
 </head>
 <body><aside class="ceo-side"><div class="logo">LonerPay</div><small>OPERATIONS CENTER</small><nav aria-label="Operations navigation"><a href="#content">Overview</a><a href="#ceoProviders">Providers</a><a href="#ceoDaily">Daily performance</a><a href="#ceoRecent">Transactions</a><a href="profile.html">My profile</a></nav><footer>One app.<br>Everyday payments.</footer></aside><main>
   <div class="top"><div><div class="brand">LONERPAY</div><strong>CEO Operations Center</strong></div><a href="dashboard.html">Dashboard</a></div>
@@ -25,6 +30,17 @@ html{scroll-behavior:smooth}body{background:var(--bg);color:var(--ink);font-fami
 const naira=n=>n==null?'Unavailable':'₦'+Number(n).toLocaleString('en-NG',{minimumFractionDigits:2,maximumFractionDigits:2});
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const table=(rows,empty)=>`<div class="table">${rows||`<div class="loading">${empty}</div>`}</div>`;
+
+function salesChart(rows){
+ const points=(rows||[]).filter(x=>Number.isFinite(Number(x.sales))).slice().sort((a,b)=>String(a.date).localeCompare(String(b.date)));
+ if(!points.length)return '<div class="ceo-chart"><h2>Sales chart</h2><div class="chart-empty">No recorded sales for this period.</div></div>';
+ const max=Math.max(1,...points.map(x=>Number(x.sales))),w=800,h=220;
+ const coords=points.map((x,i)=>[40+(points.length===1?360:i/(points.length-1)*720),200-Number(x.sales)/max*170]);
+ const line=coords.map(x=>x.join(',')).join(' ');
+ const grids=[0,.25,.5,.75,1].map(v=>'<line x1="40" y1="'+(200-v*170)+'" x2="760" y2="'+(200-v*170)+'" stroke="#23364f"/>').join('');
+ return '<figure class="ceo-chart"><h2>Sales chart</h2><p>Recorded service sales by day · amounts in naira</p><svg role="img" aria-label="Daily service sales" viewBox="0 0 '+w+' '+h+'">'+grids+'<polyline points="'+line+'" fill="none" stroke="#e5c57f" stroke-width="3" stroke-linejoin="round"/>'+coords.map((pt,i)=>'<circle cx="'+pt[0]+'" cy="'+pt[1]+'" r="4" fill="#e5c57f"><title>'+esc(points[i].date)+' · '+naira(points[i].sales)+'</title></circle>').join('')+'</svg><figcaption><span>'+esc(points[0].date)+'</span><span>'+esc(points[points.length-1].date)+'</span></figcaption><div class="ceo-chart-note">Highest daily sales: '+naira(max===1&&points.every(x=>Number(x.sales)===0)?0:max)+'</div></figure>';
+}
+
 async function refreshLogin(){
  const refreshToken=localStorage.getItem('lonerpay_refresh_token');if(!refreshToken)return null;
  try{const c=await fetch('/api/config',{cache:'no-store'}),cfg=await c.json();const r=await fetch(`${cfg.supabaseUrl}/auth/v1/token?grant_type=refresh_token`,{method:'POST',headers:{'Content-Type':'application/json',apikey:cfg.supabasePublishableKey},body:JSON.stringify({refresh_token:refreshToken})});const s=await r.json();if(!r.ok||!s.access_token)return null;localStorage.setItem('lonerpay_access_token',s.access_token);if(s.refresh_token)localStorage.setItem('lonerpay_refresh_token',s.refresh_token);return s.access_token}catch{return null}
@@ -46,6 +62,7 @@ async function load(days=30,retried=false){
    ${d.report_scope==='founder_account'?'<div class="notice scope">This view currently shows the CEO account activity permitted by the database. Company-wide reporting will appear automatically when the server reporting credential has administrative read access.</div>':''}
    ${t.unpriced_sales?`<div class="notice">${t.unpriced_sales} successful service transaction${t.unpriced_sales===1?' has':'s have'} no recorded provider cost. ${t.unpriced_sales===1?'It is':'They are'} included in sales but excluded from profit rather than guessed.</div>`:''}
    <div class="toolbar"><h2 id="ceoProviders">Provider overview</h2><select id="days"><option value="7">7 days</option><option value="30">30 days</option><option value="90">90 days</option></select></div>${table(providers,'No provider activity in this period.')}
+   ${salesChart(d.daily)}
    <div class="toolbar"><h2 id="ceoDaily">Daily performance</h2></div>${table(daily,'No transactions in this period.')}
    <div class="toolbar"><h2 id="ceoRecent">Recent activity</h2></div>${table(recent,'No recent activity.')}`;
   const select=document.querySelector('#days');select.value=String(days);select.onchange=()=>load(select.value);
