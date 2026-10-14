@@ -37,7 +37,23 @@ export default async function handler(req, res) {
     const rows = Array.isArray(result.data?.data) ? result.data.data : [];
     const denominations = [...new Set(rows.map(row => Number(row?.denomination)).filter(value => Number.isInteger(value) && value > 0))].sort((a,b) => a-b);
     if (!result.response.ok || result.data?.status !== "success" || !denominations.length) {
-      return res.status(502).json({ error: result.data?.message || "Recharge-card denominations are unavailable" });
+      const reason = !result.response.ok
+        ? `Provider returned HTTP ${result.response.status}`
+        : result.data?.status !== "success"
+          ? "Provider did not confirm success"
+          : rows.length ? "Provider returned card values in an unexpected format" : "Provider returned no card values";
+      console.error("Pairgate recharge-card options unavailable", {
+        httpStatus: result.response.status,
+        providerStatus: result.data?.status,
+        responseKeys: Object.keys(result.data || {}),
+        dataIsArray: Array.isArray(result.data?.data),
+        dataKeys: result.data?.data && typeof result.data.data === "object" && !Array.isArray(result.data.data)
+          ? Object.keys(result.data.data) : [],
+        rowCount: rows.length,
+        firstRowKeys: rows[0] && typeof rows[0] === "object" ? Object.keys(rows[0]) : [],
+        network: provider
+      });
+      return res.status(502).json({ error: result.data?.message || `Recharge Cards: ${reason}. Please contact support.` });
     }
     return res.status(200).json({ networks: NETWORKS, denominations });
   } catch (error) {
