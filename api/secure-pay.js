@@ -7,6 +7,7 @@ import {
   pairgateMessage,
   pairgateReference,
   pairgateRequest,
+  pairgateEpinDenominations,
   pairgateStatus
 } from "./_pairgate.js";
 
@@ -1063,9 +1064,7 @@ export default async function handler(
         `/recharge-pins/denominations?provider_id=${encodeURIComponent(network)}`,
         { method: "GET" }
       );
-      const denominations = Array.isArray(available.data?.data)
-        ? available.data.data.map(item => Number(item?.denomination))
-        : [];
+      const denominations = pairgateEpinDenominations(available.data, network);
       if (!available.response.ok || available.data?.status !== "success" || !denominations.includes(denomination)) {
         const refund = await refundWallet("Selected recharge-card denomination is unavailable");
         await updateTransaction("refunded", available.data, "pairgate");
