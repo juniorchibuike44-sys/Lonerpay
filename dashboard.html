@@ -296,7 +296,53 @@ button:active {
 :root{--navy:#06244d;--blue:#0863d8;--ink:#10213b;--muted:#6b7280;--bg:#f5f8fc}
 *{box-sizing:border-box} body{background:var(--bg)!important;padding-bottom:82px} .header{background:var(--navy)!important;padding:18px 20px!important;display:flex;align-items:center;justify-content:space-between}.header h1{font-size:24px!important;margin:0!important}.header>div{font-size:12px!important}.container{padding:14px!important;max-width:700px!important}.balance{background:linear-gradient(135deg,#0c4aa0,#0870df)!important;border-radius:18px!important;padding:22px!important;margin-bottom:16px!important}.balance small{font-size:14px!important}.balance h2{font-size:38px!important;margin:8px 0!important}.container>h2{font-size:20px!important;margin:16px 0 12px!important}.services{grid-template-columns:repeat(4,1fr)!important;gap:9px!important}.service{min-height:112px!important;padding:15px 5px!important;border-radius:15px!important;display:flex;flex-direction:column;justify-content:center}.service>div:first-child{font-size:26px!important;margin-bottom:5px!important}.service h3{font-size:13px!important;margin:4px 0!important}.service p{font-size:10px!important}.transactions{margin-top:18px!important;padding:16px!important;border-radius:16px!important}.transactions h2{font-size:18px!important}.transaction{font-size:13px}.lp-bottom-nav{position:fixed;left:0;right:0;bottom:0;height:66px;background:#fff;border-top:1px solid #e7edf5;display:grid;grid-template-columns:repeat(4,1fr);z-index:8000;box-shadow:0 -4px 18px rgba(15,23,42,.06)}.lp-nav-item{border:0;background:transparent;color:#738097;font-size:10px;font-weight:700;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px}.lp-nav-item span{font-size:20px}.lp-nav-item.active{color:#0863d8}@media(max-width:480px){.header{padding:16px!important}.container{padding:12px!important}.balance{padding:20px!important}.balance h2{font-size:36px!important}.services{grid-template-columns:repeat(4,1fr)!important;gap:7px!important}.service{min-height:105px!important;padding:12px 3px!important}.service h3{font-size:12px!important}.service p{font-size:9px!important}}
 </style>
-<style id="lp-carousel-upgrade">.lp-carousel-wrap{margin:0 0 18px}.lp-carousel{display:flex;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;border-radius:18px}.lp-carousel::-webkit-scrollbar{display:none}.lp-slide{position:relative;flex:0 0 100%;height:178px;border-radius:18px;overflow:hidden;scroll-snap-align:start;box-shadow:0 8px 24px rgba(8,43,101,.12);color:#fff}.lp-slide img{width:100%;height:100%;object-fit:cover;display:block}.lp-slide-copy{position:absolute;inset:0;padding:20px;display:flex;flex-direction:column;justify-content:center;background:linear-gradient(90deg,rgba(3,25,59,.92),rgba(3,50,110,.58),rgba(3,50,110,.08))}.lp-slide-copy h3{font-size:23px;line-height:1.08;margin:0 0 7px;max-width:72%}.lp-slide-copy p{font-size:12px;line-height:1.45;margin:0;max-width:67%;color:#e8f1ff}.lp-slide-badge{display:inline-flex;width:max-content;padding:5px 9px;border-radius:999px;background:rgba(255,255,255,.16);font-size:9px;font-weight:800;margin-bottom:10px}.services-slide{background:linear-gradient(135deg,#06244d,#0870df)}.wallet-slide{background:linear-gradient(135deg,#081c35,#0b56b6)}.edu-slide{background:linear-gradient(135deg,#073c70,#0a86c9)}.lp-carousel-dots{display:flex;justify-content:center;gap:6px;padding-top:9px}.lp-carousel-dot{width:7px;height:7px;border-radius:50%;border:0;padding:0;background:#cbd5e1}.lp-carousel-dot.active{width:19px;border-radius:999px;background:#0863d8}.lp-founder-slide{background:#06244d}.lp-founder-label{position:absolute;left:12px;bottom:11px;background:rgba(2,18,42,.78);padding:7px 10px;border-radius:10px;font-size:10px;font-weight:800}.lp-mini-icons{display:flex;gap:7px;margin-top:13px}.lp-mini-icons span{background:rgba(255,255,255,.14);border-radius:9px;padding:7px 8px;font-size:14px}@media(max-width:380px){.lp-slide{height:160px}.lp-slide-copy{padding:17px}.lp-slide-copy h3{font-size:20px}}</style></head>
+<style id="lp-carousel-upgrade">.lp-carousel-wrap{margin:0 0 18px}.lp-carousel{display:flex;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;border-radius:18px}.lp-carousel::-webkit-scrollbar{display:none}.lp-slide{position:relative;flex:0 0 100%;height:178px;border-radius:18px;overflow:hidden;scroll-snap-align:start;box-shadow:0 8px 24px rgba(8,43,101,.12);color:#fff}.lp-slide img{width:100%;height:100%;object-fit:cover;display:block}.lp-slide-copy{position:absolute;inset:0;padding:20px;display:flex;flex-direction:column;justify-content:center;background:linear-gradient(90deg,rgba(3,25,59,.92),rgba(3,50,110,.58),rgba(3,50,110,.08))}.lp-slide-copy h3{font-size:23px;line-height:1.08;margin:0 0 7px;max-width:72%}.lp-slide-copy p{font-size:12px;line-height:1.45;margin:0;max-width:67%;color:#e8f1ff}.lp-slide-badge{display:inline-flex;width:max-content;padding:5px 9px;border-radius:999px;background:rgba(255,255,255,.16);font-size:9px;font-weight:800;margin-bottom:10px}.services-slide{background:linear-gradient(135deg,#06244d,#0870df)}.wallet-slide{background:linear-gradient(135deg,#081c35,#0b56b6)}.edu-slide{background:linear-gradient(135deg,#073c70,#0a86c9)}.lp-carousel-dots{display:flex;justify-content:center;gap:6px;padding-top:9px}.lp-carousel-dot{width:7px;height:7px;border-radius:50%;border:0;padding:0;background:#cbd5e1}.lp-carousel-dot.active{width:19px;border-radius:999px;background:#0863d8}.lp-founder-slide{background:#06244d}.lp-founder-label{position:absolute;left:12px;bottom:11px;background:rgba(2,18,42,.78);padding:7px 10px;border-radius:10px;font-size:10px;font-weight:800}.lp-mini-icons{display:flex;gap:7px;margin-top:13px}.lp-mini-icons span{background:rgba(255,255,255,.14);border-radius:9px;padding:7px 8px;font-size:14px}@media(max-width:380px){.lp-slide{height:160px}.lp-slide-copy{padding:17px}.lp-slide-copy h3{font-size:20px}}</style>
+<style id="lp-fullscreen-mobile-services">
+#lpLiveData,#lpAirtimeOverlay{background:#edf3fa!important;align-items:stretch!important;z-index:28000;overscroll-behavior:contain}
+#lpLiveData .ld-sheet,#lpAirtimeOverlay .lp-svc-sheet{width:100%;max-width:680px!important;height:100vh!important;height:100dvh!important;max-height:none!important;border-radius:0!important;box-shadow:0 0 40px #09244512}
+#lpLiveData .ld-handle,#lpAirtimeOverlay .lp-svc-handle{display:none}
+#lpLiveData .ld-head,#lpAirtimeOverlay .lp-svc-head{background:#fff!important;color:#10213b!important;padding:calc(20px + env(safe-area-inset-top)) 22px 18px!important;border-bottom:1px solid #e5edf6}
+#lpLiveData .ld-top p,#lpAirtimeOverlay .lp-svc-sub{color:#708097!important;margin-top:6px}
+#lpLiveData .ld-close,#lpAirtimeOverlay .lp-svc-close{background:#edf3fa!important;color:#153258!important}
+#lpLiveData .ld-body,#lpLiveData .ld-review,#lpAirtimeOverlay .lp-svc-body{flex:1;min-height:0;padding:22px!important;overflow-y:auto;overscroll-behavior:contain}
+.lp-mobile-promo{position:relative;overflow:hidden;margin:0 0 22px;padding:23px;border-radius:22px;background:linear-gradient(120deg,#082b5c,#0863d8);color:#fff;box-shadow:0 10px 25px #0863d81a}
+.lp-mobile-promo:after{content:"";position:absolute;width:155px;height:155px;border:28px solid #ffffff12;border-radius:50%;right:-48px;top:-45px;pointer-events:none}
+.lp-mobile-promo small{font-size:10px;font-weight:800;letter-spacing:1.7px;color:#bcdcff}
+.lp-mobile-promo h3{font-size:23px;letter-spacing:-.6px;margin:9px 0 6px;line-height:1.2}
+.lp-mobile-promo p{font-size:12px;color:#deebff;margin:0;line-height:1.5;max-width:85%}
+#lpLiveData .ld-networks,#lpAirtimeOverlay .lp-svc-grid4{gap:9px;margin-bottom:20px}
+#lpLiveData .ld-network,#lpAirtimeOverlay [data-network]{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;border-radius:17px;padding:13px 3px!important;background:#fff;min-height:83px}
+#lpLiveData .ld-network:before,#lpAirtimeOverlay [data-network]:before{content:attr(data-network);display:grid;place-items:center;width:39px;height:39px;border-radius:50%;font-size:9px;font-weight:900;background:#e6eef8;color:#23364c}
+#lpLiveData [data-network="MTN"]:before,#lpAirtimeOverlay [data-network="MTN"]:before{background:#ffcd00;color:#162338}
+#lpLiveData [data-network="Airtel"]:before,#lpAirtimeOverlay [data-network="Airtel"]:before{background:#ed1c24;color:white}
+#lpLiveData [data-network="Glo"]:before,#lpAirtimeOverlay [data-network="Glo"]:before{background:#118f36;color:white}
+#lpLiveData [data-network="9mobile"]:before,#lpAirtimeOverlay [data-network="9mobile"]:before{background:#d5e9ac;color:#173d24}
+#lpLiveData .ld-network.on,#lpAirtimeOverlay .lp-svc-choice.active{border:2px solid #0863d8;background:#edf6ff}
+#lpLiveData .ld-phone,#lpAirtimeOverlay .lp-air-phone{font-size:20px!important;font-weight:750;letter-spacing:.4px;padding:18px!important;background:#fff;border-radius:16px}
+#lpLiveData .ld-filters{padding:20px 0 18px;gap:9px}
+#lpLiveData .ld-filter{font-size:12px;padding:10px 16px}
+#lpLiveData .ld-filter.on{background:#0863d8;color:white;border-color:#0863d8}
+#lpLiveData .ld-plans{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+#lpLiveData .ld-plan{min-height:132px;padding:18px 15px;border-radius:19px;box-shadow:0 4px 14px #122d4c04}
+#lpLiveData .ld-plan b{font-size:14px;line-height:1.5}
+#lpLiveData .ld-plan strong{font-size:20px;margin-top:17px}
+#lpLiveData .ld-plan.on{box-shadow:0 0 0 2px #0863d822;border-color:#0863d8}
+#lpLiveData .ld-checkout{padding:16px 22px calc(18px + env(safe-area-inset-bottom));box-shadow:0 -6px 24px #10213b06}
+#lpLiveData .ld-summary{font-size:12px;line-height:1.5}
+#lpLiveData .ld-primary,#lpAirtimeOverlay .lp-svc-primary{padding:17px;border-radius:16px;font-size:15px;box-shadow:0 7px 18px #0863d81a}
+#lpLiveData .ld-card,#lpAirtimeOverlay .lp-svc-review{border:0;border-radius:22px;padding:10px 18px;box-shadow:0 6px 20px #10213b05}
+#lpLiveData .ld-row,#lpAirtimeOverlay .lp-svc-row{padding:16px 0;align-items:flex-start;line-height:1.5}
+#lpLiveData .ld-row span,#lpAirtimeOverlay .lp-svc-row span{color:#728198;flex-shrink:0}
+#lpLiveData .ld-row b,#lpAirtimeOverlay .lp-svc-row strong{max-width:65%;overflow-wrap:anywhere;text-align:right}
+#lpLiveData .ld-pin,#lpAirtimeOverlay .lp-svc-pin{padding:19px;background:white;border-radius:16px;font-size:24px}
+#lpAirtimeOverlay .lp-svc-grid3{grid-template-columns:repeat(3,minmax(0,1fr));gap:11px}
+#lpAirtimeOverlay .lp-air-quick{text-align:center;padding:22px 5px;border-radius:17px}
+#lpAirtimeOverlay .lp-air-quick.active{border-color:#0863d8;background:#edf6ff}
+#lpAirtimeOverlay .lp-svc-field{margin:21px 0}
+#lpAirtimeOverlay .lp-svc-label,#lpLiveData .ld-label{font-size:11px;margin-bottom:11px;color:#65768e}
+@media(min-width:500px){#lpLiveData .ld-plans{grid-template-columns:repeat(3,minmax(0,1fr))}}
+</style>
+</head>
 
 <body>
 
@@ -2788,7 +2834,7 @@ function openAITips() {
   
   
 </script>
-<script src="data-client.js?v=20261013-2155"></script>
+<script src="data-client.js?v=20261014-fullscreen"></script>
 <script src="electricity-client.js"></script>
 <script src="tv-client.js"></script>
 <script src="wallet-client.js"></script>
@@ -3097,7 +3143,7 @@ function openAITips() {
           <button class="lp-svc-close" type="button">×</button>
         </div></div>
         <div class="lp-svc-body">
-          <span class="lp-svc-label">Select network</span>
+          <div class="lp-mobile-promo"><small>LONERPAY AIRTIME</small><h3>Stay connected.<br>Top up in seconds.</h3><p>Choose your network and send airtime from your wallet.</p></div><span class="lp-svc-label">Select network</span>
           <div class="lp-svc-grid4">
             ${["MTN","Airtel","Glo","9mobile"].map((n,i)=>`<button class="lp-svc-choice ${i===0?"active":""}" data-network="${n}" type="button">${n}</button>`).join("")}
           </div>
