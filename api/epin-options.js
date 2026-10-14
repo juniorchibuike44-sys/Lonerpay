@@ -1,5 +1,5 @@
 import { enforceRateLimit, hardenResponse } from "./_security.js";
-import { pairgateRequest } from "./_pairgate.js";
+import { pairgateRequest, pairgateEpinDenominations } from "./_pairgate.js";
 
 const NETWORKS = [
   { id: "mtn", name: "MTN" },
@@ -35,7 +35,7 @@ export default async function handler(req, res) {
     const suffix = `?provider_id=${encodeURIComponent(provider)}`;
     const result = await pairgateRequest(`/recharge-pins/denominations${suffix}`, { method: "GET" });
     const rows = Array.isArray(result.data?.data) ? result.data.data : [];
-    const denominations = [...new Set(rows.map(row => Number(row?.denomination)).filter(value => Number.isInteger(value) && value > 0))].sort((a,b) => a-b);
+    const denominations = pairgateEpinDenominations(result.data, provider);
     if (!result.response.ok || result.data?.status !== "success" || !denominations.length) {
       const reason = !result.response.ok
         ? `Provider returned HTTP ${result.response.status}`
