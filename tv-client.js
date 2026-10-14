@@ -176,7 +176,8 @@
             phone: phoneNumber,
             subscription_type: "change",
             quantity: 1,
-            pin: pin.value
+            pin: pin.value,
+            recipient_name: verifiedDetails.customerName
           })
         });
         const data = await response.json();
@@ -190,13 +191,13 @@
           throw new Error((data.error || data.message || "Payment failed") + refundText);
         }
 
-        const providerStatus = String(data?.content?.transactions?.status || "").toLowerCase();
-        if (String(data.code) === "099" || providerStatus === "pending" || providerStatus === "initiated") {
+        const providerStatus = String(data?.content?.transactions?.status || data?.data?.status || "").toLowerCase();
+        if (String(data.code) === "099" || data.pending || providerStatus === "pending" || providerStatus === "processing" || providerStatus === "initiated") {
           alert("Payment is pending. Please check Recent Transactions shortly.");
           overlay.remove();
           return;
         }
-        if (String(data.code) !== "000" || (providerStatus && providerStatus !== "delivered")) {
+        if (String(data.code) !== "000" || (providerStatus && !["delivered", "successful", "success", "completed"].includes(providerStatus))) {
           throw new Error("TV subscription payment failed");
         }
 
