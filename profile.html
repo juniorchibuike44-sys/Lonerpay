@@ -258,6 +258,10 @@
     opacity: 1;
 } 
   </style>
+
+<style id="lp-profile-refresh">
+body{background:#f3f6fb!important}.header{background:#fff!important;color:#10213b!important;border-radius:0!important;border-bottom:1px solid #e5edf5;padding:22px!important}.header .back{color:#10213b}.container{max-width:640px;padding:20px 18px 35px}.profile-card{position:relative;padding:26px 18px!important;border:1px solid #e5edf5!important;box-shadow:0 5px 22px #10213b05!important}.avatar{width:72px;height:72px;background:linear-gradient(145deg,#0863d8,#082b5c);border:5px solid #eaf3ff;font-size:26px}.profile-card h2{font-size:22px;overflow-wrap:anywhere}.profile-card p{font-size:13px}.lp-profile-email{margin-top:7px;color:#728198;font-size:12px;overflow-wrap:anywhere}.lp-profile-status{display:inline-flex;margin-top:16px;padding:7px 12px;border-radius:30px;background:#edf4ff;color:#315a8e;font-size:11px;font-weight:800}.menu{border:1px solid #e5edf5;box-shadow:none!important;border-radius:20px!important}.menu button{min-height:68px!important;padding:13px 16px!important;font-size:14px;border-color:#edf2f7}.menu button:after{font-size:24px}.lp-icon{width:39px;height:39px;font-size:17px;border-radius:12px}.lp-title{font-size:10px;margin:23px 0 9px;letter-spacing:1.4px}.lp-label{gap:12px}.lp-card{height:100dvh;max-height:100dvh!important;border-radius:0!important;padding:0 22px 32px}.lp-head{top:0;padding:23px 0 18px}.lp-head h2{font-size:24px!important}.lp-close{width:39px;height:39px;font-size:24px}.lp-about{font-size:12px}.lp-edit-label{display:block;margin:18px 0 8px;font-size:12px;font-weight:800;color:#52657e}.lp-edit-input{width:100%;padding:15px;border:1px solid #dbe4ef;border-radius:14px;font:inherit;background:#fff}.lp-edit-input:focus{outline:2px solid #c1ddff;border-color:#0863d8}.lp-edit-input[readonly]{background:#f4f7fb;color:#6b7c92}.lp-edit-error{color:#b42318;min-height:20px;font-size:13px;margin-top:14px}.pin-overlay{z-index:31000}.pin-card{max-height:90dvh;overflow:auto}.pin-primary,.lp-save{background:#0863d8!important}
+</style>
 </head>
 
 <body>
@@ -293,7 +297,7 @@
     <section class="profile-card">
       <div class="avatar">L</div>
       <h2>LonerPay User</h2>
-      <p>Manage your account and security</p>
+      <p>Manage your account and security</p><div class="lp-profile-email" id="lpProfileEmail">Loading account…</div><span class="lp-profile-status" id="lpProfileStatus">Checking verification…</span>
     </section>
 
     <section class="menu">
@@ -405,6 +409,8 @@ async function loadProfile() {
       throw new Error(data.error || "Could not load profile");
     }
 
+    window.lpCurrentProfile = data;
+    document.getElementById("lpProfileEmail").textContent = data.email || "";
     const name = data.name || "LonerPay User";
     const phone = data.phone || "Manage your account and security";
 
@@ -740,5 +746,33 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 })();
 </script>
 
+
+<script id="lp-profile-details-refresh">
+(function(){
+const esc=v=>String(v??'').replace(/[&<>"']/g,x=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[x]));
+window.editProfile=async function(){
+  const token=localStorage.getItem('lonerpay_access_token');
+  if(!token){location.href='index.html';return;}
+  await loadProfile();
+  const profile=window.lpCurrentProfile;
+  if(!profile){showMessage('Unable to load your account. Please try again.');return;}
+  document.querySelector('.lp-sheet')?.remove();
+  const o=document.createElement('div');o.className='lp-sheet';
+  o.innerHTML=`<div class="lp-card"><div class="lp-head"><div><small style="color:#0863d8;font-weight:800">YOUR ACCOUNT</small><h2>Personal information</h2></div><button type="button" class="lp-close" aria-label="Close">×</button></div><p style="color:#718096;font-size:13px;line-height:1.6">Keep your name and phone number up to date for your LonerPay account.</p><form id="lpEditForm"><label class="lp-edit-label" for="lpEditName">Full name</label><input class="lp-edit-input" id="lpEditName" autocomplete="name" maxlength="100" required value="${esc(profile.name)}"><label class="lp-edit-label" for="lpEditPhone">Phone number</label><input class="lp-edit-input" id="lpEditPhone" type="tel" autocomplete="tel" inputmode="tel" maxlength="16" required value="${esc(profile.phone)}"><label class="lp-edit-label" for="lpEditEmail">Registered email</label><input class="lp-edit-input" id="lpEditEmail" type="email" readonly value="${esc(profile.email)}"><div class="lp-note">Contact support if you need help changing your registered email. Editing profile details does not change your verified identity or bank account name.</div><div class="lp-edit-error" role="status"></div><button class="lp-primary" type="submit">Save changes</button></form></div>`;
+  document.body.appendChild(o);o.querySelector('.lp-close').onclick=()=>o.remove();
+  o.querySelector('form').onsubmit=async event=>{
+    event.preventDefault();const name=o.querySelector('#lpEditName').value.trim(),phone=o.querySelector('#lpEditPhone').value.trim(),error=o.querySelector('.lp-edit-error'),button=o.querySelector('[type="submit"]');
+    if(!name||!/^(?:0\d{10}|\+?234\d{10})$/.test(phone)){error.textContent='Enter your name and a valid Nigerian phone number.';return;}
+    button.disabled=true;button.textContent='Saving…';error.textContent='';
+    try{const r=await fetch('/api/profile',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},body:JSON.stringify({name,phone})});const data=await r.json();if(!r.ok)throw Error(data.error||'Could not save profile');await loadProfile();o.remove();showMessage('Personal information saved.');}catch(e){error.textContent=e.message;button.disabled=false;button.textContent='Save changes';}
+  };
+};
+async function verification(){
+  const el=document.getElementById('lpProfileStatus'),token=localStorage.getItem('lonerpay_access_token');if(!el||!token)return;
+  try{const r=await fetch('/api/kyc/status',{headers:{Authorization:'Bearer '+token},cache:'no-store'});const d=await r.json();if(!r.ok||!d.success)throw Error();const labels={verified:'Identity verified',pending:'Verification in progress',action_required:'Verification needs attention',not_verified:'Complete your verification'};el.textContent=labels[d.status]||'Verification status unavailable';if(d.status==='verified'){el.style.background='#e9f8ef';el.style.color='#087745';}}catch{el.textContent='Verification status unavailable';}
+}
+verification();
+})();
+</script>
 </body>
 </html>
