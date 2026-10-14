@@ -195,7 +195,8 @@ export default async function handler(
 
   const usesPairgate = airtimeServices.has(String(req.body?.serviceID || "")) ||
     dataServices.has(String(req.body?.serviceID || "")) ||
-    electricityServices.has(String(req.body?.serviceID || ""));
+    electricityServices.has(String(req.body?.serviceID || "")) ||
+    tvServices.has(String(req.body?.serviceID || ""));
 
 
   if (
@@ -505,26 +506,19 @@ export default async function handler(
       }
       return;
     }
-    const response = await fetch(
-      `${vtpassBaseUrl}/service-variations?serviceID=${encodeURIComponent(serviceID)}`,
-      {
-        headers: {
-          "api-key": vtpassApiKey,
-          "public-key": vtpassPublicKey,
-          Accept: "application/json"
-        },
-        cache: "no-store"
-      }
+    const result = await pairgateRequest(
+      `/cable-plans?provider_id=${encodeURIComponent(serviceID)}`,
+      { method: "GET" }
     );
-    const data = await response.json().catch(() => ({}));
-    const variations = Array.isArray(data?.content?.variations)
-      ? data.content.variations
-      : [];
+    const payload = result.data?.data;
+    const variations = Array.isArray(payload)
+      ? payload
+      : Object.values(payload || {}).flatMap(value => Array.isArray(value) ? value : []);
     const selected = variations.find(item =>
-      String(item?.variation_code || "") === String(variation_code || "")
+      String(item?.plan_id || item?.id || "") === String(variation_code || "")
     );
-    const expectedAmount = Number(selected?.variation_amount);
-    if (!response.ok || !selected || !Number.isFinite(expectedAmount) || expectedAmount <= 0) {
+    const expectedAmount = Number(selected?.price || selected?.amount);
+    if (!result.response.ok || result.data?.status !== "success" || !selected || !Number.isFinite(expectedAmount) || expectedAmount <= 0) {
       const error = new Error("The selected plan is no longer available. Refresh the plans and try again.");
       error.statusCode = 409;
       throw error;
@@ -926,59 +920,18 @@ export default async function handler(
         serviceID
       )
     ) {
-      const verifyResponse =
-        await fetch(
-          `${vtpassBaseUrl}/merchant-verify`,
-          {
-            method:
-              "POST",
-
-            headers: {
-              "Content-Type":
-                "application/json",
-
-              "api-key":
-                vtpassApiKey,
-
-              "secret-key":
-                vtpassSecretKey
-            },
-
-            body:
-              JSON.stringify({
-                serviceID,
-
-                billersCode
-              })
-          }
-        );
-
-
-      const verifyData =
-        await verifyResponse.json();
-
-
+      const verifyResult = await pairgateRequest("/cable/verify", {
+        method: "POST",
+        body: JSON.stringify({ provider_id: serviceID, smartcard: String(billersCode) })
+      });
       if (
-        !verifyResponse.ok ||
-        String(
-          verifyData?.code ||
-          ""
-        ) !== "000" ||
-        verifyData
-          ?.content
-          ?.WrongBillersCode ===
-          true
+        !verifyResult.response.ok ||
+        verifyResult.data?.status !== "success" ||
+        verifyResult.data?.data?.status !== true
       ) {
-        return res
-          .status(422)
-          .json({
-            error:
-              verifyData
-                ?.response_description ||
-              verifyData
-                ?.message ||
-              "Smartcard verification failed"
-          });
+        return res.status(422).json({
+          error: pairgateMessage(verifyResult.data, "Smartcard verification failed")
+        });
       }
     }
 
@@ -1319,6 +1272,113 @@ export default async function handler(
         pairgate_reference: providerReference,
         pending: true,
         message: "Electricity payment is processing. Your token will appear in Transactions.",
+        wallet: { balance: Number(debit.new_balance), transaction_id: debit.transaction_id }
+      });
+    }
+
+    /* =========================
+       PAIRGATE CABLE TV
+    ========================= */
+
+    if (tvServices.has(serviceID)) {
+      providerRequestStarted = true;
+      const purchase = await pairgateRequest("/cable/purchase", {
+        method: "POST",
+        body: JSON.stringify({
+          provider_id: serviceID,
+          plan_id: String(variation_code),
+          smartcard: String(billersCode),
+          recipient_name: String(recipient_name || "Verified customer"),
+          reference: requestId
+        })
+      });
+      providerResponseReceived = true;
+
+      if (!isPairgateAccepted(purchase.response, purchase.data)) {
+        const refund = await refundWallet(pairgateMessage(purchase.data, "Pairgate rejected the TV subscription"));
+        await updateTransaction("refunded", purchase.data, "pairgate");
+        return res.status(purchase.response.status >= 400 ? 502 : 400).json({
+          error: pairgateMessage(purchase.data, "TV subscription failed"),
+          request_id: requestId,
+          refunded: refund.success,
+          refund_error: refund.success ? null : refund.message,
+          wallet: Number.isFinite(refund.balance) ? { balance: refund.balance } : undefined
+        });
+      }
+
+      const providerReference = pairgateReference(purchase.data);
+      const acceptedData = {
+        ...purchase.data,
+        data: { ...(purchase.data?.data || {}), reference_code: providerReference }
+      };
+      await updateTransaction("pending", acceptedData, "pairgate");
+
+      if (!providerReference) {
+        return res.status(202).json({
+          code: "099", pending: true,
+          message: "TV subscription was accepted and is awaiting confirmation",
+          request_id: requestId,
+          wallet: { balance: Number(debit.new_balance), transaction_id: debit.transaction_id }
+        });
+      }
+
+      let query;
+      let finalStatus = "";
+      for (let attempt = 0; attempt < 8; attempt += 1) {
+        if (attempt > 0) await new Promise(resolve => setTimeout(resolve, 500));
+        query = await pairgateRequest(
+          `/transaction/status?reference_code=${encodeURIComponent(providerReference)}`,
+          { method: "GET" }
+        );
+        finalStatus = pairgateStatus(query.data);
+        if (
+          (query.response.ok && isPairgateSuccessfulStatus(finalStatus)) ||
+          (query.response.ok && isPairgateFailedStatus(finalStatus))
+        ) break;
+      }
+
+      const combinedData = {
+        ...purchase.data,
+        data: {
+          ...(purchase.data?.data || {}),
+          ...(query?.data?.data || {}),
+          reference_code: providerReference
+        }
+      };
+
+      if (query?.response?.ok && isPairgateSuccessfulStatus(finalStatus)) {
+        await updateTransaction("successful", combinedData, "pairgate");
+        return res.status(200).json({
+          code: "000",
+          content: { transactions: { status: "delivered" } },
+          request_id: requestId,
+          pairgate_reference: providerReference,
+          pending: false,
+          wallet: { balance: Number(debit.new_balance), transaction_id: debit.transaction_id }
+        });
+      }
+
+      if (query?.response?.ok && isPairgateFailedStatus(finalStatus)) {
+        const refund = await refundWallet(pairgateMessage(query.data, "Pairgate TV transaction failed"));
+        await updateTransaction("refunded", combinedData, "pairgate");
+        return res.status(502).json({
+          error: pairgateMessage(query.data, "TV subscription failed"),
+          request_id: requestId,
+          pairgate_reference: providerReference,
+          refunded: refund.success,
+          refund_error: refund.success ? null : refund.message,
+          wallet: Number.isFinite(refund.balance) ? { balance: refund.balance } : undefined
+        });
+      }
+
+      await updateTransaction("pending", combinedData, "pairgate");
+      return res.status(202).json({
+        code: "099",
+        content: { transactions: { status: finalStatus || "processing" } },
+        request_id: requestId,
+        pairgate_reference: providerReference,
+        pending: true,
+        message: "TV subscription is processing",
         wallet: { balance: Number(debit.new_balance), transaction_id: debit.transaction_id }
       });
     }
