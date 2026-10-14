@@ -128,9 +128,15 @@ const tvServices = new Set([
 
 const educationServices = new Set([
   "waec",
-  "waec-registration",
-  "jamb"
+  "neco",
+  "nabt"
 ]);
+
+const educationRetailPrices = {
+  waec: Number(process.env.LONERPAY_WAEC_PRICE || 5500),
+  neco: Number(process.env.LONERPAY_NECO_PRICE || 2500),
+  nabt: Number(process.env.LONERPAY_NABTEB_PRICE || 1500)
+};
 
 
 const allowedPaymentServices = new Set([
@@ -196,7 +202,8 @@ export default async function handler(
   const usesPairgate = airtimeServices.has(String(req.body?.serviceID || "")) ||
     dataServices.has(String(req.body?.serviceID || "")) ||
     electricityServices.has(String(req.body?.serviceID || "")) ||
-    tvServices.has(String(req.body?.serviceID || ""));
+    tvServices.has(String(req.body?.serviceID || "")) ||
+    educationServices.has(String(req.body?.serviceID || ""));
 
 
   if (
@@ -345,6 +352,18 @@ export default async function handler(
     });
   }
 
+  if (educationServices.has(serviceID)) {
+    const expectedAmount = educationRetailPrices[serviceID];
+    if (!Number.isFinite(expectedAmount) || expectedAmount <= 0 || Math.abs(expectedAmount - paymentAmount) > 0.01) {
+      return res.status(409).json({
+        error: "The education PIN price has changed. Refresh the options before payment."
+      });
+    }
+    if (!Number.isInteger(Number(quantity || 1)) || Number(quantity || 1) !== 1) {
+      return res.status(400).json({ error: "Only one education PIN can be purchased at a time" });
+    }
+  }
+
   if (airtimeServices.has(serviceID)) {
     if (!/^0\d{10}$/.test(String(billersCode))) {
       return res.status(400).json({ error: "Enter a valid 11-digit Nigerian phone number" });
@@ -431,8 +450,11 @@ export default async function handler(
       const balanceBefore = Number(providerDetails.balance_before);
       const balanceAfter = Number(providerDetails.balance_after);
       const balanceCharge = balanceBefore - balanceAfter;
+      const reportedCost = Number(providerDetails.total_amount || providerDetails.unit_price);
       const providerCost = providerName === "pairgate" && Number.isFinite(balanceCharge) && balanceCharge > 0
         ? balanceCharge
+        : providerName === "pairgate" && Number.isFinite(reportedCost) && reportedCost > 0
+          ? reportedCost
         : null;
       const grossProfit = providerCost !== null
         ? Math.max(0, Number(paymentAmount) - providerCost)
@@ -1379,6 +1401,119 @@ export default async function handler(
         pairgate_reference: providerReference,
         pending: true,
         message: "TV subscription is processing",
+        wallet: { balance: Number(debit.new_balance), transaction_id: debit.transaction_id }
+      });
+    }
+
+    /* =========================
+       PAIRGATE EDUCATION PIN
+    ========================= */
+
+    if (educationServices.has(serviceID)) {
+      providerRequestStarted = true;
+      const purchase = await pairgateRequest("/education/purchase", {
+        method: "POST",
+        body: JSON.stringify({
+          provider_id: serviceID,
+          quantity: 1,
+          reference: requestId
+        })
+      });
+      providerResponseReceived = true;
+
+      if (!isPairgateAccepted(purchase.response, purchase.data)) {
+        const refund = await refundWallet(pairgateMessage(purchase.data, "Pairgate rejected the education PIN purchase"));
+        await updateTransaction("refunded", purchase.data, "pairgate");
+        return res.status(purchase.response.status >= 400 ? 502 : 400).json({
+          error: pairgateMessage(purchase.data, "Education PIN purchase failed"),
+          request_id: requestId,
+          refunded: refund.success,
+          refund_error: refund.success ? null : refund.message,
+          wallet: Number.isFinite(refund.balance) ? { balance: refund.balance } : undefined
+        });
+      }
+
+      const detailRows = Array.isArray(purchase.data?.data?.details) ? purchase.data.data.details : [];
+      const providerReference = String(detailRows[0]?.reference || "").trim();
+      const acceptedData = {
+        ...purchase.data,
+        data: {
+          ...(purchase.data?.data || {}),
+          reference_code: providerReference,
+          status: "processing"
+        }
+      };
+      await updateTransaction("pending", acceptedData, "pairgate");
+
+      if (!providerReference) {
+        return res.status(202).json({
+          code: "099", pending: true,
+          message: "Education PIN purchase was accepted and the PIN is being generated",
+          request_id: requestId,
+          wallet: { balance: Number(debit.new_balance), transaction_id: debit.transaction_id }
+        });
+      }
+
+      let query;
+      let finalStatus = "";
+      for (let attempt = 0; attempt < 8; attempt += 1) {
+        if (attempt > 0) await new Promise(resolve => setTimeout(resolve, 500));
+        query = await pairgateRequest(
+          `/transaction/status?reference_code=${encodeURIComponent(providerReference)}`,
+          { method: "GET" }
+        );
+        finalStatus = pairgateStatus(query.data);
+        if (
+          (query.response.ok && isPairgateSuccessfulStatus(finalStatus)) ||
+          (query.response.ok && isPairgateFailedStatus(finalStatus))
+        ) break;
+      }
+
+      const purchasedCode = String(query?.data?.data?.pin || query?.data?.pin || "").trim();
+      const combinedData = {
+        ...purchase.data,
+        data: {
+          ...(purchase.data?.data || {}),
+          ...(query?.data?.data || {}),
+          reference_code: providerReference
+        },
+        purchased_code: purchasedCode
+      };
+
+      if (query?.response?.ok && isPairgateFailedStatus(finalStatus)) {
+        const refund = await refundWallet(pairgateMessage(query.data, "Pairgate education transaction failed"));
+        await updateTransaction("refunded", combinedData, "pairgate");
+        return res.status(502).json({
+          error: pairgateMessage(query.data, "Education PIN purchase failed"),
+          request_id: requestId,
+          pairgate_reference: providerReference,
+          refunded: refund.success,
+          refund_error: refund.success ? null : refund.message,
+          wallet: Number.isFinite(refund.balance) ? { balance: refund.balance } : undefined
+        });
+      }
+
+      if (query?.response?.ok && isPairgateSuccessfulStatus(finalStatus) && purchasedCode) {
+        await updateTransaction("successful", combinedData, "pairgate");
+        return res.status(200).json({
+          code: "000",
+          content: { transactions: { status: "delivered" } },
+          purchased_code: purchasedCode,
+          request_id: requestId,
+          pairgate_reference: providerReference,
+          pending: false,
+          wallet: { balance: Number(debit.new_balance), transaction_id: debit.transaction_id }
+        });
+      }
+
+      await updateTransaction("pending", combinedData, "pairgate");
+      return res.status(202).json({
+        code: "099",
+        content: { transactions: { status: finalStatus || "processing" } },
+        request_id: requestId,
+        pairgate_reference: providerReference,
+        pending: true,
+        message: "Your education PIN is being generated and will appear in Transactions.",
         wallet: { balance: Number(debit.new_balance), transaction_id: debit.transaction_id }
       });
     }
