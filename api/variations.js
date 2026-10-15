@@ -8,6 +8,41 @@ const cacheGet = (key, maxAge) => {
 };
 const cacheSet = (key, value) => { dataPlanCache.set(key, { savedAt: Date.now(), value }); return value; };
 
+
+const catalogueGate = globalThis.__lonerPayCatalogueGate || { tail: Promise.resolve(), nextAt: 0, cooldownUntil: 0, pending: new Map() };
+globalThis.__lonerPayCatalogueGate = catalogueGate;
+function catalogueRateError() {
+  return Object.assign(new Error("Data plans are busy. Please wait a minute before trying again."), {
+    statusCode: 429, retryAfter: Math.max(1, Math.ceil((catalogueGate.cooldownUntil - Date.now()) / 1000))
+  });
+}
+function catalogueRequest(path) {
+  const cached = cacheGet("family:" + path, 10 * 60_000);
+  if (cached) return Promise.resolve(cached);
+  if (catalogueGate.pending.has(path)) return catalogueGate.pending.get(path);
+  const work = catalogueGate.tail.then(async () => {
+    if (Date.now() < catalogueGate.cooldownUntil) throw catalogueRateError();
+    const wait = Math.max(0, catalogueGate.nextAt - Date.now());
+    if (wait) await new Promise(resolve => setTimeout(resolve, wait));
+    if (Date.now() < catalogueGate.cooldownUntil) throw catalogueRateError();
+    catalogueGate.nextAt = Date.now() + 1500;
+    const result = await pairgateRequest(path, { method: "GET" });
+    if (result.response.status === 429) {
+      const header = result.response.headers?.get?.("retry-after");
+      const seconds = Number(header);
+      const delay = Number.isFinite(seconds) && seconds > 0 ? seconds * 1000 : 60_000;
+      catalogueGate.cooldownUntil = Date.now() + delay;
+      throw catalogueRateError();
+    }
+    if (result.response.ok && result.data?.status === "success") cacheSet("family:" + path, result);
+    return result;
+  });
+  catalogueGate.tail = work.catch(() => {});
+  catalogueGate.pending.set(path, work);
+  work.finally(() => catalogueGate.pending.delete(path)).catch(() => {});
+  return work;
+}
+
 const allowedServices = new Set([
   // Data
   "mtn-data",
@@ -99,10 +134,16 @@ export default async function handler(req, res) {
       if (cachedPlans) return res.status(200).json({ serviceID, serviceName: `${network.toUpperCase()} Data`, provider: "pairgate", cached: true, variations: cachedPlans });
       // Pairgate's documented provider_id is the network slug itself. Query every
       // supported plan family directly; the category endpoint is not the catalogue.
-      const settledResults = await Promise.allSettled(pairgateDataPlanTypes.map(planType =>
-        pairgateRequest(`/data-plans?provider_id=${encodeURIComponent(network)}&plan_type=${encodeURIComponent(planType)}`, { method: "GET" })
-          .then(result => ({ ...result, planType }))
-      ));
+      const settledResults = [];
+      for (const planType of pairgateDataPlanTypes) {
+        try {
+          const result = await catalogueRequest(`/data-plans?provider_id=${encodeURIComponent(network)}&plan_type=${encodeURIComponent(planType)}`);
+          settledResults.push({ status: "fulfilled", value: { ...result, planType } });
+        } catch (error) {
+          if (error.statusCode === 429) throw error;
+          settledResults.push({ status: "rejected", reason: error });
+        }
+      }
       const results = settledResults
         .filter(result => result.status === "fulfilled")
         .map(result => result.value);
@@ -194,6 +235,10 @@ export default async function handler(req, res) {
     });
 
   } catch (error) {
+    if (error.statusCode === 429) {
+      res.setHeader("Retry-After", String(error.retryAfter));
+      return res.status(429).json({ error: error.message, retryAfter: error.retryAfter });
+    }
     console.error(
       "Service variations error:",
       error
