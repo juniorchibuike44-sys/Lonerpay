@@ -1,6 +1,6 @@
-document.addEventListener("DOMContentLoaded", function () {
+document.addEventListener("DOMContentLoaded", async function () {
   const recoveryParams = new URLSearchParams(location.hash.slice(1));
-  if (recoveryParams.get("type") === "recovery" || recoveryParams.has("error_code")) {
+  if (recoveryParams.get("type") === "recovery") {
     location.replace("https://lonerpay.com/reset-password.html" + location.hash);
     return;
   }
@@ -714,6 +714,48 @@ document.addEventListener("DOMContentLoaded", function () {
       "Use a registered passkey with fingerprint, face, or your device PIN when offered by your phone.";
   }
 
+  async function completeEmailConfirmation(params) {
+    // Check the session with Auth before replacing any remembered account.
+    const accessToken = params.get("access_token");
+    const refreshToken = params.get("refresh_token");
+    history.replaceState(null, "", location.pathname + location.search);
+    if (!accessToken || !refreshToken) {
+      throw new Error("This confirmation link is incomplete. Please sign in with your email and password.");
+    }
+    const config = await getConfig();
+    const response = await fetch(config.supabaseUrl + "/auth/v1/user", {
+      cache: "no-store",
+      headers: {
+        apikey: config.supabasePublishableKey,
+        Authorization: "Bearer " + accessToken
+      }
+    });
+    const user = await response.json();
+    if (!response.ok || !user.id || !user.email_confirmed_at) {
+      throw new Error("This confirmation link has expired or is invalid. Please sign in or request a new confirmation email.");
+    }
+    // Do not carry another account's refresh token or device preferences over.
+    localStorage.removeItem("lonerpay_refresh_token");
+    saveSession({ access_token: accessToken, refresh_token: refreshToken, user });
+    goToDashboard();
+  }
+
+  if (recoveryParams.has("access_token") || recoveryParams.has("error") || recoveryParams.has("error_code")) {
+    hideGateway();
+    window.showModal("login");
+    setAuthStatus("Confirming your email…", "success");
+    try {
+      if (recoveryParams.has("error") || recoveryParams.has("error_code")) {
+        history.replaceState(null, "", location.pathname + location.search);
+        throw new Error("This email confirmation link has expired or was already used. Please sign in with your email and password.");
+      }
+      await completeEmailConfirmation(recoveryParams);
+    } catch (error) {
+      setAuthStatus(error.message || "We could not confirm your email. Please try signing in.");
+    }
+    return;
+  }
+
   if (rememberedUser() || localStorage.getItem("lonerpay_access_token")) {
     showWelcome();
   } else {
@@ -921,7 +963,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
         if (text) {
           text.textContent =
-            "Check your email for the verification message from LonerPay.";
+            "Open the confirmation email from LonerPay and tap Confirm email. You will continue straight to your dashboard.";
         }
 
         return;
