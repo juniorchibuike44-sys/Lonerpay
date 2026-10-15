@@ -11,6 +11,7 @@
   }
 
   const planRequests = new Map();
+  let catalogueCooldownUntil = 0;
   const PLAN_FRESH_MS = 10 * 60_000;
   function cachedDataPlans(network, maxAge = PLAN_FRESH_MS) {
     try {
@@ -28,6 +29,7 @@
     if (!accessToken) return Promise.reject(new Error("Please log in again."));
     const cached = cachedDataPlans(network);
     if (cached) return Promise.resolve(cached);
+    if (Date.now() < catalogueCooldownUntil) return Promise.reject(new Error("Data plans are busy. Please wait a minute before trying again."));
     const key = accessToken + ":" + network;
     if (planRequests.has(key)) return planRequests.get(key);
     const request = (async () => {
@@ -38,6 +40,9 @@
           headers: { Authorization: `Bearer ${accessToken}` }, cache: "no-store", signal: controller.signal
         });
         const data = await response.json();
+        if (response.status === 429) {
+          catalogueCooldownUntil = Date.now() + Math.max(1, Number(data.retryAfter) || 60) * 1000;
+        }
         if (!response.ok) {
           // Never hide an expired login behind cached catalogue data.
           if (response.status === 401 || response.status === 403) throw Object.assign(new Error("Please log in again."), { auth: true });
@@ -63,18 +68,7 @@
     request.finally(() => planRequests.delete(key)).catch(() => {});
     return request;
   }
-  // Fetch catalogues before the customer opens a service. Shared requests prevent
-  // a network tap from starting a duplicate provider lookup.
-  async function warmDataPlans() {
-    if (!getAccessToken()) return;
-    // Warm one network at a time instead of starting twenty provider calls together.
-    for (const network of Object.keys(serviceIDs)) {
-      if (!getAccessToken()) return;
-      try { await loadDataPlans(network); } catch (_) {}
-    }
-  }
-  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", () => setTimeout(warmDataPlans, 1200), { once: true });
-  else setTimeout(warmDataPlans, 1200);
+  // Catalogues load on demand; server cache is shared by customers.
 
   async function purchaseData({
     network,
