@@ -42,15 +42,19 @@ export default async function handler(req, res) {
 
   const url = process.env.SUPABASE_URL?.replace(/\/$/, '');
   const key = process.env.SUPABASE_SECRET_KEY;
-  const appOrigin = process.env.LONERPAY_ORIGIN ||
-    'https://lonerpayvercelfixed.vercel.app';
+  const allowedOrigins = new Set([
+    'https://lonerpay.com',
+    'https://www.lonerpay.com',
+    'https://lonerpayvercelfixed.vercel.app',
+    ...(process.env.LONERPAY_ORIGIN ? [process.env.LONERPAY_ORIGIN] : [])
+  ]);
   const pepper = process.env.LOGIN_PIN_SECRET;
 
   if (!url || !key || !/^[a-f0-9]{64}$/i.test(pepper || '')) {
     return fail(503, 'Login PIN setup is not available yet. Use email and password.');
   }
 
-  if (req.headers.origin !== appOrigin) {
+  if (!allowedOrigins.has(req.headers.origin)) {
     return fail(403, 'Open LonerPay using its official website address.');
   }
 
