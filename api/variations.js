@@ -101,12 +101,13 @@ export default async function handler(req, res) {
       // Pairgate's documented provider_id is the network slug itself. Query every
       // supported plan family directly; the category endpoint is not the catalogue.
       const settledResults = [];
+      let catalogueError = null;
       for (const planType of pairgateDataPlanTypes) {
         try {
           const result = await catalogueRequest(`/data-plans?provider_id=${encodeURIComponent(network)}&plan_type=${encodeURIComponent(planType)}`);
           settledResults.push({ status: "fulfilled", value: { ...result, planType } });
         } catch (error) {
-          if (error.statusCode === 429 || error.statusCode === 503) throw error;
+          if (error.statusCode === 429 || error.statusCode === 503) catalogueError = error;
           settledResults.push({ status: "rejected", reason: error });
         }
       }
@@ -132,10 +133,11 @@ export default async function handler(req, res) {
       }
       const unique = [...new Map(plans.map(plan => [plan.code, plan])).values()]
         .sort((a, b) => a.amount - b.amount);
+      if (!unique.length && catalogueError) throw catalogueError;
       if (!unique.length) return res.status(502).json({ error: failedTypes.length ? "Data plans are temporarily unavailable. Please try again shortly." : "No data bundles are currently available for this network." });
       // A successful family must not turn failed families into a cached full catalogue.
       if (!failedTypes.length) cacheSet(`plans:${network}`, unique);
-      return res.status(200).json({ serviceID, serviceName: `${network.toUpperCase()} Data`, provider: "pairgate", partial: failedTypes.length > 0, variations: unique });
+      return res.status(200).json({ serviceID, serviceName: `${network.toUpperCase()} Data`, provider: "pairgate", partial: failedTypes.length > 0, retryAfter: catalogueError?.retryAfter, variations: unique });
     }
 
     // Get service variations from VTpass
