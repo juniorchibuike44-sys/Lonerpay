@@ -10,66 +10,66 @@
     return localStorage.getItem("lonerpay_access_token");
   }
 
-  async function loadDataPlans(network) {
-    const serviceID = serviceIDs[network];
-
-    if (!serviceID) {
-      throw new Error("Select a valid network.");
-    }
-
-    const accessToken = getAccessToken();
-
-    if (!accessToken) {
-      throw new Error("Please log in again.");
-    }
-
-    const cacheKey = `lonerpay_data_plans_${String(network).toLowerCase()}`;
-    const response = await fetch(
-      `/api/variations?serviceID=${encodeURIComponent(serviceID)}`,
-      {
-        headers: {
-          Authorization: `Bearer ${accessToken}`
-        },
-        cache: "no-store"
-      }
-    );
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      try {
-        const cached = JSON.parse(localStorage.getItem(cacheKey) || "null");
-        if (cached?.savedAt && Date.now() - cached.savedAt < 30 * 60_000 && Array.isArray(cached.plans) && cached.plans.length) return cached.plans;
-      } catch {}
-      throw new Error(
-        data.error ||
-        data.message ||
-        "Could not load data plans."
-      );
-    }
-
-    const plans = (Array.isArray(data.variations)
-      ? data.variations
-      : []
-    )
-      .filter(
-        item =>
-          item &&
-          item.code &&
-          Number.isFinite(Number(item.amount))
-      )
-      .map(item => ({
-        code: String(item.code),
-        name: String(item.name || "Data plan"),
-        amount: Number(item.amount),
-        network: network,
-        serviceID: serviceID
-      }));
-    if (plans.length) {
-      try { localStorage.setItem(cacheKey, JSON.stringify({ savedAt: Date.now(), plans })); } catch {}
-    }
-    return plans;
+  const planRequests = new Map();
+  const PLAN_FRESH_MS = 10 * 60_000;
+  function cachedDataPlans(network, maxAge = PLAN_FRESH_MS) {
+    try {
+      const cached = JSON.parse(localStorage.getItem(`lonerpay_data_plans_${String(network).toLowerCase()}`) || "null");
+      if (cached?.savedAt && Date.now() - cached.savedAt < maxAge &&
+          Array.isArray(cached.plans) && cached.plans.length &&
+          cached.plans.every(p => p.network === network && p.serviceID === serviceIDs[network] &&
+            p.code && Number.isFinite(Number(p.amount)) && Number(p.amount) > 0)) return cached.plans;
+    } catch (_) {}
+    return null;
   }
+  function loadDataPlans(network) {
+    const serviceID = serviceIDs[network], accessToken = getAccessToken();
+    if (!serviceID) return Promise.reject(new Error("Select a valid network."));
+    if (!accessToken) return Promise.reject(new Error("Please log in again."));
+    const cached = cachedDataPlans(network);
+    if (cached) return Promise.resolve(cached);
+    const key = accessToken + ":" + network;
+    if (planRequests.has(key)) return planRequests.get(key);
+    const request = (async () => {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 15000);
+      try {
+        const response = await fetch(`/api/variations?serviceID=${encodeURIComponent(serviceID)}`, {
+          headers: { Authorization: `Bearer ${accessToken}` }, cache: "no-store", signal: controller.signal
+        });
+        const data = await response.json();
+        if (!response.ok) {
+          // Never hide an expired login behind cached catalogue data.
+          if (response.status === 401 || response.status === 403) throw Object.assign(new Error("Please log in again."), { auth: true });
+          throw new Error(data.error || data.message || "Could not load data plans.");
+        }
+        const plans = (Array.isArray(data.variations) ? data.variations : [])
+          .filter(item => item && item.code && Number.isFinite(Number(item.amount)) && Number(item.amount) > 0)
+          .map(item => ({ code: String(item.code), name: String(item.name || "Data plan"),
+            amount: Number(item.amount), network, serviceID }));
+        if (!plans.length) throw new Error("No data plans are available for this network.");
+        try { localStorage.setItem(`lonerpay_data_plans_${String(network).toLowerCase()}`, JSON.stringify({ savedAt: Date.now(), plans })); } catch (_) {}
+        return plans;
+      } catch (error) {
+        const fallback = !error.auth && cachedDataPlans(network, 30 * 60_000);
+        if (fallback) return fallback;
+        throw new Error(error.name === "AbortError" ? "Plans could not be loaded. Please try again." : error.message);
+      } finally { clearTimeout(timeout); }
+    })();
+    planRequests.set(key, request);
+    request.finally(() => planRequests.delete(key)).catch(() => {});
+    return request;
+  }
+  // Fetch catalogues before the customer opens a service. Shared requests prevent
+  // a network tap from starting a duplicate provider lookup.
+  function warmDataPlans() {
+    if (!getAccessToken()) return;
+    Object.keys(serviceIDs).forEach((network, index) => {
+      setTimeout(() => loadDataPlans(network).catch(() => {}), index * 750);
+    });
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", () => setTimeout(warmDataPlans, 1200), { once: true });
+  else setTimeout(warmDataPlans, 1200);
 
   async function purchaseData({
     network,
@@ -226,10 +226,11 @@
         #lpLiveData *{box-sizing:border-box}.ld-sheet{width:100%;max-width:560px;max-height:94vh;display:flex;flex-direction:column;background:#f5f8fc;border-radius:28px 28px 0 0;overflow:hidden}
         .ld-head{background:linear-gradient(135deg,#061b39,#0a4ca7);color:#fff;padding:16px 18px 19px}.ld-handle{width:44px;height:5px;border-radius:9px;background:rgba(255,255,255,.35);margin:0 auto 13px}.ld-top{display:flex;align-items:center;justify-content:space-between}.ld-top h2{margin:0;font-size:22px}.ld-top p{margin:3px 0 0;color:#cbdcf5;font-size:12px}.ld-close{width:38px;height:38px;border:0;border-radius:50%;background:rgba(255,255,255,.13);color:#fff;font-size:23px}
         .ld-body{padding:15px;overflow:auto}.ld-label{display:block;margin:2px 0 8px;color:#66768b;font-size:11px;font-weight:900;letter-spacing:.06em;text-transform:uppercase}.ld-networks{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px}.ld-network,.ld-filter{border:1px solid #dfe7f0;background:#fff;color:#536277;border-radius:13px;padding:10px 4px;font-size:11px;font-weight:850}.ld-network.on,.ld-filter.on{border-color:#0867df;background:#eaf4ff;color:#0860c7}.ld-filters{display:flex;gap:7px;overflow:auto;padding:13px 0 10px;scrollbar-width:none}.ld-filter{flex:0 0 auto;border-radius:999px;padding:8px 13px}.ld-state{padding:28px 15px;text-align:center;background:#fff;border:1px dashed #cfdae8;border-radius:17px;color:#66768b;font-size:13px}.ld-plans{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.ld-plan{position:relative;min-height:103px;text-align:left;border:1px solid #dfe7f0;background:#fff;border-radius:17px;padding:13px}.ld-plan.on{border:2px solid #0867df;background:#f3f8ff}.ld-plan b{display:block;color:#13253d;font-size:13px;line-height:1.35}.ld-plan strong{display:block;color:#0867df;font-size:16px;margin-top:11px}.ld-checkout{border-top:1px solid #e3eaf2;background:#fff;padding:13px 15px calc(15px + env(safe-area-inset-bottom))}.ld-input{width:100%;border:1px solid #d7e0eb;border-radius:13px;padding:13px 14px;outline:0}.ld-summary{min-height:17px;margin:7px 2px 10px;color:#6a788c;font-size:11px}.ld-primary{width:100%;border:0;border-radius:14px;padding:14px;background:#0867df;color:#fff;font-weight:900}.ld-primary:disabled{opacity:.45}.ld-error{display:none;margin:10px 0 0;padding:10px 11px;border:1px solid #fecdd3;background:#fff1f2;color:#b42318;border-radius:12px;font-size:12px}.ld-review{padding:18px;overflow:auto}.ld-card{background:#fff;border:1px solid #e1e8f0;border-radius:18px;padding:6px 14px}.ld-row{display:flex;justify-content:space-between;gap:15px;padding:11px 0;border-bottom:1px solid #ebf0f5;font-size:13px}.ld-row:last-child{border:0}.ld-pin{margin-top:15px;text-align:center;letter-spacing:9px;font-size:19px}.ld-secondary{width:100%;border:0;background:transparent;padding:13px;color:#536277;font-weight:800}
+        .ld-skeleton{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;grid-column:1/-1}.ld-skeleton span{height:103px;border-radius:17px;background:linear-gradient(90deg,#e7edf5,#f6f8fc,#e7edf5);background-size:200% 100%;animation:ld-shimmer 1.2s ease-in-out infinite}@keyframes ld-shimmer{to{background-position:-200% 0}}@media(prefers-reduced-motion:reduce){.ld-skeleton span{animation:none}}
         @media(max-width:370px){.ld-plans{grid-template-columns:1fr}.ld-network{font-size:10px}}
       </style>
       <div class="ld-sheet"><div class="ld-head"><div class="ld-handle"></div><div class="ld-top"><div><h2>Buy Data</h2><p>Live bundles from your selected network</p></div><button class="ld-close" type="button">×</button></div></div>
-      <div class="ld-body"><div class="lp-mobile-promo"><small>LONERPAY DATA</small><h3>More data.<br>More possibilities.</h3><p>Find the right bundle for your day, week or month.</p></div><span class="ld-label">Select network</span><div class="ld-networks">${Object.keys(serviceIDs).map((name,index)=>`<button class="ld-network ${index===0?"on":""}" data-network="${name}" type="button">${name}</button>`).join("")}</div><label class="ld-label" for="lpDataRecipient">Recipient phone number</label><input id="lpDataRecipient" class="ld-input ld-phone" type="tel" inputmode="numeric" maxlength="11" autocomplete="tel" placeholder="Phone number • 08012345678"><div class="ld-filters">${["All","Daily","Weekly","Monthly","Other"].map((name,index)=>`<button class="ld-filter ${index===0?"on":""}" data-filter="${name}" type="button">${name}</button>`).join("")}</div><span class="ld-label">Available bundles</span><div class="ld-plans"><div class="ld-state">Loading current plans…</div></div></div>
+      <div class="ld-body"><div class="lp-mobile-promo"><small>LONERPAY DATA</small><h3>More data.<br>More possibilities.</h3><p>Find the right bundle for your day, week or month.</p></div><span class="ld-label">Select network</span><div class="ld-networks">${Object.keys(serviceIDs).map((name,index)=>`<button class="ld-network ${index===0?"on":""}" data-network="${name}" type="button">${name}</button>`).join("")}</div><label class="ld-label" for="lpDataRecipient">Recipient phone number</label><input id="lpDataRecipient" class="ld-input ld-phone" type="tel" inputmode="numeric" maxlength="11" autocomplete="tel" placeholder="Phone number • 08012345678"><div class="ld-filters">${["All","Daily","Weekly","Monthly","Other"].map((name,index)=>`<button class="ld-filter ${index===0?"on":""}" data-filter="${name}" type="button">${name}</button>`).join("")}</div><span class="ld-label">Available bundles</span><div class="ld-plans"><div class="ld-skeleton" role="status" aria-label="Loading data plans"><span></span><span></span><span></span><span></span></div></div></div>
       <div class="ld-checkout"><div class="ld-summary">Select a data bundle to continue</div><button class="ld-primary ld-continue" type="button" disabled>Continue</button><div class="ld-error"></div></div></div>`;
     document.body.appendChild(overlay);
 
@@ -258,11 +259,23 @@
       });
     }
 
+    let loadSequence = 0;
     async function load() {
-      selected = null; plans = []; next.disabled = true; summary.textContent = "Select a data bundle to continue";
-      grid.innerHTML = '<div class="ld-state">Loading current plans…</div>'; error.style.display = "none";
-      try { plans = await loadDataPlans(network); renderPlans(); }
-      catch (loadError) { grid.innerHTML = `<div class="ld-state"><strong>Plans unavailable</strong><br><br>${escapeText(loadError.message)}</div>`; }
+      const sequence = ++loadSequence, requestedNetwork = network;
+      selected = null; next.disabled = true; summary.textContent = "Select a data bundle to continue";
+      error.style.display = "none";
+      plans = getAccessToken() ? (cachedDataPlans(network) || []) : [];
+      if (plans.length) renderPlans();
+      else grid.innerHTML = '<div class="ld-skeleton" role="status" aria-label="Loading data plans"><span></span><span></span><span></span><span></span></div>';
+      try {
+        const loaded = await loadDataPlans(requestedNetwork);
+        if (sequence !== loadSequence || !overlay.isConnected || !grid.isConnected) return;
+        plans = loaded; renderPlans();
+      } catch (loadError) {
+        if (sequence !== loadSequence || !overlay.isConnected || !grid.isConnected) return;
+        grid.innerHTML = `<div class="ld-state"><strong>Plans unavailable</strong><br><br>${escapeText(loadError.message)}<br><button class="ld-secondary ld-retry" type="button">Try again</button></div>`;
+        grid.querySelector(".ld-retry").onclick = load;
+      }
     }
 
     overlay.querySelectorAll(".ld-network").forEach(button => button.onclick = () => { network = button.dataset.network; overlay.querySelectorAll(".ld-network").forEach(x=>x.classList.remove("on")); button.classList.add("on"); load(); });
