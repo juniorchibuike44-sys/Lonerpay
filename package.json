@@ -1,3 +1,6 @@
 {
-  "type": "module"
-} 
+  "type": "module",
+  "dependencies": {
+    "nodemailer": "^7.0.0"
+  }
+}
