@@ -26,7 +26,9 @@ export async function sharedCatalogueRequest(path) {
   }
   let released = false;
   try {
+    const startedAt = Date.now();
     const result = await pairgateRequest(path, { method: "GET", signal: AbortSignal.timeout(12000) });
+    console.info("Pairgate catalogue response", { path, status: result.response.status, providerStatus: String(result.data?.status || "").slice(0, 40), startedAt: new Date(startedAt).toISOString(), durationMs: Date.now() - startedAt, retryAfter: result.response.headers?.get?.("retry-after") || null });
     if (result.response.status === 429) {
       const header = result.response.headers?.get?.("retry-after");
       const numeric = Number(header);
