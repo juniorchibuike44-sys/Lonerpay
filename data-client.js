@@ -14,7 +14,7 @@
   const PLAN_FRESH_MS = 10 * 60_000;
   function cachedDataPlans(network, maxAge = PLAN_FRESH_MS) {
     try {
-      const cached = JSON.parse(localStorage.getItem(`lonerpay_data_plans_${String(network).toLowerCase()}`) || "null");
+      const cached = JSON.parse(localStorage.getItem(`lonerpay_data_plans_v2_${String(network).toLowerCase()}`) || "null");
       if (cached?.savedAt && Date.now() - cached.savedAt < maxAge &&
           Array.isArray(cached.plans) && cached.plans.length &&
           cached.plans.every(p => p.network === network && p.serviceID === serviceIDs[network] &&
@@ -48,7 +48,10 @@
           .map(item => ({ code: String(item.code), name: String(item.name || "Data plan"),
             amount: Number(item.amount), network, serviceID }));
         if (!plans.length) throw new Error("No data plans are available for this network.");
-        try { localStorage.setItem(`lonerpay_data_plans_${String(network).toLowerCase()}`, JSON.stringify({ savedAt: Date.now(), plans })); } catch (_) {}
+        Object.defineProperty(plans, "partial", { value: data.partial === true });
+        if (!data.partial) {
+          try { localStorage.setItem(`lonerpay_data_plans_v2_${String(network).toLowerCase()}`, JSON.stringify({ savedAt: Date.now(), plans })); } catch (_) {}
+        }
         return plans;
       } catch (error) {
         const fallback = !error.auth && cachedDataPlans(network, 30 * 60_000);
@@ -62,11 +65,13 @@
   }
   // Fetch catalogues before the customer opens a service. Shared requests prevent
   // a network tap from starting a duplicate provider lookup.
-  function warmDataPlans() {
+  async function warmDataPlans() {
     if (!getAccessToken()) return;
-    Object.keys(serviceIDs).forEach((network, index) => {
-      setTimeout(() => loadDataPlans(network).catch(() => {}), index * 750);
-    });
+    // Warm one network at a time instead of starting twenty provider calls together.
+    for (const network of Object.keys(serviceIDs)) {
+      if (!getAccessToken()) return;
+      try { await loadDataPlans(network); } catch (_) {}
+    }
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", () => setTimeout(warmDataPlans, 1200), { once: true });
   else setTimeout(warmDataPlans, 1200);
@@ -210,6 +215,7 @@
     const text = String(name || "").toLowerCase();
     if (/monthly|month|(?:28|30|31)\s*days?/.test(text)) return "Monthly";
     if (/weekly|week|7\s*days?/.test(text)) return "Weekly";
+    if (/2\\s*days?/.test(text)) return "2 Days";
     if (/daily|(?:^|\D)1\s*day|24\s*hours?/.test(text)) return "Daily";
     return "Other";
   }
@@ -230,7 +236,7 @@
         @media(max-width:370px){.ld-plans{grid-template-columns:1fr}.ld-network{font-size:10px}}
       </style>
       <div class="ld-sheet"><div class="ld-head"><div class="ld-handle"></div><div class="ld-top"><div><h2>Buy Data</h2><p>Live bundles from your selected network</p></div><button class="ld-close" type="button">×</button></div></div>
-      <div class="ld-body"><div class="lp-mobile-promo"><small>LONERPAY DATA</small><h3>More data.<br>More possibilities.</h3><p>Find the right bundle for your day, week or month.</p></div><span class="ld-label">Select network</span><div class="ld-networks">${Object.keys(serviceIDs).map((name,index)=>`<button class="ld-network ${index===0?"on":""}" data-network="${name}" type="button">${name}</button>`).join("")}</div><label class="ld-label" for="lpDataRecipient">Recipient phone number</label><input id="lpDataRecipient" class="ld-input ld-phone" type="tel" inputmode="numeric" maxlength="11" autocomplete="tel" placeholder="Phone number • 08012345678"><div class="ld-filters">${["All","Daily","Weekly","Monthly","Other"].map((name,index)=>`<button class="ld-filter ${index===0?"on":""}" data-filter="${name}" type="button">${name}</button>`).join("")}</div><span class="ld-label">Available bundles</span><div class="ld-plans"><div class="ld-skeleton" role="status" aria-label="Loading data plans"><span></span><span></span><span></span><span></span></div></div></div>
+      <div class="ld-body"><div class="lp-mobile-promo"><small>LONERPAY DATA</small><h3>More data.<br>More possibilities.</h3><p>Find the right bundle for your day, week or month.</p></div><span class="ld-label">Select network</span><div class="ld-networks">${Object.keys(serviceIDs).map((name,index)=>`<button class="ld-network ${index===0?"on":""}" data-network="${name}" type="button">${name}</button>`).join("")}</div><label class="ld-label" for="lpDataRecipient">Recipient phone number</label><input id="lpDataRecipient" class="ld-input ld-phone" type="tel" inputmode="numeric" maxlength="11" autocomplete="tel" placeholder="Phone number • 08012345678"><div class="ld-filters">${["All","Daily","2 Days","Weekly","Monthly","Other"].map((name,index)=>`<button class="ld-filter ${index===0?"on":""}" data-filter="${name}" type="button">${name}</button>`).join("")}</div><span class="ld-label">Available bundles</span><div class="ld-plans"><div class="ld-skeleton" role="status" aria-label="Loading data plans"><span></span><span></span><span></span><span></span></div></div></div>
       <div class="ld-checkout"><div class="ld-summary">Select a data bundle to continue</div><button class="ld-primary ld-continue" type="button" disabled>Continue</button><div class="ld-error"></div></div></div>`;
     document.body.appendChild(overlay);
 
@@ -263,7 +269,9 @@
     async function load() {
       const sequence = ++loadSequence, requestedNetwork = network;
       selected = null; next.disabled = true; summary.textContent = "Select a data bundle to continue";
-      error.style.display = "none";
+      error.style.display = "none"; summary.onclick = null; summary.style.cursor = "";
+      filter = "All";
+      overlay.querySelectorAll(".ld-filter").forEach(button => button.classList.toggle("on", button.dataset.filter === "All"));
       plans = getAccessToken() ? (cachedDataPlans(network) || []) : [];
       if (plans.length) renderPlans();
       else grid.innerHTML = '<div class="ld-skeleton" role="status" aria-label="Loading data plans"><span></span><span></span><span></span><span></span></div>';
@@ -271,6 +279,11 @@
         const loaded = await loadDataPlans(requestedNetwork);
         if (sequence !== loadSequence || !overlay.isConnected || !grid.isConnected) return;
         plans = loaded; renderPlans();
+        if (loaded.partial) {
+          summary.textContent = "Some bundles could not be loaded. Tap to refresh the list.";
+          summary.style.cursor = "pointer";
+          summary.onclick = () => { summary.onclick = null; load(); };
+        }
       } catch (loadError) {
         if (sequence !== loadSequence || !overlay.isConnected || !grid.isConnected) return;
         grid.innerHTML = `<div class="ld-state"><strong>Plans unavailable</strong><br><br>${escapeText(loadError.message)}<br><button class="ld-secondary ld-retry" type="button">Try again</button></div>`;
