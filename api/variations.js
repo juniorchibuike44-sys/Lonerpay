@@ -1,7 +1,7 @@
 import { pairgateRequest } from "./_pairgate.js";
 
-const dataPlanCache = globalThis.__lonerPayDataPlanCache || new Map();
-globalThis.__lonerPayDataPlanCache = dataPlanCache;
+const dataPlanCache = globalThis.__lonerPayDataPlanCacheV2 || new Map();
+globalThis.__lonerPayDataPlanCacheV2 = dataPlanCache;
 const cacheGet = (key, maxAge) => {
   const item = dataPlanCache.get(key);
   return item && Date.now() - item.savedAt < maxAge ? item.value : null;
@@ -106,6 +106,8 @@ export default async function handler(req, res) {
       const results = settledResults
         .filter(result => result.status === "fulfilled")
         .map(result => result.value);
+      const failedTypes = pairgateDataPlanTypes.filter(type => !results.some(result => result.planType === type && result.response.ok && result.data?.status === "success"));
+      if (failedTypes.length) console.warn("Data catalogue incomplete", { network, failedTypes, responses: results.map(r => ({ planType: r.planType, status: r.response.status })) });
       const plans = [];
       for (const result of results) {
         if (!result.response.ok || result.data?.status !== "success") continue;
@@ -123,9 +125,10 @@ export default async function handler(req, res) {
       }
       const unique = [...new Map(plans.map(plan => [plan.code, plan])).values()]
         .sort((a, b) => a.amount - b.amount);
-      if (!unique.length) return res.status(502).json({ error: "Pairgate did not return data plans for this network" });
-      cacheSet(`plans:${network}`, unique);
-      return res.status(200).json({ serviceID, serviceName: `${network.toUpperCase()} Data`, provider: "pairgate", variations: unique });
+      if (!unique.length) return res.status(502).json({ error: failedTypes.length ? "Data plans are temporarily unavailable. Please try again shortly." : "No data bundles are currently available for this network." });
+      // A successful family must not turn failed families into a cached full catalogue.
+      if (!failedTypes.length) cacheSet(`plans:${network}`, unique);
+      return res.status(200).json({ serviceID, serviceName: `${network.toUpperCase()} Data`, provider: "pairgate", partial: failedTypes.length > 0, variations: unique });
     }
 
     // Get service variations from VTpass
