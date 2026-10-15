@@ -4531,7 +4531,7 @@ function openVirtualAccount() {
 (function(){
   'use strict';
   const KEY='lpViewNavigation';
-  let restoring=false, current=0, pending=false;
+  let restoring=false, current=0, pending=false, navigationIntent=false;
   const views=new Map();
   function layers(){return Array.from(document.body.children).filter(n=>{
     if(n.tagName!=='DIV')return false;
@@ -4553,10 +4553,16 @@ function openVirtualAccount() {
   function save(){
     pending=false;if(restoring)return;
     const next=snapshot(),prev=views.get(current);
+    const userNavigation=navigationIntent;navigationIntent=false;
     if(prev && same(prev,next))return;
     if(!next.layers.length && current>0){history.go(-current);return;}
     // A dismissed receipt returns to its existing history/service view.
     if(prev && next.layers.length<prev.layers.length){history.back();return;}
+    // Async loading, validation and provider responses update this view in place.
+    // They must never become a Back destination of their own.
+    if(prev && prev.layers.length && next.layers.length===prev.layers.length && !userNavigation){
+      views.set(current,next);return;
+    }
     for(const k of views.keys())if(k>current)views.delete(k);
     current++;views.set(current,next);
     history.pushState({[KEY]:current},'',location.href);
@@ -4568,6 +4574,7 @@ function openVirtualAccount() {
     layers().forEach(n=>n.remove());
     view.layers.forEach(t=>{rebuild(t);document.body.appendChild(t.node);});
     current=index;window.scrollTo(0,view.scroll);
+    navigationIntent=false;
     setTimeout(()=>{restoring=false;},0);
   }
   function init(){
@@ -4582,7 +4589,14 @@ function openVirtualAccount() {
       if(Number.isInteger(index))restore(index);
     });
     // Capture the current live input state before a service changes its contents.
-    document.addEventListener('click',()=>{
+    document.addEventListener('click',event=>{
+      const target=event.target?.closest?.('button,a,[role="button"],.service');
+      if(target && layers().length && current>0){
+        const label=(target.getAttribute('aria-label')||target.textContent||'').trim();
+        const isBack=/^(back|go back|previous|‹|←)$/i.test(label) || /(?:^|[-_])back(?:$|[-_])/i.test(target.id||'') || /(?:^|\\s)[\\w-]*-back(?:\\s|$)/.test(target.className||'');
+        if(isBack){event.preventDefault();event.stopImmediatePropagation();navigationIntent=false;history.back();return;}
+      }
+      navigationIntent=!!target;
       const existing=views.get(current),now=snapshot();
       if(existing&&same(existing,now))views.set(current,now);
       schedule();
