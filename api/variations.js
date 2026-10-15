@@ -1,4 +1,4 @@
-import { pairgateRequest } from "./_pairgate.js";
+import { sharedCatalogueRequest as catalogueRequest } from "./_catalogue.js";
 
 const dataPlanCache = globalThis.__lonerPayDataPlanCacheV2 || new Map();
 globalThis.__lonerPayDataPlanCacheV2 = dataPlanCache;
@@ -8,40 +8,6 @@ const cacheGet = (key, maxAge) => {
 };
 const cacheSet = (key, value) => { dataPlanCache.set(key, { savedAt: Date.now(), value }); return value; };
 
-
-const catalogueGate = globalThis.__lonerPayCatalogueGate || { tail: Promise.resolve(), nextAt: 0, cooldownUntil: 0, pending: new Map() };
-globalThis.__lonerPayCatalogueGate = catalogueGate;
-function catalogueRateError() {
-  return Object.assign(new Error("Data plans are busy. Please wait a minute before trying again."), {
-    statusCode: 429, retryAfter: Math.max(1, Math.ceil((catalogueGate.cooldownUntil - Date.now()) / 1000))
-  });
-}
-function catalogueRequest(path) {
-  const cached = cacheGet("family:" + path, 10 * 60_000);
-  if (cached) return Promise.resolve(cached);
-  if (catalogueGate.pending.has(path)) return catalogueGate.pending.get(path);
-  const work = catalogueGate.tail.then(async () => {
-    if (Date.now() < catalogueGate.cooldownUntil) throw catalogueRateError();
-    const wait = Math.max(0, catalogueGate.nextAt - Date.now());
-    if (wait) await new Promise(resolve => setTimeout(resolve, wait));
-    if (Date.now() < catalogueGate.cooldownUntil) throw catalogueRateError();
-    catalogueGate.nextAt = Date.now() + 1500;
-    const result = await pairgateRequest(path, { method: "GET" });
-    if (result.response.status === 429) {
-      const header = result.response.headers?.get?.("retry-after");
-      const seconds = Number(header);
-      const delay = Number.isFinite(seconds) && seconds > 0 ? seconds * 1000 : 60_000;
-      catalogueGate.cooldownUntil = Date.now() + delay;
-      throw catalogueRateError();
-    }
-    if (result.response.ok && result.data?.status === "success") cacheSet("family:" + path, result);
-    return result;
-  });
-  catalogueGate.tail = work.catch(() => {});
-  catalogueGate.pending.set(path, work);
-  work.finally(() => catalogueGate.pending.delete(path)).catch(() => {});
-  return work;
-}
 
 const allowedServices = new Set([
   // Data
@@ -140,7 +106,7 @@ export default async function handler(req, res) {
           const result = await catalogueRequest(`/data-plans?provider_id=${encodeURIComponent(network)}&plan_type=${encodeURIComponent(planType)}`);
           settledResults.push({ status: "fulfilled", value: { ...result, planType } });
         } catch (error) {
-          if (error.statusCode === 429) throw error;
+          if (error.statusCode === 429 || error.statusCode === 503) throw error;
           settledResults.push({ status: "rejected", reason: error });
         }
       }
@@ -239,6 +205,7 @@ export default async function handler(req, res) {
       res.setHeader("Retry-After", String(error.retryAfter));
       return res.status(429).json({ error: error.message, retryAfter: error.retryAfter });
     }
+    if (error.statusCode === 503) return res.status(503).json({ error: error.message });
     console.error(
       "Service variations error:",
       error
