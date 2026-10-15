@@ -1,4 +1,9 @@
 document.addEventListener("DOMContentLoaded", function () {
+  const recoveryParams = new URLSearchParams(location.hash.slice(1));
+  if (recoveryParams.get("type") === "recovery" || recoveryParams.has("error_code")) {
+    location.replace("https://lonerpay.com/reset-password.html" + location.hash);
+    return;
+  }
   const modal = document.getElementById("modal");
   const form = document.getElementById("authForm");
   const passkeyLoginButton = document.getElementById("passkeyLoginButton");
@@ -650,7 +655,7 @@ document.addEventListener("DOMContentLoaded", function () {
     setAuthStatus();
     try {
       const config = await getConfig();
-      const response = await fetch(config.supabaseUrl + "/auth/v1/recover", {
+      const response = await fetch(config.supabaseUrl + "/auth/v1/recover?redirect_to=" + encodeURIComponent("https://lonerpay.com/reset-password.html"), {
         method: "POST",
         headers: { "Content-Type": "application/json", apikey: config.supabasePublishableKey },
         body: JSON.stringify({ email })
