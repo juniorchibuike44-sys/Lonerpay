@@ -100,35 +100,25 @@ document.addEventListener('DOMContentLoaded',function(){
 <link rel="canonical" href="https://lonerpay.com/">
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"Organization","name":"LonerPay","url":"https://lonerpay.com/","description":"An online platform for everyday payments in Nigeria.","email":"support@lonerpay.com","contactPoint":{"@type":"ContactPoint","contactType":"customer support","email":"support@lonerpay.com","availableLanguage":"English"},"sameAs":["https://www.tiktok.com/@lonerpay"],"legalName":"LONERHUB LIMITED","logo":"https://lonerpay.com/logo.svg"}</script>
 <link rel="icon" type="image/svg+xml" href="/logo.svg?v=20261015-brand">
+<style id="lp-public-business">
+.lp-public-auth{display:flex;gap:8px;align-items:center}.lp-company-strip{padding:18px 9%;background:#edf7f1;border-bottom:1px solid #d5e8dd;color:#173b2b;font-size:15px;line-height:1.6}.lp-company-strip strong,.lp-company-strip span{display:block}.lp-company-strip span{font-size:13px;color:#526b5b}.lp-public-contact p{max-width:780px;line-height:1.8;color:#475467}.lp-public-contact a{color:#0863d8;text-decoration:underline}.lp-public-contact h2{margin-bottom:22px}
+@media(max-width:600px){.nav{padding:0 5%;height:82px}.nav .brand img{width:95px!important}.lp-public-auth button{padding:10px 13px;font-size:13px}.lp-company-strip{padding:16px 7%;font-size:14px}.hero{min-height:0}.hero h1{font-size:clamp(42px,12vw,56px)}.lead{font-size:17px}.actions{gap:17px;flex-wrap:wrap}.section{padding:55px 7%}}
+</style>
 </head>
 <body>
-  <section id="lpAuthGateway" aria-label="Welcome to LonerPay">
-    <div class="lp-gateway-card">
-      <div class="lp-gateway-brand"><span class="lp-gateway-mark">L</span> LonerPay</div>
-      <div class="lp-gateway-visual">
-        <span class="lp-gateway-kicker">● ONE APP. EVERYDAY PAYMENTS.</span>
-        <h1>Your money.<br>Your payments.<br>One secure place.</h1>
-        <p>Pay bills, manage your wallet and keep clear records of every transaction.</p>
-        <div class="lp-gateway-trust"><span><i class="lp-gateway-dot"></i> Secure access</span><span><i class="lp-gateway-dot"></i> Clear receipts</span></div>
-      </div>
-      <div class="lp-gateway-actions">
-        <button id="lpGatewaySignup" class="lp-gateway-primary" type="button">Create an account</button>
-        <button id="lpGatewayLogin" class="lp-gateway-secondary" type="button">Log in</button>
-        <p class="lp-gateway-legal">By continuing, you agree to LonerPay’s Terms and Privacy Policy.</p>
-      </div>
-    </div>
-  </section>
   <header class="nav">
     <a class="brand" href="#"><img src="/logo.svg?v=20261015-brand" alt="LonerPay" width="150" height="150" style="width:130px;height:auto;display:block"></a>
     <nav>
       <a href="#services">Services</a>
       <a href="#how">How it works</a>
-      <a href="#security">Security</a>
+      <a href="about.html">About us</a>
+      <a href="#contact">Contact</a>
     </nav>
-    <button class="outline" onclick="showModal('login')">Log in</button>
+    <div class="lp-public-auth"><button id="lpGatewayLogin" class="outline" type="button">Log in</button><button id="lpGatewaySignup" class="primary" type="button">Sign up</button></div>
   </header>
 
   <main>
+    <div class="lp-company-strip"><strong>LonerPay is owned and operated by LONERHUB LIMITED.</strong><span>Registered in Nigeria · RC 9900283</span></div>
     <section class="hero">
       <div class="hero-copy">
         <p class="eyebrow">EVERYDAY PAYMENTS, SIMPLIFIED</p>
@@ -141,13 +131,13 @@ document.addEventListener('DOMContentLoaded',function(){
       </div>
       <div class="phone">
         <div class="phone-top">LonerPay <span>•••</span></div>
-        <p class="small">Available balance</p>
+        <p class="small">Illustration only · Example wallet balance</p>
         <h2>₦125,400.00</h2>
         <div class="quick">
-          <button onclick="alert('Airtime service selected')">📱<b>Airtime</b></button>
-          <button onclick="alert('Data service selected')">📶<b>Data</b></button>
-          <button onclick="alert('Electricity selected')">⚡<b>Electricity</b></button>
-          <button onclick="alert('TV service selected')">📺<b>TV</b></button>
+          <button onclick="showModal('signup')">📱<b>Airtime</b></button>
+          <button onclick="showModal('signup')">📶<b>Data</b></button>
+          <button onclick="showModal('signup')">⚡<b>Electricity</b></button>
+          <button onclick="showModal('signup')">📺<b>TV</b></button>
         </div>
         <div class="transaction"><span>MTN Data</span><b>-₦5,000</b></div>
         <div class="transaction"><span>Wallet funding</span><b class="green">+₦20,000</b></div>
@@ -179,9 +169,16 @@ document.addEventListener('DOMContentLoaded',function(){
       <div><p class="eyebrow">BUILT FOR TRUST</p><h2>Your money deserves simplicity and security.</h2><p>Clear transaction records, receipts, notifications and secure account access are core parts of LonerPay.</p></div>
       <div class="security-box">🔒 <b>Secure by design</b><br><span>Payments, wallet activity and account access are designed with security in mind.</span></div>
     </section>
+    <section id="contact" class="section light lp-public-contact">
+      <p class="eyebrow">CONTACT AND COMPANY INFORMATION</p>
+      <h2>Talk to LonerPay.</h2>
+      <p>LonerPay is a brand owned and operated by <strong>LONERHUB LIMITED</strong>, registered in Nigeria with RC number <strong>9900283</strong>.</p>
+      <p>For account, payment and business enquiries, email <a href="mailto:support@lonerpay.com">support@lonerpay.com</a> or call <a href="tel:+2349131123780">0913 112 3780</a>.</p>
+      <p><a href="contact.html">Contact and support details</a> · <a href="about.html">About our company</a> · <a href="services.html">Our services</a></p>
+    </section>
   </main>
 
-  <footer><div class="brand"><img src="/logo.svg?v=20261015-brand" alt="LonerPay" width="150" height="150" style="width:130px;height:auto;display:block"></div><p>One app. Everyday payments.</p><p><a href="https://www.tiktok.com/@lonerpay" target="_blank" rel="noopener noreferrer">LonerPay on TikTok (@lonerpay)</a></p><nav aria-label="Business information"><a href="about.html">About us</a> · <a href="services.html">Our services</a> · <a href="contact.html">Contact support</a></nav><small>© 2026 LONERHUB LIMITED. LonerPay. All rights reserved.</small></footer>
+  <footer><div class="brand"><img src="/logo.svg?v=20261015-brand" alt="LonerPay" width="150" height="150" style="width:130px;height:auto;display:block"></div><p>One app. Everyday payments.</p><p><a href="https://www.tiktok.com/@lonerpay" target="_blank" rel="noopener noreferrer">LonerPay on TikTok (@lonerpay)</a></p><nav aria-label="Business information"><a href="about.html">About us</a> · <a href="services.html">Our services</a> · <a href="contact.html">Contact support</a></nav><small>LonerPay is owned and operated by LONERHUB LIMITED · RC 9900283.<br>© 2026 LONERHUB LIMITED. All rights reserved.</small></footer>
 
   <div id="modal" class="modal" onclick="if(event.target===this)closeModal()">
     <div class="modal-card">
