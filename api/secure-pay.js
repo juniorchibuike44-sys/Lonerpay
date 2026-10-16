@@ -1,3 +1,4 @@
+import { sharedCatalogueRequest } from "./_catalogue.js";
 import { pbkdf2Sync, timingSafeEqual } from "node:crypto";
 import { enforceRateLimit, hardenResponse } from "./_security.js";
 import {
@@ -529,22 +530,29 @@ export default async function handler(
       const network = serviceID === "etisalat-data" ? "9mobile" : serviceID.replace(/-data$/, "");
       pairgateDataProviderId = network;
       const planTypes = ["CG", "CG_LITE", "SME", "GIFTING", "AWOOF"];
-      const settledResults = await Promise.allSettled(planTypes.map(planType =>
-        pairgateRequest(`/data-plans?provider_id=${encodeURIComponent(pairgateDataProviderId)}&plan_type=${encodeURIComponent(planType)}`, { method: "GET" })
-      ));
-      const results = settledResults
-        .filter(result => result.status === "fulfilled")
-        .map(result => result.value);
       let selected = null;
-      for (const result of results) {
-        if (!result.response.ok || result.data?.status !== "success") continue;
-        const payload = result.data?.data;
-        const plans = Array.isArray(payload)
-          ? payload
-          : Object.values(payload || {}).flatMap(value => Array.isArray(value) ? value : []);
-        selected = plans.find(item => String(item?.plan_id || item?.id || "") === String(variation_code || ""));
-        if (selected) break;
+      let catalogueError = null;
+      for (const planType of planTypes) {
+        try {
+          const result = await sharedCatalogueRequest(
+            `/data-plans?provider_id=${encodeURIComponent(pairgateDataProviderId)}&plan_type=${encodeURIComponent(planType)}`
+          );
+          if (!result.response.ok || result.data?.status !== "success") {
+            catalogueError = Object.assign(new Error("The data provider could not verify this plan. Please try again shortly."), { statusCode: 503 });
+            console.warn("Payment catalogue validation failed", { serviceID, planType, status: result.response.status });
+            continue;
+          }
+          const payload = result.data?.data;
+          const plans = Array.isArray(payload)
+            ? payload
+            : Object.values(payload || {}).flatMap(value => Array.isArray(value) ? value : []);
+          selected = plans.find(item => String(item?.plan_id || item?.id || "") === String(variation_code || ""));
+          if (selected) break;
+        } catch (error) {
+          catalogueError = error;
+        }
       }
+      if (!selected && catalogueError) throw catalogueError;
       const expectedAmount = Number(selected?.price || selected?.amount);
       if (!selected || !Number.isFinite(expectedAmount) || expectedAmount <= 0) {
         const error = new Error("The selected data plan is no longer available. Refresh the plans and try again.");
@@ -911,26 +919,9 @@ export default async function handler(
 
     await validateFixedVariation();
 
-    if (airtimeServices.has(serviceID)) {
-      const providerId = serviceID === "etisalat" ? "9mobile" : serviceID;
-      const providerList = await pairgateRequest("/providers/airtime", { method: "GET" });
-      const providers = Array.isArray(providerList.data?.data) ? providerList.data.data : [];
-      const networkAvailable = providerList.response.ok &&
-        providerList.data?.status === "success" &&
-        providers.some(item => {
-          const id = String(item?.slug || item?.id || item?.name || "").toLowerCase();
-          const name = String(item?.name || "").toLowerCase();
-          return id === providerId || name === providerId || name.includes(providerId);
-        });
-
-      if (!networkAvailable) {
-        return res.status(503).json({
-          error: "The selected airtime network is temporarily unavailable",
-          refunded: false
-        });
-      }
-    }
-
+    // Airtime has no fixed plan price to validate. The documented purchase
+    // endpoint validates the allowlisted network; a separate provider-list
+    // lookup incorrectly blocked purchases on lookup errors or schema changes.
 
     /* =========================
        ELECTRICITY VERIFY
@@ -1864,6 +1855,7 @@ export default async function handler(
     }
 
     if (!debitCompleted) {
+      if (error?.retryAfter) res.setHeader("Retry-After", String(error.retryAfter));
       return res.status(Number(error?.statusCode) || 500).json({
         error: error.message || "Payment validation failed",
         request_id: requestId || null,
