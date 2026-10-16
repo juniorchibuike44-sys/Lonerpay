@@ -20,16 +20,24 @@ export default async function handler(req, res) {
     const path = explicitDate
       ? `/fixtures/date/${requestedDate}`
       : `/fixtures/between/${startDate}/${endDate}`;
-    const payload = await sportmonksRequest(path, {
-      include: "participants;league.country;state;scores;periods",
-      per_page: 100
-    });
-    const fixtures = Array.isArray(payload?.data) ? payload.data.map(adaptFixture) : [];
+    const rows = [];
+    let hasMore = false;
+    for (let page = 1; page <= 5; page++) {
+      const payload = await sportmonksRequest(path, {
+        include: "participants;league.country;state;scores;periods",
+        per_page: 50, page
+      });
+      rows.push(...(Array.isArray(payload?.data) ? payload.data : []));
+      hasMore = payload?.pagination?.has_more === true;
+      if (!hasMore) break;
+    }
+    const fixtures = [...new Map(rows.map(item => [item.id, item])).values()].map(adaptFixture);
     res.setHeader("Cache-Control", "s-maxage=60, stale-while-revalidate=180");
     return res.status(200).json({
       response: fixtures,
       provider: "sportmonks",
       results: fixtures.length,
+      partial: hasMore,
       range: { start: startDate, end: endDate, timezone: "Africa/Lagos" }
     });
   } catch (error) {
