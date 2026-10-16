@@ -1,4 +1,4 @@
-import { sharedCatalogueRequest } from "./_catalogue.js";
+import { sharedCatalogueRequest, cataloguePlanTypes } from "./_catalogue.js";
 import { pbkdf2Sync, timingSafeEqual } from "node:crypto";
 import { enforceRateLimit, hardenResponse } from "./_security.js";
 import {
@@ -529,7 +529,7 @@ export default async function handler(
     if (dataServices.has(serviceID)) {
       const network = serviceID === "etisalat-data" ? "9mobile" : serviceID.replace(/-data$/, "");
       pairgateDataProviderId = network;
-      const planTypes = ["CG", "CG_LITE", "SME", "GIFTING", "AWOOF"];
+      const planTypes = await cataloguePlanTypes(network);
       let selected = null;
       let catalogueError = null;
       for (const planType of planTypes) {
