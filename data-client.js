@@ -13,26 +13,66 @@
   const planRequests = new Map();
   let catalogueCooldownUntil = 0;
   const PLAN_FRESH_MS = 10 * 60_000;
+  const PLAN_DISPLAY_MS = 24 * 60 * 60_000;
   function cachedDataPlans(network, maxAge = PLAN_FRESH_MS) {
     try {
       const cached = JSON.parse(localStorage.getItem(`lonerpay_data_plans_v2_${String(network).toLowerCase()}`) || "null");
       if (cached?.savedAt && Date.now() - cached.savedAt < maxAge &&
           Array.isArray(cached.plans) && cached.plans.length &&
           cached.plans.every(p => p.network === network && p.serviceID === serviceIDs[network] &&
-            p.code && Number.isFinite(Number(p.amount)) && Number(p.amount) > 0)) return cached.plans;
+            p.code && Number.isFinite(Number(p.amount)) && Number(p.amount) > 0)) {
+        Object.defineProperty(cached.plans, "partial", { value: cached.partial === true });
+        return cached.plans;
+      }
     } catch (_) {}
     return null;
+  }
+  let snapshotRequest = null;
+  let snapshotLoadedAt = 0;
+  function warmDataPlans() {
+    const accessToken = getAccessToken();
+    if (!accessToken || Date.now() - snapshotLoadedAt < PLAN_FRESH_MS) return Promise.resolve();
+    if (snapshotRequest) return snapshotRequest;
+    snapshotRequest = (async () => {
+      try {
+        const response = await fetch("/api/variations?serviceID=mtn-data&snapshot=1", {
+          headers: { Authorization: `Bearer ${accessToken}` }, cache: "no-store",
+          signal: AbortSignal.timeout(6000)
+        });
+        if (!response.ok || getAccessToken() !== accessToken) return;
+        const data = await response.json();
+        for (const [network, serviceID] of Object.entries(serviceIDs)) {
+          const saved = data.catalogues?.[serviceID];
+          if (!saved || !Number.isFinite(saved.savedAt) || Date.now() - saved.savedAt >= PLAN_DISPLAY_MS) continue;
+          const plans = (saved.variations || []).filter(p => p.code && Number.isFinite(Number(p.amount)) && Number(p.amount) > 0)
+            .map(p => ({ code: String(p.code), name: String(p.name), amount: Number(p.amount), network, serviceID }));
+          if (!plans.length) continue;
+          const key = `lonerpay_data_plans_v2_${network.toLowerCase()}`;
+          try {
+            const previous = JSON.parse(localStorage.getItem(key) || "null");
+            if (!previous || previous.savedAt < saved.savedAt) localStorage.setItem(key, JSON.stringify({ savedAt: saved.savedAt, partial: true, plans }));
+          } catch (_) {}
+        }
+        snapshotLoadedAt = Date.now();
+      } catch (_) {
+        // Warming saved plans must never block normal catalogue loading.
+      }
+    })().finally(() => { snapshotRequest = null; });
+    return snapshotRequest;
   }
   function loadDataPlans(network) {
     const serviceID = serviceIDs[network], accessToken = getAccessToken();
     if (!serviceID) return Promise.reject(new Error("Select a valid network."));
     if (!accessToken) return Promise.reject(new Error("Please log in again."));
     const cached = cachedDataPlans(network);
-    if (cached) return Promise.resolve(cached);
+    if (cached && !cached.partial) return Promise.resolve(cached);
     if (Date.now() < catalogueCooldownUntil) return Promise.reject(new Error("Data plans are busy. Please wait a minute before trying again."));
     const key = accessToken + ":" + network;
     if (planRequests.has(key)) return planRequests.get(key);
     const request = (async () => {
+      await warmDataPlans();
+      const warmed = cachedDataPlans(network);
+      if (warmed && !warmed.partial) return warmed;
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 15000);
       try {
@@ -54,12 +94,12 @@
             amount: Number(item.amount), network, serviceID }));
         if (!plans.length) throw new Error("No data plans are available for this network.");
         Object.defineProperty(plans, "partial", { value: data.partial === true });
-        if (!data.partial) {
-          try { localStorage.setItem(`lonerpay_data_plans_v2_${String(network).toLowerCase()}`, JSON.stringify({ savedAt: Date.now(), plans })); } catch (_) {}
+        {
+          try { localStorage.setItem(`lonerpay_data_plans_v2_${String(network).toLowerCase()}`, JSON.stringify({ savedAt: Date.now(), partial: data.partial === true, plans })); } catch (_) {}
         }
         return plans;
       } catch (error) {
-        const fallback = !error.auth && cachedDataPlans(network, 30 * 60_000);
+        const fallback = !error.auth && cachedDataPlans(network, PLAN_DISPLAY_MS);
         if (fallback) return fallback;
         throw new Error(error.name === "AbortError" ? "Plans could not be loaded. Please try again." : error.message);
       } finally { clearTimeout(timeout); }
@@ -68,7 +108,8 @@
     request.finally(() => planRequests.delete(key)).catch(() => {});
     return request;
   }
-  // Catalogues load on demand; server cache is shared by customers.
+  // Read saved catalogues once on dashboard entry; this sends no provider requests.
+  warmDataPlans();
 
   async function purchaseData({
     network,
@@ -209,7 +250,7 @@
     const text = String(name || "").toLowerCase();
     if (/monthly|month|(?:28|30|31)\s*days?/.test(text)) return "Monthly";
     if (/weekly|week|7\s*days?/.test(text)) return "Weekly";
-    if (/2\\s*days?/.test(text)) return "2 Days";
+    if (/2\s*days?/.test(text)) return "2 Days";
     if (/daily|(?:^|\D)1\s*day|24\s*hours?/.test(text)) return "Daily";
     return "Other";
   }
@@ -266,12 +307,22 @@
       error.style.display = "none"; summary.onclick = null; summary.style.cursor = "";
       filter = "All";
       overlay.querySelectorAll(".ld-filter").forEach(button => button.classList.toggle("on", button.dataset.filter === "All"));
-      plans = getAccessToken() ? (cachedDataPlans(network) || []) : [];
+      plans = getAccessToken() ? (cachedDataPlans(network, PLAN_DISPLAY_MS) || []) : [];
       if (plans.length) renderPlans();
       else grid.innerHTML = '<div class="ld-skeleton" role="status" aria-label="Loading data plans"><span></span><span></span><span></span><span></span></div>';
+      warmDataPlans().then(() => {
+        if (sequence !== loadSequence || !overlay.isConnected || plans.length) return;
+        const saved = cachedDataPlans(requestedNetwork, PLAN_DISPLAY_MS);
+        if (saved) { plans = saved; renderPlans(); }
+      });
       try {
         const loaded = await loadDataPlans(requestedNetwork);
         if (sequence !== loadSequence || !overlay.isConnected || !grid.isConnected) return;
+        if (selected) {
+          selected = loaded.find(plan => plan.code === selected.code && plan.amount === selected.amount) || null;
+          next.disabled = !selected;
+          if (!selected) summary.textContent = "Plans updated. Select a data bundle to continue.";
+        }
         plans = loaded; renderPlans();
         if (loaded.partial) {
           summary.textContent = "Some bundles could not be loaded. Tap to refresh the list.";
@@ -280,6 +331,10 @@
         }
       } catch (loadError) {
         if (sequence !== loadSequence || !overlay.isConnected || !grid.isConnected) return;
+        if (plans.length) {
+          summary.textContent = "Saved bundles shown. The price is checked before payment.";
+          return;
+        }
         grid.innerHTML = `<div class="ld-state"><strong>Plans unavailable</strong><br><br>${escapeText(loadError.message)}<br><button class="ld-secondary ld-retry" type="button">Try again</button></div>`;
         grid.querySelector(".ld-retry").onclick = load;
       }
