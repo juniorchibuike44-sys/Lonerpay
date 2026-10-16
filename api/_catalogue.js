@@ -47,3 +47,23 @@ export async function sharedCatalogueRequest(path) {
     if (!released) await control("finish", path, owner).catch(() => {});
   }
 }
+
+const fallbackPlanTypes = ["CG", "CG_LITE", "SME", "GIFTING", "AWOOF"];
+export async function cataloguePlanTypes(network) {
+  try {
+    const result = await sharedCatalogueRequest("/data-plans/categories");
+    if (result.response.ok && result.data?.status === "success" && Array.isArray(result.data.data)) {
+      const aliases = network === "9mobile" ? ["9mobile", "etisalat", "t2"] : [network];
+      const types = [...new Set(result.data.data.filter(row =>
+        aliases.includes(String(row?.provider_name || "").trim().toLowerCase()) &&
+        (!row.service_type || String(row.service_type).toLowerCase() === "data")
+      ).map(row => String(row.plan_type || "").trim()).filter(type => fallbackPlanTypes.includes(type)))];
+      if (types.length) return types;
+    }
+  } catch (_) {
+    // Existing cached families can still be served during a provider outage.
+  }
+  return network === "glo" || network === "9mobile"
+    ? ["GIFTING", "AWOOF", "CG", "CG_LITE", "SME"]
+    : fallbackPlanTypes;
+}
