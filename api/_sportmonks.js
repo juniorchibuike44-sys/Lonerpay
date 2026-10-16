@@ -47,13 +47,24 @@ function currentScore(fixture, location) {
   );
   const preferred = matching.find(item => String(item?.description || "").toUpperCase() === "CURRENT") || matching.at(-1);
   const value = preferred?.score?.goals;
-  return Number.isFinite(Number(value)) ? Number(value) : null;
+  return value !== null && value !== undefined && Number.isFinite(Number(value)) ? Number(value) : null;
 }
 
 function isoDate(value) {
   if (!value) return null;
   const text = String(value);
   return /(?:Z|[+-]\d\d:\d\d)$/.test(text) ? text : `${text.replace(" ", "T")}Z`;
+}
+
+const STATE_CODES = {
+  INPLAY_1ST_HALF: "1H", INPLAY_2ND_HALF: "2H", INPLAY_ET: "ET",
+  INPLAY_PENALTIES: "P", FT_PEN: "PEN", BREAK: "BT",
+  EXTRA_TIME_BREAK: "BT", PEN_BREAK: "BT", SUSPENDED: "SUSP", INTERRUPTED: "INT"
+};
+const STATE_IDS = { 1: "NS", 2: "1H", 3: "HT", 4: "BT", 5: "FT", 6: "ET", 7: "AET", 8: "PEN", 9: "P", 21: "BT", 22: "2H", 25: "BT" };
+function fixtureStatus(fixture) {
+  const raw = String(fixture?.state?.state || fixture?.state?.developer_name || "").toUpperCase();
+  return STATE_CODES[raw] || raw || STATE_IDS[fixture?.state_id] || "NS";
 }
 
 export function adaptFixture(fixture) {
@@ -68,7 +79,7 @@ export function adaptFixture(fixture) {
       date: isoDate(fixture?.starting_at),
       venue: { name: fixture?.venue?.name || null },
       status: {
-        short: String(fixture?.state?.state || fixture?.state?.short_name || "NS").toUpperCase(),
+        short: fixtureStatus(fixture),
         long: fixture?.state?.name || fixture?.state?.short_name || "Scheduled",
         elapsed: Number(activePeriod?.minutes || 0) || null
       }
