@@ -345,7 +345,7 @@ button:active {
 </style>
 <link rel="stylesheet" href="dashboard-gold.css?v=20261017-alignment">
 <script src="dashboard-gold.js?v=20261017-highlights" defer></script>
-<script src="notifications-client.js?v=20261017-inbox" defer></script><script src="business-session.js?v=20261017-session" defer></script><script src="business-launcher.js?v=20261017-hub" defer></script><script src="business-hub.js?v=20261017-hub" defer></script></head>
+<script src="notifications-client.js?v=20261017-inbox" defer></script><script src="business-session.js?v=20261017-session" defer></script><script src="business-launcher.js?v=20261017-hub" defer></script><script src="business-hub.js?v=20261017-hub-back" defer></script></head>
 
 <body class="lp-gold-dashboard">
 
@@ -4564,7 +4564,7 @@ function openVirtualAccount() {
     if(n.tagName!=='DIV')return false;
     const c=getComputedStyle(n);
     return c.position==='fixed' && c.display!=='none' && c.visibility!=='hidden' &&
-      (c.top==='0px' && c.bottom==='0px');
+      (n.id==='lpBusinessHub' || (c.top==='0px' && c.bottom==='0px'));
   });}
   // Retain actual nodes so input values and attached event handlers survive Back.
   function tree(node){return {node,children:Array.from(node.childNodes).map(tree)};}
@@ -4622,6 +4622,10 @@ function openVirtualAccount() {
     // Capture the current live input state before a service changes its contents.
     document.addEventListener('click',event=>{
       const target=event.target?.closest?.('button,a,[role="button"],.service');
+      // Business Tools owns its menu/workspace Back buttons.
+      // Only opening or closing the outer screen changes dashboard history.
+      if(target?.closest?.('#lpBusinessHub')){navigationIntent=false;schedule();return;}
+
       if(target && layers().length && current>0){
         const label=(target.getAttribute('aria-label')||target.textContent||'').trim();
         const isBack=target.matches('#lpLiveData .ld-back') || /^(back|go back|previous|‹|←)$/i.test(label) || /(?:^|[-_])back(?:$|[-_])/i.test(target.id||'') || /(?:^|\\s)[\\w-]*-back(?:\\s|$)/.test(target.className||'');
