@@ -1,5 +1,5 @@
 (()=>{
- function install(){const grid=document.querySelector('.services');if(!grid||document.getElementById('lpBusinessTools'))return;const a=document.createElement('a');a.id='lpBusinessTools';a.className='service';a.href='business.html';a.style.cssText='text-decoration:none;color:inherit';a.innerHTML='<div aria-hidden="true">▤</div><h3>Business Tools</h3><p>Invoices & credit sales</p>';grid.append(a);}
+ function install(){const grid=document.querySelector('.services');if(!grid||document.getElementById('lpBusinessTools'))return;const a=document.createElement('a');a.id='lpBusinessTools';a.className='service';a.href='#business-tools';a.onclick=e=>{e.preventDefault();window.openLonerPayBusinessTools?.();};a.style.cssText='text-decoration:none;color:inherit';a.innerHTML='<div aria-hidden="true">▤</div><h3>Business Tools</h3><p>Invoices & credit sales</p>';grid.append(a);}
  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install);else install();setTimeout(install,1000);
  window.attachLonerPayVoiceReceipt=(overlay,t)=>{
  const sheet=overlay.querySelector('.sheet');if(!sheet||sheet.querySelector('.lpVoiceReceipt'))return;
