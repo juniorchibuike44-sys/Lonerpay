@@ -76,7 +76,7 @@ export default async function handler(req, res) {
       const providerStatus = pairgateStatus(providerResult.data);
 
       if (providerResult.response.ok && isPairgateSuccessfulStatus(providerStatus)) {
-        await fetch(
+        const savedResponse = await fetch(
           `${supabaseUrl}/rest/v1/wallet_transactions?user_id=eq.${encodeURIComponent(user.id)}&request_id=eq.${encodeURIComponent(requestId)}`,
           {
             method: "PATCH",
@@ -93,6 +93,7 @@ export default async function handler(req, res) {
             })
           }
         );
+        if (!savedResponse.ok) throw new Error("Could not save confirmed Pairgate status");
         return res.status(200).json({ resolved: true, status: "successful" });
       }
 
@@ -176,4 +177,5 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: "Could not confirm transaction status", message: error.message });
   }
 }
+
 

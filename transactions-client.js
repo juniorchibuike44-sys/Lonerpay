@@ -16,6 +16,20 @@ function transactionStatusLabel(status) {
   return normalized.charAt(0).toUpperCase() + normalized.slice(1);
 }
 
+let pendingRefreshTimer = null;
+let pendingRefreshCount = 0;
+let lastPendingReferences = "";
+function schedulePendingRefresh(transactions) {
+  clearTimeout(pendingRefreshTimer);
+  const references = transactions.filter(t => String(t.status).toLowerCase() === "pending" && /^\d{12}/.test(String(t.request_id || ""))).map(t => t.request_id).sort().join(",");
+  if (!references) { pendingRefreshCount = 0; lastPendingReferences = ""; return; }
+  if (references !== lastPendingReferences) { pendingRefreshCount = 0; lastPendingReferences = references; }
+  // Slow down after five minutes; do not flood the provider or stop checking
+  // merely because the first response was still processing.
+  const delay = ++pendingRefreshCount <= 10 ? 30000 : 120000;
+  pendingRefreshTimer = setTimeout(() => { if (!document.hidden) refreshSecureTransactions(); else schedulePendingRefresh(transactions); }, delay);
+}
+
 async function refreshSecureTransactions() {
   const transactionsBox = document.querySelector(".transactions");
   const accessToken = localStorage.getItem("lonerpay_access_token");
@@ -41,6 +55,7 @@ async function refreshSecureTransactions() {
         return bTime - aTime;
       });
 
+    schedulePendingRefresh(transactions);
     if (!refreshSecureTransactions.requerying) {
       const pending = transactions.filter(transaction =>
         String(transaction.status || "").toLowerCase() === "pending" &&
@@ -49,11 +64,17 @@ async function refreshSecureTransactions() {
       if (pending.length) {
         refreshSecureTransactions.requerying = true;
         try {
-          const results = await Promise.all(pending.map(transaction => fetch("/api/vtpass-requery", {
-            method: "POST",
-            headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
-            body: JSON.stringify({ request_id: transaction.request_id })
-          }).then(response => response.json().catch(() => ({})))));
+          const results = [];
+          for (const transaction of pending) {
+            if (results.length) await new Promise(resolve => setTimeout(resolve, 1500));
+            const response = await fetch("/api/vtpass-requery", {
+              method: "POST",
+              headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
+              body: JSON.stringify({ request_id: transaction.request_id }),
+              signal: AbortSignal.timeout(15000)
+            });
+            results.push(await response.json().catch(() => ({})));
+          }
           if (results.some(result => result.resolved)) {
             if (typeof window.refreshSecureWallet === "function") await window.refreshSecureWallet();
             refreshSecureTransactions.requerying = false;
@@ -67,6 +88,7 @@ async function refreshSecureTransactions() {
 
     // Ignore a response if the signed-in session changed during the request.
     if (localStorage.getItem("lonerpay_access_token") !== accessToken) return;
+    schedulePendingRefresh(transactions);
     refreshSecureTransactions.snapshot = { accessToken, transactions };
     transactionsBox.innerHTML = "<h2>Recent Transactions</h2>";
 
@@ -180,3 +202,9 @@ window.getSecureTransactionHistory = function () {
   const token = localStorage.getItem("lonerpay_access_token");
   return snapshot && token && snapshot.accessToken === token ? snapshot.transactions.slice() : null;
 };
+
+
+// Returning to the app is also an opportunity to settle an outstanding purchase.
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden && lastPendingReferences) refreshSecureTransactions();
+});
