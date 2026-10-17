@@ -16,7 +16,7 @@
   const PLAN_DISPLAY_MS = 24 * 60 * 60_000;
   function cachedDataPlans(network, maxAge = PLAN_FRESH_MS) {
     try {
-      const cached = JSON.parse(localStorage.getItem(`lonerpay_data_plans_vtu_v1_${String(network).toLowerCase()}`) || "null");
+      const cached = JSON.parse(localStorage.getItem(`lonerpay_data_plans_pairgate_v3_${String(network).toLowerCase()}`) || "null");
       if (cached?.savedAt && Date.now() - cached.savedAt < maxAge &&
           Array.isArray(cached.plans) && cached.plans.length &&
           cached.plans.every(p => p.network === network && p.serviceID === serviceIDs[network] &&
@@ -46,14 +46,11 @@
           if (!saved || !Number.isFinite(saved.savedAt) || Date.now() - saved.savedAt >= PLAN_DISPLAY_MS) continue;
           const plans = (saved.variations || []).filter(p => p.code && Number.isFinite(Number(p.amount)) && Number(p.amount) > 0)
             .map(p => ({ code: String(p.code), name: String(p.name), amount: Number(p.amount), network, serviceID }));
-          if (!plans.length) {
-            try { localStorage.removeItem(`lonerpay_data_plans_vtu_v1_${network.toLowerCase()}`); } catch (_) {}
-            continue;
-          }
-          const key = `lonerpay_data_plans_vtu_v1_${network.toLowerCase()}`;
+          if (!plans.length) continue;
+          const key = `lonerpay_data_plans_pairgate_v3_${network.toLowerCase()}`;
           try {
             const previous = JSON.parse(localStorage.getItem(key) || "null");
-            if (!previous || previous.savedAt < saved.savedAt) localStorage.setItem(key, JSON.stringify({ savedAt: saved.savedAt, partial: false, plans }));
+            if (!previous || previous.savedAt < saved.savedAt) localStorage.setItem(key, JSON.stringify({ savedAt: saved.savedAt, partial: true, plans }));
           } catch (_) {}
         }
         snapshotLoadedAt = Date.now();
@@ -95,17 +92,14 @@
           .filter(item => item && item.code && Number.isFinite(Number(item.amount)) && Number(item.amount) > 0)
           .map(item => ({ code: String(item.code), name: String(item.name || "Data plan"),
             amount: Number(item.amount), network, serviceID }));
-        if (!plans.length) {
-          try { localStorage.removeItem(`lonerpay_data_plans_vtu_v1_${String(network).toLowerCase()}`); } catch (_) {}
-          throw Object.assign(new Error("No data plans are available for this network."), { unavailable: true });
-        }
+        if (!plans.length) throw new Error("No data plans are available for this network.");
         Object.defineProperty(plans, "partial", { value: data.partial === true });
         {
-          try { localStorage.setItem(`lonerpay_data_plans_vtu_v1_${String(network).toLowerCase()}`, JSON.stringify({ savedAt: Date.now(), partial: data.partial === true, plans })); } catch (_) {}
+          try { localStorage.setItem(`lonerpay_data_plans_pairgate_v3_${String(network).toLowerCase()}`, JSON.stringify({ savedAt: Date.now(), partial: data.partial === true, plans })); } catch (_) {}
         }
         return plans;
       } catch (error) {
-        const fallback = !error.auth && !error.unavailable && cachedDataPlans(network, PLAN_DISPLAY_MS);
+        const fallback = !error.auth && cachedDataPlans(network, PLAN_DISPLAY_MS);
         if (fallback) return fallback;
         throw new Error(error.name === "AbortError" ? "Plans could not be loaded. Please try again." : error.message);
       } finally { clearTimeout(timeout); }
@@ -114,7 +108,7 @@
     request.finally(() => planRequests.delete(key)).catch(() => {});
     return request;
   }
-  // Warm all networks together on dashboard entry; the server shares one VTU catalogue.
+  // Read saved catalogues once on dashboard entry; this sends no provider requests.
   warmDataPlans();
 
   async function purchaseData({
