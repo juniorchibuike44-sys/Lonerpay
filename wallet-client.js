@@ -238,7 +238,7 @@ function upgradeDashboardExperience() {
 
     const toast = document.createElement("div"); toast.className = "lp-toast"; toast.id = "lpDashboardToast"; document.body.appendChild(toast);
     const showToast = message => { toast.textContent = message; toast.classList.add("show"); clearTimeout(showToast.t); showToast.t = setTimeout(() => toast.classList.remove("show"), 3500); };
-    document.getElementById("lpNotify")?.addEventListener("click", () => showToast("You're all caught up. No new notifications."));
+    document.getElementById("lpNotify")?.addEventListener("click", () => window.openLonerPayNotifications?.());
     document.getElementById("lpProfile")?.addEventListener("click", () => location.href = "profile.html");
 
     // Add PHED to the professional electricity sheet without duplicating the
