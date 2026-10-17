@@ -147,3 +147,28 @@ body.lp-gold-profile :is(input,select):focus{outline:2px solid #ead7ab!important
 body.lp-gold-profile button:focus-visible,body.lp-gold-profile a:focus-visible{outline:3px solid #936514;outline-offset:3px}
 body.lp-gold-dashboard :is(.lp-data-head,.lp-svc-head,.ld-head,.lp-transfer-head){border-color:#e8dfcf!important}
 body.lp-gold-dashboard #lpProReceipt{color:#28251e}
+
+/* Keep the dashboard within the viewport even when names or references are long. */
+html:has(body.lp-gold-dashboard){width:100%;max-width:100%;overflow-x:clip}
+body.lp-gold-dashboard{width:100%;max-width:100%;overflow-x:clip}
+body.lp-gold-dashboard>.header{width:100%;min-width:0;gap:12px}
+body.lp-gold-dashboard .header h1{min-width:0;flex:1}
+body.lp-gold-dashboard .header .lp-head-tools{flex-shrink:0}
+body.lp-gold-dashboard>.container{width:100%!important;min-width:0!important;margin-left:auto!important;margin-right:auto!important}
+body.lp-gold-dashboard .container>:is(.balance,.lp-welcome,.lp-virtual-account,.lp-tools,.services,.transactions,.lp-value,.lp-security,.lg-highlights,.lp-carousel-wrap){min-width:0;max-width:100%}
+body.lp-gold-dashboard .lp-welcome{display:flex;gap:12px;flex-wrap:wrap}
+body.lp-gold-dashboard .lp-welcome>div{min-width:0;max-width:100%}
+body.lp-gold-dashboard .lp-welcome h2{overflow-wrap:anywhere}
+body.lp-gold-dashboard :is(.lp-va-body,.lp-va-head,.lp-va-bank,.lp-va-name,.lp-va-message){min-width:0;max-width:100%;overflow-wrap:anywhere}
+body.lp-gold-dashboard .lp-va-number{min-width:0;overflow-wrap:anywhere}
+body.lp-gold-dashboard .lp-va-copy{flex-shrink:0}
+body.lp-gold-dashboard .services{width:100%;align-items:stretch;grid-auto-flow:row}
+body.lp-gold-dashboard .services>.service{min-width:0!important;max-width:100%;width:auto;align-self:stretch;overflow-wrap:anywhere;text-align:center;text-decoration:none}
+body.lp-gold-dashboard .services>.service h3{width:100%;max-width:100%;white-space:normal;overflow-wrap:anywhere;text-align:center}
+body.lp-gold-dashboard .lg-highlights .lp-carousel{min-width:0;max-width:100%;overscroll-behavior-x:contain}
+body.lp-gold-dashboard .lg-highlights .lg-highlight-slide{min-width:0;max-width:100%;box-sizing:border-box}
+body.lp-gold-dashboard .transactions .transaction{min-width:0;overflow-wrap:anywhere}
+body.lp-gold-dashboard #lpHomeQuickActions{min-width:0;max-width:100%}
+body.lp-gold-dashboard #lpHomeQuickActions>button{min-width:0;white-space:normal}
+body.lp-gold-dashboard .lp-bottom-nav{width:auto!important;box-sizing:border-box}
+@media(max-width:480px){body.lp-gold-dashboard .container{padding-left:16px!important;padding-right:16px!important}body.lp-gold-dashboard .services{grid-template-columns:repeat(4,minmax(0,1fr))!important}}
