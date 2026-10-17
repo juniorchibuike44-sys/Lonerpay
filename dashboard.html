@@ -2837,7 +2837,7 @@ function openAITips() {
   
   
 </script>
-<script src="data-client.js?v=20261017-gold-screens"></script>
+<script src="data-client.js?v=20261017-data-back"></script>
 <script src="electricity-client.js?v=20261017-gold-screens"></script>
 <script src="tv-client.js?v=20261017-gold-screens"></script>
 <script src="wallet-client.js?v=20261017-gold-screens"></script>
@@ -4612,6 +4612,10 @@ function openVirtualAccount() {
     new MutationObserver(schedule).observe(document.body,{childList:true,subtree:true});
     window.addEventListener('popstate',e=>{
       const index=e.state && e.state[KEY];
+      const dataView=document.getElementById('lpLiveData');
+      if(dataView?.dataset.paymentBusy==='1' && index!==current){history.go(1);return;}
+      const dataPin=dataView?.querySelector('.ld-pin');if(dataPin)dataPin.value='';
+
       if(index===-1){restore(0);history.pushState({[KEY]:0},'',location.href);return;}
       if(Number.isInteger(index))restore(index);
     });
@@ -4620,10 +4624,13 @@ function openVirtualAccount() {
       const target=event.target?.closest?.('button,a,[role="button"],.service');
       if(target && layers().length && current>0){
         const label=(target.getAttribute('aria-label')||target.textContent||'').trim();
-        const isBack=/^(back|go back|previous|‹|←)$/i.test(label) || /(?:^|[-_])back(?:$|[-_])/i.test(target.id||'') || /(?:^|\\s)[\\w-]*-back(?:\\s|$)/.test(target.className||'');
-        if(isBack){event.preventDefault();event.stopImmediatePropagation();navigationIntent=false;history.back();return;}
+        const isBack=target.matches('#lpLiveData .ld-back') || /^(back|go back|previous|‹|←)$/i.test(label) || /(?:^|[-_])back(?:$|[-_])/i.test(target.id||'') || /(?:^|\\s)[\\w-]*-back(?:\\s|$)/.test(target.className||'');
+        if(isBack){if(target.closest('#lpLiveData')?.dataset.paymentBusy==='1'){event.preventDefault();event.stopImmediatePropagation();return;}event.preventDefault();event.stopImmediatePropagation();navigationIntent=false;history.back();return;}
       }
-      navigationIntent=!!target;
+      const dataTarget=target?.closest?.('#lpLiveData');
+      // Network, bundle and filter choices update one catalogue view.
+      // Only Continue opens a new data purchase step.
+      navigationIntent=dataTarget?target.matches('.ld-continue'):!!target;
       const existing=views.get(current),now=snapshot();
       if(existing&&same(existing,now))views.set(current,now);
       schedule();

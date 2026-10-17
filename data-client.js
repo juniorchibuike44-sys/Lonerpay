@@ -288,7 +288,7 @@
     let network = "MTN", filter = "All", plans = [], selected = null;
     const grid = overlay.querySelector(".ld-plans"), summary = overlay.querySelector(".ld-summary"), next = overlay.querySelector(".ld-continue"), error = overlay.querySelector(".ld-error");
     const showError = message => { error.textContent = message; error.style.display = "block"; };
-    const close = () => overlay.remove();
+    const close = () => { if(overlay.dataset.paymentBusy === "1") return; const pin=overlay.querySelector(".ld-pin"); if(pin) pin.value=""; overlay.remove(); };
     overlay.querySelector(".ld-close").onclick = close;
 
     function renderPlans() {
@@ -358,13 +358,18 @@
       if (!/^0\d{10}$/.test(phone)) return showError("Enter a valid 11-digit Nigerian phone number.");
       if (!selected) return showError("Select a data bundle.");
       const sheet = overlay.querySelector(".ld-sheet");
-      sheet.innerHTML = `<div class="ld-head"><div class="ld-handle"></div><div class="ld-top"><div><h2>Review Data Purchase</h2><p>Confirm before payment</p></div><button class="ld-close" type="button">×</button></div></div><div class="ld-review"><div style="text-align:center;margin-bottom:17px;font-size:42px">📶<h2 style="font-size:24px;margin:5px 0">${money(selected.amount)}</h2></div><div class="ld-card"><div class="ld-row"><span>Network</span><b>${escapeText(network)}</b></div><div class="ld-row"><span>Bundle</span><b style="text-align:right">${escapeText(selected.name)}</b></div><div class="ld-row"><span>Phone</span><b>${phone}</b></div></div><input class="ld-input ld-pin" type="password" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="••••"><div class="ld-error"></div><button class="ld-primary ld-pay" type="button" style="margin-top:12px">Confirm Payment</button><button class="ld-secondary ld-back" type="button">Back</button></div>`;
-      sheet.querySelector(".ld-close").onclick = close;
-      sheet.querySelector(".ld-back").onclick = () => { close(); window.buyData(); };
+      const catalogueNodes = Array.from(sheet.childNodes);
+      const catalogueScroll = overlay.querySelector(".ld-body").scrollTop;
+      const returnToCatalogue = () => { if(overlay.dataset.paymentBusy === "1") return; sheet.querySelector(".ld-pin").value = ""; sheet.replaceChildren(...catalogueNodes); overlay.querySelector(".ld-body").scrollTop = catalogueScroll; };
+      sheet.innerHTML = `<div class="ld-head"><div class="ld-handle"></div><div class="ld-top"><button class="ld-close ld-back" type="button" aria-label="Back to data bundles">←</button><div><h2>Review Data Purchase</h2><p>Confirm before payment</p></div><button class="ld-close" type="button">×</button></div></div><div class="ld-review"><div style="text-align:center;margin-bottom:17px;font-size:42px">📶<h2 style="font-size:24px;margin:5px 0">${money(selected.amount)}</h2></div><div class="ld-card"><div class="ld-row"><span>Network</span><b>${escapeText(network)}</b></div><div class="ld-row"><span>Bundle</span><b style="text-align:right">${escapeText(selected.name)}</b></div><div class="ld-row"><span>Phone</span><b>${phone}</b></div></div><input class="ld-input ld-pin" type="password" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="••••"><div class="ld-error"></div><button class="ld-primary ld-pay" type="button" style="margin-top:12px">Confirm Payment</button><button class="ld-secondary ld-back" type="button">Back</button></div>`;
+      sheet.querySelectorAll(".ld-close:not(.ld-back)").forEach(button => button.onclick = close);
+      sheet.querySelectorAll(".ld-back").forEach(button => button.onclick = returnToCatalogue);
       sheet.querySelector(".ld-pay").onclick = async () => {
         const button = sheet.querySelector(".ld-pay"), pin = sheet.querySelector(".ld-pin"), box = sheet.querySelector(".ld-error");
         const fail = message => { box.textContent = message; box.style.display = "block"; };
         if (!/^\d{4}$/.test(pin.value)) return fail("Enter your 4-digit payment PIN.");
+        overlay.dataset.paymentBusy = "1";
+        sheet.querySelectorAll(".ld-back,.ld-close").forEach(control => control.disabled = true);
         button.disabled = true; button.textContent = "Processing…";
         try {
           const result = await purchaseData({network, phone, variationCode:selected.code, amount:selected.amount, pin:pin.value}); pin.value = "";
@@ -388,7 +393,7 @@
           }
           if (String(result.code) !== "000" || status !== "delivered") throw new Error("Data payment was not confirmed as delivered.");
           sheet.innerHTML = `<div class="ld-review" style="text-align:center;padding-top:38px"><div style="width:68px;height:68px;border-radius:50%;background:#e8faf2;color:#07865a;display:grid;place-items:center;margin:auto;font-size:34px">✓</div><h2>Data Purchase Successful</h2><p style="color:#66768b">${escapeText(selected.name)} was sent to ${phone}.</p><button class="ld-primary ld-done" type="button">Done</button></div>`; sheet.querySelector(".ld-done").onclick=close;
-        } catch (purchaseError) { const refund = purchaseError.refunded ? " Your wallet was refunded." : purchaseError.refund_error ? ` Refund issue: ${purchaseError.refund_error}` : ""; fail((purchaseError.message || "Data payment failed.") + refund); button.disabled=false; button.textContent="Confirm Payment"; }
+        } catch (purchaseError) { const refund = purchaseError.refunded ? " Your wallet was refunded." : purchaseError.refund_error ? ` Refund issue: ${purchaseError.refund_error}` : ""; fail((purchaseError.message || "Data payment failed.") + refund); button.disabled=false; button.textContent="Confirm Payment"; } finally { delete overlay.dataset.paymentBusy; sheet.querySelectorAll(".ld-back,.ld-close").forEach(control => control.disabled = false); }
       };
     };
     load();
