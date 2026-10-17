@@ -206,17 +206,19 @@ document.addEventListener("DOMContentLoaded", async function () {
         "position:fixed;inset:0;z-index:20000;background:#faf8f2;overflow:auto;display:flex;align-items:center;justify-content:center;padding:24px;box-sizing:border-box;font-family:Arial,sans-serif";
 
       welcomeScreen.innerHTML = `
-        <div style="width:100%;max-width:390px;text-align:center;color:#28251e">
-          <div style="width:68px;height:68px;display:grid;place-items:center;margin:0 auto 28px;border-radius:22px;background:#936514;color:white;font-size:36px;font-weight:bold">L</div>
-          <div style="font-size:13px;color:#936514;font-weight:bold;letter-spacing:2px">LONERPAY</div>
-          <h1 id="lpWelcomeTitle" style="font-size:30px;margin:16px 0 10px">Welcome back</h1>
-          <p style="color:#746c5c;line-height:1.6;margin-bottom:28px">Unlock securely and continue to your dashboard.</p>
-          <button id="lpWelcomeUnlock" type="button" style="width:100%;border:0;border-radius:15px;background:#936514;color:white;padding:17px;font-size:16px;font-weight:bold">Unlock with phone security</button>
-          <p id="lpWelcomeHelp" style="color:#746c5c;font-size:12px;line-height:1.6"></p>
-          <p id="lpWelcomeError" role="status" aria-live="polite" style="min-height:22px;color:#b42318;font-size:13px;line-height:1.5"></p>
-          <button id="lpWelcomeSetupPin" type="button" style="display:none;width:100%;background:#f3ecd9;border:1px solid #ddc58f;border-radius:15px;color:#936514;padding:15px;font-size:14px;font-weight:bold;margin-bottom:12px">Set up 6-digit login PIN</button>
-          <button id="lpWelcomePassword" type="button" style="width:100%;background:white;border:1px solid #e5dac4;border-radius:15px;color:#28251e;padding:15px;font-size:14px;font-weight:bold">Use email and password</button>
-          <button id="lpWelcomeSwitch" type="button" style="border:0;background:transparent;color:#746c5c;padding:20px;font-size:13px">Use another account</button>
+        <div class="lp-welcome-card">
+          <div class="lp-welcome-brand"><span class="lp-welcome-mark" aria-hidden="true">L</span><span>LonerPay<small>ONE APP. EVERYDAY PAYMENTS.</small></span><span class="lp-welcome-lock" aria-label="Secure sign in"><svg width="18" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="5" y="10" width="14" height="11" rx="3"/><path d="M8 10V7a4 4 0 0 1 8 0v3M12 14v3"/></svg></span></div>
+          <p class="lp-welcome-eyebrow">YOUR EVERYDAY PAYMENTS</p>
+          <h1 id="lpWelcomeTitle">Welcome back</h1>
+          <p class="lp-welcome-intro">Your account. Your everyday possibilities.</p>
+          <button id="lpWelcomeUnlock" type="button">Use fingerprint or face</button>
+          <p id="lpWelcomeHelp"></p>
+          <p id="lpWelcomeError" role="status" aria-live="polite"></p>
+          <button id="lpWelcomeSetupPin" type="button" style="display:none">Set up your login PIN</button>
+          <div class="lp-welcome-divider" aria-hidden="true"><span>OTHER WAYS TO SIGN IN</span></div>
+          <button id="lpWelcomePassword" type="button">Sign in with email <span aria-hidden="true">↗</span></button>
+          <button id="lpWelcomeSwitch" type="button">Use another account</button>
+          <p class="lp-welcome-footer"><svg width="12" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 3 4 6v6c0 5 8 9 8 9s8-4 8-9V6z"/><path d="m8 12 3 3 5-6"/></svg> Protected access · LonerPay</p>
         </div>`;
 
       document.body.appendChild(welcomeScreen);
@@ -227,7 +229,7 @@ document.addEventListener("DOMContentLoaded", async function () {
 
       pinForm.innerHTML = `
         <label for="lpLoginPin" style="display:block;font-size:14px;font-weight:700;margin-bottom:12px">Enter your 6-digit login PIN</label>
-        <input id="lpLoginPin" type="password" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="off" required aria-label="Six-digit login PIN" style="width:100%;height:58px;border:1px solid #e5dac4;border-radius:14px;background:#fff;color:#28251e;text-align:center;font-size:24px;letter-spacing:12px;box-sizing:border-box">
+        <input id="lpLoginPin" type="password" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="off" placeholder="••••••" required aria-label="Six-digit login PIN" style="width:100%;height:58px;border:1px solid #e5dac4;border-radius:14px;background:#fff;color:#28251e;text-align:center;font-size:24px;letter-spacing:12px;box-sizing:border-box">
         <button type="submit" style="width:100%;background:#936514;color:#fff;border:0;border-radius:13px;margin-top:14px;min-height:52px;font-size:15px;font-weight:bold">Log in with PIN</button>
         <button id="lpForgotLoginPin" type="button" style="border:0;background:transparent;color:#936514;margin-top:8px">Forgot login PIN?</button>`;
 

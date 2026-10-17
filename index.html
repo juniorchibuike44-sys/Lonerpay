@@ -83,7 +83,7 @@ document.addEventListener('DOMContentLoaded',function(){
     if(passkeyButton&&!passkeyButton.disabled)set('passkeyLoginButton','Use biometric login');
     // Do not replace the progress message while verification is running.
     const unlock=document.getElementById('lpWelcomeUnlock');
-    if(unlock&&!unlock.disabled)set('lpWelcomeUnlock','Unlock securely');
+    if(unlock&&!unlock.disabled)set('lpWelcomeUnlock','Use fingerprint or face');
     set('passkeyHelp','Verify with your fingerprint, face, or device screen lock.');
     const help=document.getElementById('lpWelcomeHelp');
     if(help){
@@ -104,7 +104,7 @@ document.addEventListener('DOMContentLoaded',function(){
 .lp-public-auth{display:flex;gap:8px;align-items:center}.lp-company-strip{padding:18px 9%;background:#f3ecd9;border-bottom:1px solid #e1d0a7;color:#45371f;font-size:15px;line-height:1.6}.lp-company-strip strong,.lp-company-strip span{display:block}.lp-company-strip span{font-size:13px;color:#746c5c}.lp-public-contact p{max-width:780px;line-height:1.8;color:#746c5c}.lp-public-contact a{color:#936514;text-decoration:underline}.lp-public-contact h2{margin-bottom:22px}
 @media(max-width:600px){.nav{padding:0 5%;height:82px}.nav .brand img{width:95px!important}.lp-public-auth button{padding:10px 13px;font-size:13px}.lp-company-strip{padding:16px 7%;font-size:14px}.hero{min-height:0}.hero h1{font-size:clamp(42px,12vw,56px)}.lead{font-size:17px}.actions{gap:17px;flex-wrap:wrap}.section{padding:55px 7%}}
 </style>
-<link rel="stylesheet" href="site-gold.css?v=20261017-unified"></head>
+<link rel="stylesheet" href="site-gold.css?v=20261017-welcome"></head>
 <body class="lp-gold-site lp-gold-public">
   <header class="nav">
     <a class="brand" href="#"><img src="/logo.svg?v=20261015-brand" alt="LonerPay" width="150" height="150" style="width:130px;height:auto;display:block"></a>
@@ -288,7 +288,7 @@ document.addEventListener('DOMContentLoaded',function(){
     </p>
   </div>
 </div> 
-  <script src="script.js?v=20261017-unified"></script>
+  <script src="script.js?v=20261017-welcome"></script>
 </body>
 </html>
 

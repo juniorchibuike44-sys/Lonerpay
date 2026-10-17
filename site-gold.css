@@ -38,3 +38,37 @@
 #lpAuthBrand span,#enableBiometricButton,#authForm button[type=submit]{background:#936514!important;border-color:#936514!important}
 .lp-auth-step span{background:#e5dac4}.lp-auth-step span.active{background:#936514}
 @media(prefers-reduced-motion:reduce){.lp-gold-site{scroll-behavior:auto}}
+
+/* Compact welcome-back card: PIN first, alternate methods second. */
+#lpWelcomeBack{padding:28px 16px!important;align-items:flex-start!important;background:radial-gradient(ellipse at 50% 0%,#e9d4a64f,transparent 55%),#faf8f2!important;font-family:Inter,system-ui,-apple-system,sans-serif!important}
+#lpWelcomeBack>.lp-welcome-card{max-width:430px!important;margin:auto!important;padding:27px!important;background:#fffdf9;border:1px solid #e5dac4;border-radius:26px;box-shadow:0 18px 55px #6b4d1110;text-align:left;color:#28251e}
+#lpWelcomeBack .lp-welcome-card>.lp-welcome-brand:first-child{width:auto!important;height:auto!important;display:flex!important;align-items:center;gap:10px;background:transparent!important;border-radius:0!important;margin:0 0 34px!important;font-size:19px!important;font-weight:800;letter-spacing:-.4px;color:#28251e}
+.lp-welcome-mark{width:39px;height:42px;border-radius:13px;background:linear-gradient(145deg,#c6a357,#936514);color:white;display:grid;place-items:center;font-size:24px;font-weight:750;box-shadow:0 5px 12px #9365141a}
+.lp-welcome-brand small{display:block;color:#948267;font-size:7px;letter-spacing:1.1px;margin-top:2px;font-weight:650}
+.lp-welcome-lock{margin-left:auto;display:grid;place-items:center;width:33px;height:33px;border:1px solid #e8dfcf;border-radius:50%;color:#936514}
+#lpWelcomeBack .lp-welcome-eyebrow{color:#936514;letter-spacing:1.6px;font-size:9px;font-weight:750;margin:0 0 10px}
+#lpWelcomeBack #lpWelcomeTitle{font:750 29px/1.2 Inter,system-ui,sans-serif!important;letter-spacing:-1px!important;margin:0 0 9px!important;overflow-wrap:anywhere}
+#lpWelcomeBack .lp-welcome-intro{font-size:12px;line-height:1.6;color:#857b68;margin:0 0 26px}
+#lpWelcomeBack #lpLoginPinForm{margin:0 0 14px!important}
+#lpWelcomeBack #lpLoginPinForm[hidden]{display:none!important}
+#lpWelcomeBack #lpLoginPinForm label{font-size:12px!important;margin:0 0 9px!important;color:#544b3b}
+#lpWelcomeBack #lpLoginPin{height:57px!important;background:#faf8f2!important;border:1px solid #d9c9a9!important;border-radius:12px!important;letter-spacing:12px!important;text-indent:12px;font-size:23px!important;box-shadow:none!important}
+#lpWelcomeBack #lpLoginPin::placeholder{color:#d3c6af;opacity:1}
+#lpWelcomeBack #lpLoginPin:focus{outline:2px solid #c4a665!important;outline-offset:2px!important;background:white!important}
+#lpWelcomeBack button{font-family:inherit!important;font-size:12px!important;min-height:45px!important;border-radius:11px!important;padding:12px 14px!important;cursor:pointer}
+#lpWelcomeBack #lpLoginPinForm button[type=submit]{background:linear-gradient(110deg,#936514,#ae8130)!important;color:white!important;margin-top:14px!important;width:100%;border:0;box-shadow:0 5px 14px #93651418;font-weight:750}
+#lpWelcomeBack #lpForgotLoginPin{display:block;margin:4px 0 0 auto!important;min-height:34px!important;background:transparent!important;border:0;color:#8a661f!important;padding:8px 0!important;font-size:11px!important}
+#lpWelcomeBack #lpWelcomeUnlock{width:100%;background:#f6f0e2!important;border:1px solid #e4d4b0!important;color:#805b18!important;font-weight:700}
+#lpWelcomeBack #lpWelcomeUnlock[hidden]{display:none!important}
+#lpWelcomeBack #lpWelcomeHelp{font-size:10px!important;line-height:1.6!important;color:#948875!important;text-align:center;margin:10px 4px 0!important}
+#lpWelcomeBack #lpWelcomeError{font-size:12px!important;padding:10px!important;margin:12px 0!important;color:#b42318!important;background:#fff1f0!important;border-radius:10px}
+#lpWelcomeBack #lpWelcomeError:empty{display:none!important}
+#lpWelcomeBack #lpWelcomeSetupPin{width:100%;background:#936514;color:white;border:0;margin-top:12px}
+.lp-welcome-divider{display:flex;align-items:center;gap:10px;margin:25px 0 15px}
+.lp-welcome-divider:before,.lp-welcome-divider:after{content:"";height:1px;background:#ece5d8;flex:1}
+.lp-welcome-divider span{font-size:8px;font-weight:650;letter-spacing:1.1px;color:#a2947b;white-space:nowrap}
+#lpWelcomeBack #lpWelcomePassword{display:flex;justify-content:space-between;align-items:center;width:100%;background:white!important;border:1px solid #e5dac4!important;color:#4f4738!important;font-weight:650}
+#lpWelcomeBack #lpWelcomePassword span{color:#a18143}
+#lpWelcomeBack #lpWelcomeSwitch{display:block;width:100%;margin:7px 0 0!important;background:transparent!important;color:#92826a!important;border:0!important;font-size:11px!important}
+.lp-welcome-footer{display:flex;justify-content:center;align-items:center;gap:5px;font-size:9px;color:#a39884;margin:16px 0 0;padding-top:18px;border-top:1px solid #f0eadd}
+@media(max-width:380px){#lpWelcomeBack>.lp-welcome-card{padding:22px!important;border-radius:21px}#lpWelcomeBack #lpWelcomeTitle{font-size:26px!important}}
