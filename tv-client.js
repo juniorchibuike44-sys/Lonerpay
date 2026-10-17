@@ -36,7 +36,7 @@
           style="width:100%;padding:13px;border:1px solid #ccc;border-radius:10px;box-sizing:border-box;">
 
         <button id="secureTvVerify" style="width:100%;padding:14px;margin-top:16px;border:0;border-radius:12px;
-          background:#2563eb;color:white;font-size:16px;font-weight:bold;">Verify Decoder</button>
+          background:#936514;color:white;font-size:16px;font-weight:bold;">Verify Decoder</button>
 
         <div id="secureTvCustomer" style="display:none;margin-top:14px;padding:13px;border-radius:10px;background:#ecfdf5;"></div>
 

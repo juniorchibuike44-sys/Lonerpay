@@ -57,7 +57,7 @@
         <input id="electricMeter" inputmode="numeric" placeholder="1111111111111"
           style="width:100%;padding:13px;border:1px solid #ccc;border-radius:10px;box-sizing:border-box;">
         <button id="electricVerify" style="width:100%;padding:14px;margin-top:16px;border:0;border-radius:12px;
-          background:#2563eb;color:white;font-size:16px;font-weight:bold;">Verify Meter</button>
+          background:#936514;color:white;font-size:16px;font-weight:bold;">Verify Meter</button>
         <div id="electricCustomer" style="display:none;margin-top:14px;padding:13px;border-radius:10px;background:#ecfdf5;"></div>
         <div id="electricPaymentFields" style="display:none;">
           <label style="display:block;margin:12px 0 6px;">Phone number</label>

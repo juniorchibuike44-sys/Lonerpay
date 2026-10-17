@@ -98,3 +98,52 @@ body.lp-gold-dashboard #fundWalletOverlay .lp-fw-amount:focus-within{border-colo
 body.lp-gold-dashboard #fundWalletOverlay .lp-fw-body>div:first-child{background:#f1e8d4!important;border-color:#e3d4b1!important}
 body.lp-gold-dashboard #fundWalletOverlay .lp-fw-body>div:first-child :is(div,strong){color:#796138!important}
 body.lp-gold-dashboard #vaCreate{background:linear-gradient(115deg,#eed397,#d0a34d)!important;color:#392a10!important}
+
+/* Useful sliding highlights, replacing the former founder-photo slide. */
+body.lp-gold-dashboard .lg-highlights{display:block!important;margin:0 0 22px!important;min-width:0}
+body.lp-gold-dashboard .lg-highlights .lp-carousel{width:100%;display:flex!important;gap:10px;overflow-x:auto!important;scroll-snap-type:x mandatory;border-radius:18px!important}
+body.lp-gold-dashboard .lg-highlights .lg-highlight-slide{position:relative;flex:0 0 100%;height:190px!important;background:linear-gradient(115deg,#28231b,#625031)!important;isolation:isolate}
+body.lp-gold-dashboard .lg-highlights .lg-highlight-1{background:linear-gradient(115deg,#e8cd8d,#c7a052)!important}
+body.lp-gold-dashboard .lg-highlights .lg-highlight-2{background:linear-gradient(115deg,#463920,#29241d)!important}
+body.lp-gold-dashboard .lg-highlights .lg-highlight-3{background:linear-gradient(115deg,#d5b371,#f0dcac)!important}
+body.lp-gold-dashboard .lg-highlights .lp-slide-copy{background:transparent!important;padding:18px 20px!important;z-index:2}
+body.lp-gold-dashboard .lg-highlights .lp-slide-badge{font-size:7px!important;letter-spacing:1.1px!important;padding:0!important;margin-bottom:9px!important;border:0!important;background:transparent!important;color:#d9ba77!important}
+body.lp-gold-dashboard .lg-highlights .lp-slide-copy h3{font-size:22px!important;line-height:1.12!important;font-weight:600!important;margin:0 0 7px!important;max-width:80%!important;color:#f7e4b8!important}
+body.lp-gold-dashboard .lg-highlights .lp-slide-copy p{font-size:10px!important;line-height:1.45!important;max-width:76%!important;margin:0!important;color:#e0d6c2!important}
+body.lp-gold-dashboard .lg-highlights .lg-highlight-action{width:max-content;min-height:29px;background:transparent;border:0;border-bottom:1px solid #e5c88b77;border-radius:0;padding:4px 0!important;margin-top:9px;display:flex;align-items:center;gap:15px;font-size:10px;font-weight:650;color:#f4d795;cursor:pointer}
+body.lp-gold-dashboard .lg-highlights :is(.lg-highlight-1,.lg-highlight-3) :is(.lp-slide-badge,.lp-slide-copy h3,.lp-slide-copy p,.lg-highlight-action){color:#443315!important}
+body.lp-gold-dashboard .lg-highlights :is(.lg-highlight-1,.lg-highlight-3) .lg-highlight-action{border-color:#76572066}
+body.lp-gold-dashboard .lg-highlight-art{position:absolute;right:17px;top:48px;width:77px;height:77px;display:grid;place-items:center;border:1px solid #edce8c45;border-radius:50%;color:#e1c183;opacity:.6;transform:rotate(-10deg);z-index:1}
+body.lp-gold-dashboard .lg-highlight-art:before{content:'';position:absolute;inset:-17px;border-radius:50%;border:1px solid currentColor;opacity:.2}
+body.lp-gold-dashboard .lg-highlight-art svg{width:39px;height:39px;fill:none;stroke:currentColor;stroke-width:1.1;stroke-linecap:round;stroke-linejoin:round}
+body.lp-gold-dashboard :is(.lg-highlight-1,.lg-highlight-3) .lg-highlight-art{color:#73501d;border-color:#97723750;opacity:.45}
+body.lp-gold-dashboard .lg-highlights .lp-carousel-dot{background:#dbd0ba!important;width:6px;height:6px}
+body.lp-gold-dashboard .lg-highlights .lp-carousel-dot.active{background:#a67c2c!important;width:20px}
+body.lp-gold-dashboard #lpProHistory{background:#faf8f2!important;color:#28251e!important}
+body.lp-gold-dashboard #lpProHistory :is(h2,strong){color:#3e3320!important}
+body.lp-gold-dashboard #lpProHistory .lpHistChip.on{background:#ede0bf!important;color:#76571e!important;border-color:#d5bd88!important}
+body.lp-gold-dashboard #lpProHistory .lpTxRow{border:1px solid #e5dccb!important;box-shadow:none!important}
+body.lp-gold-dashboard #lpHistClose{color:#795d2a!important;background:#eee3cc!important}
+@media(max-width:370px){body.lp-gold-dashboard .lg-highlights .lp-slide-copy h3{font-size:20px!important}body.lp-gold-dashboard .lg-highlight-art{right:9px;width:62px;height:62px;opacity:.35}}
+/* Profile and its security, support, KYC and settings sheets share the same palette. */
+body.lp-gold-profile{margin:0;background:#faf8f2!important;color:#28251e!important;font-family:Inter,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif!important;--lp-blue:#936514;--lp-navy:#2b271f;--lp-ink:#28251e;--lp-muted:#827969;--lp-line:#e8dfcf}
+body.lp-gold-profile .header{background:#faf8f2!important;color:#28251e!important;border-color:#e8dfcf!important;box-shadow:none!important}
+body.lp-gold-profile .header .back{color:#936514!important}
+body.lp-gold-profile .profile-card{background:linear-gradient(125deg,#fffdf8,#f3e6c8)!important;border:1px solid #e5d8bb!important;box-shadow:none!important;border-radius:24px!important}
+body.lp-gold-profile .avatar{background:linear-gradient(135deg,#d9b66a,#9a7226)!important;border-color:#f4e7c9!important;color:#fffdf8!important}
+body.lp-gold-profile .lp-profile-status{background:#eee2c6!important;color:#795a22!important}
+body.lp-gold-profile .menu{background:#fffdf8!important;border-color:#e8dfcf!important;box-shadow:none!important}
+body.lp-gold-profile .menu button{background:#fffdf8!important;border-color:#e8dfcf!important;color:#443a29}
+body.lp-gold-profile .menu button:active{background:#f4ead5!important}
+body.lp-gold-profile .menu button.logout{color:#b42318!important}
+body.lp-gold-profile .lp-icon{background:#f3e8ce!important;color:#956d24!important}
+body.lp-gold-profile :is(.lp-title,.lp-head h2){color:#65502a!important}
+body.lp-gold-profile :is(.lp-card,.lp-modal,.pin-card){background:#faf8f2!important;color:#28251e!important}
+body.lp-gold-profile .lp-head{background:#faf8f2!important;border-color:#e8dfcf!important}
+body.lp-gold-profile .lp-close{background:#eee3cc!important;color:#795d2a!important}
+body.lp-gold-profile :is(.pin-primary,.lp-save){background:linear-gradient(115deg,#eed397,#d0a34d)!important;color:#392a10!important}
+body.lp-gold-profile :is(input,select){border-color:#e1d7c2!important;color:#28251e}
+body.lp-gold-profile :is(input,select):focus{outline:2px solid #ead7ab!important;border-color:#b88b38!important}
+body.lp-gold-profile button:focus-visible,body.lp-gold-profile a:focus-visible{outline:3px solid #936514;outline-offset:3px}
+body.lp-gold-dashboard :is(.lp-data-head,.lp-svc-head,.ld-head,.lp-transfer-head){border-color:#e8dfcf!important}
+body.lp-gold-dashboard #lpProReceipt{color:#28251e}

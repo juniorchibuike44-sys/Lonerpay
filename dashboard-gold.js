@@ -37,6 +37,17 @@
     const quick=document.querySelectorAll('#lpHomeQuickActions button');
     quick.forEach(button=>{const span=button.querySelector('span');if(span&&!span.dataset.gold){span.innerHTML=icon(/fund/i.test(button.textContent)?'plus':/transaction/i.test(button.textContent)?'history':/transfer|send/i.test(button.textContent)?'transfer':'services');span.dataset.gold='1'}});
     document.querySelectorAll('.lp-bottom-nav .lp-nav-item').forEach(button=>{const span=button.querySelector('span');if(span&&!span.dataset.gold){span.innerHTML=icon(/transaction/i.test(button.textContent)?'history':/profile/i.test(button.textContent)?'profile':/ai/i.test(button.textContent)?'ai':'home');span.dataset.gold='1'}});
+    document.querySelectorAll('[data-highlight-action]').forEach(button=>{
+      if(button.dataset.goldBound)return;
+      button.dataset.goldBound='1';
+      button.onclick=()=>{
+        const action=button.dataset.highlightAction;
+        if(action==='fund')window.openFundWallet?.();
+        else if(action==='history')window.openTransactionHistory?.();
+        else if(action==='profile')window.openProfile?.();
+        else if(action==='data')window.buyData?.();
+      };
+    });
     const bell=document.querySelector('#lpNotify');if(bell&&!bell.dataset.gold){bell.innerHTML=icon('bell')+'<span class="dot"></span>';bell.dataset.gold='1'}
     document.querySelectorAll('.lp-value-card i').forEach((el,i)=>{if(!el.dataset.gold){el.innerHTML=icon(['electricity','history','support'][i]||'shield');el.dataset.gold='1'}});
     const shield=document.querySelector('.lp-security-icon');if(shield&&!shield.dataset.gold){shield.innerHTML=icon('shield');shield.dataset.gold='1'}
@@ -44,3 +55,4 @@
   function init(){paint();const services=document.querySelector('.services');if(services)new MutationObserver(paint).observe(services,{childList:true,subtree:true});setTimeout(paint,800);setTimeout(paint,1800)}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
 })();
+
