@@ -96,6 +96,7 @@ document.addEventListener("DOMContentLoaded", async function () {
   function saveSession(session) {
     if (!session || !session.access_token) return false;
 
+    localStorage.removeItem("lonerpay_explicit_logout");
     localStorage.setItem("lonerpay_access_token", session.access_token);
 
     if (session.refresh_token) {
