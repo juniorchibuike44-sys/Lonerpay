@@ -1,3 +1,4 @@
+import { settleVtu } from "./_vtu-settle.js";
 import {
   isPairgateFailedStatus,
   isPairgateSuccessfulStatus,
@@ -47,7 +48,7 @@ export default async function handler(req, res) {
     };
 
     const transactionResponse = await fetch(
-      `${supabaseUrl}/rest/v1/wallet_transactions?user_id=eq.${encodeURIComponent(user.id)}&request_id=eq.${encodeURIComponent(requestId)}&select=request_id,status,service,details&limit=1`,
+      `${supabaseUrl}/rest/v1/wallet_transactions?user_id=eq.${encodeURIComponent(user.id)}&request_id=eq.${encodeURIComponent(requestId)}&select=user_id,request_id,status,service,details,amount&limit=1`,
       { headers: serviceHeaders, cache: "no-store" }
     );
     const rows = await transactionResponse.json().catch(() => []);
@@ -55,6 +56,11 @@ export default async function handler(req, res) {
     if (!transactionResponse.ok || !transaction) return res.status(404).json({ error: "Transaction not found" });
     if (String(transaction.status).toLowerCase() !== "pending") {
       return res.status(200).json({ resolved: true, status: transaction.status });
+    }
+
+    if (transaction.details?.provider === "vtu-ng") {
+      const result = await settleVtu(transaction);
+      return res.status(result.resolved ? 200 : 202).json(result);
     }
 
     if (String(transaction.details?.provider || "").toLowerCase() === "pairgate") {
@@ -170,3 +176,4 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: "Could not confirm transaction status", message: error.message });
   }
 }
+

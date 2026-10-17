@@ -1,5 +1,5 @@
-import { sharedCatalogueRequest, cataloguePlanTypes } from "./_catalogue.js";
-import { pbkdf2Sync, timingSafeEqual } from "node:crypto";
+import { vtuToken, vtuRequest, vtuOutcome, vtuCatalogue, vtuPlans, vtuNetwork } from "./_vtu-ng.js";
+import { pbkdf2Sync, timingSafeEqual, randomUUID } from "node:crypto";
 import { enforceRateLimit, hardenResponse } from "./_security.js";
 import {
   isPairgateAccepted,
@@ -85,7 +85,7 @@ function createRequestId() {
     values.day +
     values.hour +
     values.minute +
-    String(Date.now()).slice(-6)
+    randomUUID().replaceAll("-", "").slice(0, 24)
   );
 }
 
@@ -209,8 +209,8 @@ export default async function handler(
   const authorization =
     req.headers.authorization;
 
-  const usesPairgate = airtimeServices.has(String(req.body?.serviceID || "")) ||
-    dataServices.has(String(req.body?.serviceID || "")) ||
+  const usesVtu = airtimeServices.has(String(req.body?.serviceID || "")) || dataServices.has(String(req.body?.serviceID || ""));
+  const usesPairgate =
     electricityServices.has(String(req.body?.serviceID || "")) ||
     tvServices.has(String(req.body?.serviceID || "")) ||
     educationServices.has(String(req.body?.serviceID || "")) ||
@@ -220,7 +220,8 @@ export default async function handler(
   if (
     !supabaseUrl ||
     !secretKey ||
-    (!usesPairgate && (!vtpassApiKey || !vtpassSecretKey)) ||
+    (!usesPairgate && !usesVtu && (!vtpassApiKey || !vtpassSecretKey)) ||
+    (usesVtu && (!process.env.VTU_NG_USERNAME || !process.env.VTU_NG_PASSWORD)) ||
     (usesPairgate && !process.env.PAIRGATE_API_KEY)
   ) {
     return res.status(500).json({
@@ -287,7 +288,7 @@ export default async function handler(
 
   // Prevent confusing debits/refunds while testing. VTpass sandbox deliberately
   // fails ordinary customer details and only accepts its documented simulators.
-  if (!usesPairgate && !vtpassIsLive) {
+  if (!usesPairgate && !usesVtu && !vtpassIsLive) {
     if (dataServices.has(serviceID) && billersCode !== "08011111111") {
       return res.status(400).json({
         error: "VTpass test mode is active. Use 08011111111 for a successful airtime or data test. Your wallet was not debited.",
@@ -409,7 +410,7 @@ export default async function handler(
 
   let providerResponseReceived = false;
 
-  let pairgateDataProviderId = "";
+  let vtuAccessToken;
 
 
   /* =========================
@@ -479,7 +480,9 @@ export default async function handler(
         ? providerDetails.pins.reduce((sum, item) => sum + Number(item?.price || 0), 0)
         : 0;
       const reportedCost = Number(providerDetails.total_amount || providerDetails.unit_price || pinCost);
-      const providerCost = providerName === "pairgate" && Number.isFinite(balanceCharge) && balanceCharge > 0
+      const providerCost = providerName === "vtu-ng" && Number.isFinite(Number(providerDetails.amount_charged))
+        ? Number(providerDetails.amount_charged)
+        : providerName === "pairgate" && Number.isFinite(balanceCharge) && balanceCharge > 0
         ? balanceCharge
         : providerName === "pairgate" && Number.isFinite(reportedCost) && reportedCost > 0
           ? reportedCost
@@ -508,7 +511,7 @@ export default async function handler(
               phone: phone || "",
               provider_code: String(providerData?.code || ""),
               provider_status: String(providerData?.content?.transactions?.status || providerData?.data?.status || ""),
-              provider_reference: String(providerData?.requestId || providerData?.request_id || providerData?.data?.reference_code || providerData?.reference_code || ""),
+              provider_reference: String(providerData?.requestId || providerData?.request_id || providerData?.data?.order_id || providerData?.data?.reference_code || providerData?.reference_code || ""),
               provider_cost: providerCost,
               gross_profit: grossProfit,
               sale_amount: Number(paymentAmount),
@@ -527,41 +530,10 @@ export default async function handler(
   async function validateFixedVariation() {
     if (!(dataServices.has(serviceID) || tvServices.has(serviceID))) return;
     if (dataServices.has(serviceID)) {
-      const network = serviceID === "etisalat-data" ? "9mobile" : serviceID.replace(/-data$/, "");
-      pairgateDataProviderId = network;
-      const planTypes = await cataloguePlanTypes(network);
-      let selected = null;
-      let catalogueError = null;
-      for (const planType of planTypes) {
-        try {
-          const result = await sharedCatalogueRequest(
-            `/data-plans?provider_id=${encodeURIComponent(pairgateDataProviderId)}&plan_type=${encodeURIComponent(planType)}`
-          );
-          if (!result.response.ok || result.data?.status !== "success") {
-            catalogueError = Object.assign(new Error("The data provider could not verify this plan. Please try again shortly."), { statusCode: 503 });
-            console.warn("Payment catalogue validation failed", { serviceID, planType, status: result.response.status });
-            continue;
-          }
-          const payload = result.data?.data;
-          const plans = Array.isArray(payload)
-            ? payload
-            : Object.values(payload || {}).flatMap(value => Array.isArray(value) ? value : []);
-          selected = plans.find(item => String(item?.plan_id || item?.id || "") === String(variation_code || ""));
-          if (selected) break;
-        } catch (error) {
-          catalogueError = error;
-        }
-      }
-      if (!selected && catalogueError) throw catalogueError;
-      const expectedAmount = Number(selected?.price || selected?.amount);
-      if (!selected || !Number.isFinite(expectedAmount) || expectedAmount <= 0) {
-        const error = new Error("The selected data plan is no longer available. Refresh the plans and try again.");
-        error.statusCode = 409; throw error;
-      }
-      if (Math.abs(expectedAmount - paymentAmount) > 0.01) {
-        const error = new Error("The data plan price has changed. Refresh the plans before payment.");
-        error.statusCode = 409; throw error;
-      }
+      const network = vtuNetwork(serviceID);
+      const selected = vtuPlans(await vtuCatalogue(), network).find(p => p.code === String(variation_code));
+      if (!selected) throw Object.assign(new Error("This plan is no longer available. Refresh the data plans."), { statusCode: 409 });
+      if (Math.abs(selected.amount - paymentAmount) > 0.01) throw Object.assign(new Error("The data price has changed. Refresh the plans before payment."), { statusCode: 409 });
       return;
     }
     const result = await pairgateRequest(
@@ -918,6 +890,11 @@ export default async function handler(
       createRequestId();
 
     await validateFixedVariation();
+    if (usesVtu) {
+      if (!/^0\d{10}$/.test(String(billersCode))) return res.status(400).json({ error: "Enter a valid 11-digit Nigerian phone number" });
+      if (airtimeServices.has(serviceID) && (!Number.isInteger(paymentAmount) || paymentAmount > 50000)) return res.status(400).json({ error: "Enter a whole airtime amount up to ₦50,000" });
+      vtuAccessToken = await vtuToken();
+    }
 
     // Airtime has no fixed plan price to validate. The documented purchase
     // endpoint validates the allowlisted network; a separate provider-list
@@ -998,6 +975,7 @@ export default async function handler(
             serviceID,
 
           p_details: {
+            ...(usesVtu ? { provider: "vtu-ng", provider_request_id: requestId, serviceID } : {}),
             billersCode,
 
             variation_code:
@@ -1041,6 +1019,30 @@ export default async function handler(
 
 
     debitCompleted = true;
+
+    if (usesVtu) {
+      providerRequestStarted = true;
+      const isData = dataServices.has(serviceID);
+      const purchase = await vtuRequest(isData ? "data" : "airtime", {
+        request_id: requestId, phone: String(billersCode), service_id: vtuNetwork(serviceID),
+        ...(isData ? { variation_id: String(variation_code).slice(4) } : { amount: paymentAmount })
+      }, vtuAccessToken);
+      providerResponseReceived = true;
+      const outcome = vtuOutcome(purchase);
+      if (outcome === "failed") {
+        const refund = await refundWallet(purchase.data?.message || "VTU.ng rejected this purchase");
+        if (refund.success) await updateTransaction("refunded", purchase.data, "vtu-ng");
+        else await updateTransaction("pending", purchase.data, "vtu-ng");
+        return res.status(502).json({ error: purchase.data?.message || "Purchase failed", request_id: requestId, refunded: refund.success, refund_error: refund.success ? null : refund.message, wallet: Number.isFinite(refund.balance) ? { balance: refund.balance } : undefined });
+      }
+      await updateTransaction(outcome, purchase.data, "vtu-ng");
+      return res.status(outcome === "successful" ? 200 : 202).json({
+        code: outcome === "successful" ? "000" : "099", pending: outcome !== "successful",
+        content: { transactions: { status: outcome === "successful" ? "delivered" : "pending" } },
+        request_id: requestId, message: outcome === "successful" ? "Purchase completed" : "Purchase is processing. Check history before retrying.",
+        wallet: { balance: Number(debit.new_balance), transaction_id: debit.transaction_id }
+      });
+    }
 
     /* =========================
        PAIRGATE RECHARGE e-PINS
@@ -1108,168 +1110,6 @@ export default async function handler(
 
     /* =========================
        PAIRGATE DATA
-    ========================= */
-
-    if (dataServices.has(serviceID)) {
-      providerRequestStarted = true;
-      const purchase = await pairgateRequest("/data/purchase", {
-        method: "POST",
-        body: JSON.stringify({
-          provider_id: pairgateDataProviderId,
-          plan_id: String(variation_code),
-          recipient: String(billersCode),
-          reference: requestId
-        })
-      });
-      providerResponseReceived = true;
-      if (!isPairgateAccepted(purchase.response, purchase.data)) {
-        const refund = await refundWallet(pairgateMessage(purchase.data, "Pairgate rejected the data purchase"));
-        await updateTransaction("refunded", purchase.data, "pairgate");
-        return res.status(purchase.response.status >= 400 ? 502 : 400).json({
-          error: pairgateMessage(purchase.data, "Data purchase failed"), request_id: requestId,
-          refunded: refund.success, refund_error: refund.success ? null : refund.message,
-          wallet: Number.isFinite(refund.balance) ? { balance: refund.balance } : undefined
-        });
-      }
-      const providerReference = pairgateReference(purchase.data);
-      if (!providerReference) {
-        await updateTransaction("pending", purchase.data, "pairgate");
-        return res.status(202).json({ code: "099", pending: true, message: "Data purchase was accepted and is awaiting confirmation", request_id: requestId, wallet: { balance: Number(debit.new_balance), transaction_id: debit.transaction_id } });
-      }
-      let query, finalStatus = "";
-      for (let attempt = 0; attempt < 8; attempt += 1) {
-        if (attempt > 0) await new Promise(resolve => setTimeout(resolve, 500));
-        query = await pairgateRequest(`/transaction/status?reference_code=${encodeURIComponent(providerReference)}`, { method: "GET" });
-        finalStatus = pairgateStatus(query.data);
-        if ((query.response.ok && isPairgateSuccessfulStatus(finalStatus)) || (query.response.ok && isPairgateFailedStatus(finalStatus))) break;
-      }
-      const combinedData = { ...purchase.data, data: { ...(purchase.data?.data || {}), ...(query.data?.data || {}), reference_code: providerReference } };
-      if (query.response.ok && isPairgateSuccessfulStatus(finalStatus)) {
-        await updateTransaction("successful", combinedData, "pairgate");
-        return res.status(200).json({ code: "000", content: { transactions: { status: "delivered" } }, request_id: requestId, pairgate_reference: providerReference, pending: false, wallet: { balance: Number(debit.new_balance), transaction_id: debit.transaction_id } });
-      }
-      if (query.response.ok && isPairgateFailedStatus(finalStatus)) {
-        const refund = await refundWallet(pairgateMessage(query.data, "Pairgate data transaction failed"));
-        await updateTransaction("refunded", combinedData, "pairgate");
-        return res.status(502).json({ error: pairgateMessage(query.data, "Data purchase failed"), request_id: requestId, pairgate_reference: providerReference, refunded: refund.success, refund_error: refund.success ? null : refund.message, wallet: Number.isFinite(refund.balance) ? { balance: refund.balance } : undefined });
-      }
-      await updateTransaction("pending", combinedData, "pairgate");
-      return res.status(202).json({ code: "099", content: { transactions: { status: finalStatus || "pending" } }, request_id: requestId, pairgate_reference: providerReference, pending: true, message: "Data purchase is processing", wallet: { balance: Number(debit.new_balance), transaction_id: debit.transaction_id } });
-    }
-
-    /* =========================
-       PAIRGATE AIRTIME
-    ========================= */
-
-    if (airtimeServices.has(serviceID)) {
-      const providerId = serviceID === "etisalat" ? "9mobile" : serviceID;
-
-      providerRequestStarted = true;
-      const purchase = await pairgateRequest("/airtime/purchase", {
-        method: "POST",
-        body: JSON.stringify({
-          provider_id: providerId,
-          amount: paymentAmount,
-          recipient: String(billersCode),
-          reference: requestId
-        })
-      });
-      providerResponseReceived = true;
-
-      if (!isPairgateAccepted(purchase.response, purchase.data)) {
-        const refund = await refundWallet(pairgateMessage(purchase.data, "Pairgate rejected the airtime purchase"));
-        await updateTransaction("refunded", purchase.data, "pairgate");
-        return res.status(purchase.response.status >= 400 ? 502 : 400).json({
-          error: pairgateMessage(purchase.data, "Airtime purchase failed"),
-          request_id: requestId,
-          refunded: refund.success,
-          refund_error: refund.success ? null : refund.message,
-          wallet: Number.isFinite(refund.balance) ? { balance: refund.balance } : undefined
-        });
-      }
-
-      const providerReference = pairgateReference(purchase.data);
-      if (!providerReference) {
-        await updateTransaction("pending", purchase.data, "pairgate");
-        return res.status(202).json({
-          code: "099",
-          pending: true,
-          message: "Airtime purchase was accepted and is awaiting confirmation",
-          request_id: requestId,
-          wallet: { balance: Number(debit.new_balance), transaction_id: debit.transaction_id }
-        });
-      }
-
-      // Pairgate accepts airtime immediately, but its status endpoint can remain
-      // "processing" for a few seconds even when delivery succeeds. Poll briefly
-      // on the server so the customer receives the real final result instead of
-      // an avoidable pending screen.
-      let query;
-      let finalStatus = "";
-      for (let attempt = 0; attempt < 8; attempt += 1) {
-        if (attempt > 0) {
-          await new Promise((resolve) => setTimeout(resolve, 500));
-        }
-        query = await pairgateRequest(
-          `/transaction/status?reference_code=${encodeURIComponent(providerReference)}`,
-          { method: "GET" }
-        );
-        finalStatus = pairgateStatus(query.data);
-        if (
-          (query.response.ok && isPairgateSuccessfulStatus(finalStatus)) ||
-          (query.response.ok && isPairgateFailedStatus(finalStatus))
-        ) {
-          break;
-        }
-      }
-      const combinedData = {
-        ...purchase.data,
-        data: {
-          ...(purchase.data?.data || {}),
-          ...(query.data?.data || {}),
-          reference_code: providerReference
-        }
-      };
-
-      if (query.response.ok && isPairgateSuccessfulStatus(finalStatus)) {
-        await updateTransaction("successful", combinedData, "pairgate");
-        return res.status(200).json({
-          code: "000",
-          content: { transactions: { status: "delivered" } },
-          request_id: requestId,
-          pairgate_reference: providerReference,
-          pending: false,
-          wallet: { balance: Number(debit.new_balance), transaction_id: debit.transaction_id }
-        });
-      }
-
-      if (query.response.ok && isPairgateFailedStatus(finalStatus)) {
-        const refund = await refundWallet(pairgateMessage(query.data, "Pairgate airtime transaction failed"));
-        await updateTransaction("refunded", combinedData, "pairgate");
-        return res.status(502).json({
-          error: pairgateMessage(query.data, "Airtime purchase failed"),
-          request_id: requestId,
-          pairgate_reference: providerReference,
-          refunded: refund.success,
-          refund_error: refund.success ? null : refund.message,
-          wallet: Number.isFinite(refund.balance) ? { balance: refund.balance } : undefined
-        });
-      }
-
-      await updateTransaction("pending", combinedData, "pairgate");
-      return res.status(202).json({
-        code: "099",
-        content: { transactions: { status: finalStatus || "pending" } },
-        request_id: requestId,
-        pairgate_reference: providerReference,
-        pending: true,
-        message: "Airtime purchase is processing",
-        wallet: { balance: Number(debit.new_balance), transaction_id: debit.transaction_id }
-      });
-    }
-
-    /* =========================
-       PAIRGATE ELECTRICITY
     ========================= */
 
     if (electricityServices.has(serviceID)) {
@@ -1844,7 +1684,7 @@ export default async function handler(
       await updateTransaction("pending", {
         code: "099",
         response_description: error.message
-      });
+      }, usesVtu ? "vtu-ng" : "vtpass");
       return res.status(202).json({
         error: "Provider response is pending confirmation",
         message: "The request may still be processing. Check transaction history before trying again.",
@@ -1899,3 +1739,4 @@ export default async function handler(
       });
   }
   } 
+
