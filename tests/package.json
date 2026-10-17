@@ -1,0 +1,1 @@
+{"private":true,"type":"module","scripts":{"test:business-growth":"node --test business-growth*.test.mjs"},"devDependencies":{"@electric-sql/pglite":"0.5.10","jsdom":"30.1.3"}}

@@ -1,0 +1,28 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {readFile} from 'node:fs/promises';
+import {PGlite} from '@electric-sql/pglite';
+const owner='aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',other='bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',id='11111111-1111-1111-1111-111111111111',move='22222222-2222-2222-2222-222222222222';
+test('real PostgreSQL migrations, atomic stock changes, ownership and report totals',async()=>{
+ const db=new PGlite();
+ await db.exec('create schema auth; create table auth.users(id uuid primary key); create role anon; create role authenticated; create role service_role;');
+ await db.query('insert into auth.users values ($1),($2)',[owner,other]);
+ await db.exec(await readFile(new URL('../supabase/business-tools.sql',import.meta.url),'utf8'));
+ const migration=await readFile(new URL('../supabase/business-growth.sql',import.meta.url),'utf8');await db.exec(migration);await db.exec(migration);
+ const save=async(who,version=0,name='Foam',opening=10)=> (await db.query('select lp_business_product_save($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) as p',[who,id,version,name,'FOAM-1','Mattress',2500000,3,true,true,opening])).rows[0].p;
+ assert.equal((await save(owner)).quantity,10);assert.equal((await save(owner)).quantity,10);
+ await assert.rejects(()=>save(other),/Product not found/);
+ const adjust=async(delta=-2,who=owner,reason='Sale')=>(await db.query('select lp_business_stock_adjust($1,$2,$3,$4,$5) as p',[who,id,move,delta,reason])).rows[0].p;
+ assert.equal((await adjust()).quantity,8);assert.equal((await adjust()).quantity,8);
+ await assert.rejects(()=>adjust(-3),/reference already used/);await assert.rejects(()=>adjust(-2,other),/Product not found/);
+ await assert.rejects(()=>db.query('select lp_business_stock_adjust($1,$2,$3,-20,$4)',[owner,id,'33333333-3333-3333-3333-333333333333','Sale']),/cannot be negative/);
+ assert.equal((await save(owner,2,'New name')).version,3);await assert.rejects(()=>save(owner,1,'Stale edit'),/Product changed/);
+ const storeSave=async(version,name='Shop')=>(await db.query('select lp_business_store_save($1,$2,$3,$4,$5,$6) as s',[owner,version,name,'2348012345678','Our store',true])).rows[0].s;
+ assert.equal((await storeSave(0)).version,1);assert.equal((await storeSave(0)).version,1);await assert.rejects(()=>storeSave(0,'Other name'),/Store changed/);
+ await db.query("insert into lp_business_invoices(id,user_id,business_name,customer_name,items,total_kobo,paid_kobo,status,issued_at) values ('44444444-4444-4444-4444-444444444444',$1,'Shop','A','[]',2000000,500000,'issued','2026-10-17T23:30:00Z'),('55555555-5555-5555-5555-555555555555',$1,'Shop','B','[]',1000000,0,'draft',null),('66666666-6666-6666-6666-666666666666',$2,'Other','C','[]',9999999,0,'issued','2026-10-18T01:00:00Z')",[owner,other]);
+ await db.query("insert into lp_business_payments(id,invoice_id,amount_kobo,created_at) values ('77777777-7777-7777-7777-777777777777','44444444-4444-4444-4444-444444444444',500000,'2026-10-18T10:00:00Z')");
+ const report=(await db.query("select lp_business_report($1,'2026-10-18','2026-10-18') as r",[owner])).rows[0].r;
+ assert.equal(report.invoiced_kobo,2000000);assert.equal(report.invoice_count,1);assert.equal(report.payments_kobo,500000);assert.equal(report.cohort_outstanding_kobo,1500000);assert.deepEqual(report.daily,[{day:'2026-10-18',invoiced_kobo:2000000,payments_kobo:500000}]);
+ const previous=(await db.query("select lp_business_report($1,'2026-10-17','2026-10-17') as r",[owner])).rows[0].r;assert.equal(previous.invoiced_kobo,0);
+ await db.exec('set role authenticated;');await assert.rejects(()=>db.query('select * from lp_business_products'),/permission denied/);await assert.rejects(()=>db.query("select lp_business_report($1,'2026-10-18','2026-10-18')",[owner]),/permission denied/);await db.exec('reset role;');await db.close();
+});
