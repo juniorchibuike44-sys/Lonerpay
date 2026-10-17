@@ -1,0 +1,40 @@
+/* LonerPay's shared customer palette. Status colors retain their meaning. */
+:root{--lp-gold:#936514;--lp-gold-light:#eed397;--lp-gold-soft:#f3ecd9;--lp-ink:#28251e;--lp-muted:#746c5c;--lp-line:#e5dac4;--lp-blue:#936514;--lp-navy:#28251e;color-scheme:light}
+.lp-gold-site{background:#faf8f2;color:#28251e;accent-color:#936514}
+.lp-gold-site ::selection{background:#eed397;color:#28251e}
+.lp-gold-site :is(a,button,input,select,textarea):focus-visible{outline:2px solid #936514;outline-offset:3px}
+.lp-gold-public .nav{background:#fffdf8;border-color:#e5dac4}
+.lp-gold-public .brand span:last-child{color:#936514}
+.lp-gold-public .hero{background:radial-gradient(ellipse at 85% 30%,#e9d5a154,transparent 55%),linear-gradient(135deg,#f5eddc,#fffdf8 70%)}
+.lp-gold-public .hero h1{color:#28251e}
+.lp-gold-public .hero h1 span,.lp-gold-public .eyebrow,.lp-gold-public .steps b{color:#936514}
+.lp-gold-public .primary,.lp-gold-public .button{background:#936514;color:#fff;border-color:#936514;box-shadow:0 5px 16px #9365141a}
+.lp-gold-public .primary:hover,.lp-gold-public .button:hover{background:#76500e}
+.lp-gold-public .outline{background:#fffdf8;border-color:#d6c7a8;color:#76500e}
+.lp-gold-public .secondary{color:#76500e}
+.lp-gold-public .phone{background:linear-gradient(145deg,#28251e,#45371f);border:1px solid #ad8848;box-shadow:0 28px 65px #73501626}
+.lp-gold-public .quick button{background:#4c3f2b;border-color:#807051}
+.lp-gold-public .transaction{border-color:#65583f;color:#e5dac4}
+.lp-gold-public .phone .small{color:#d3c3a3}
+.lp-gold-public .cards article,.lp-gold-public .card{background:#fffdf8;border-color:#e5dac4;box-shadow:0 5px 20px #6b501305}
+.lp-gold-public .light{background:#f3eddf}
+.lp-gold-public .security-box{background:#efe5ce;border:1px solid #dfcda5}
+.lp-gold-public footer{background:#28251e;color:#fff5dc;border-color:#e5dac4}
+.lp-gold-public footer :is(p,small){color:#d5c8ac}
+.lp-gold-public footer a{color:#eed397}
+.lp-gold-site img[src*="logo.svg"]{filter:grayscale(1) sepia(1) saturate(2.1)}
+#modal,#biometricModal,#lpWelcomeBack{background:#faf8f2!important}
+#modal .modal-card,#biometricModal .modal-card{border-color:#e5dac4!important;color:#28251e!important}
+#lpAuthGateway{background:radial-gradient(circle at 85% 10%,#d0a34d36,transparent 40%),linear-gradient(155deg,#211d16,#4c3b20 65%,#936514)!important}
+.lp-gateway-mark{background:linear-gradient(145deg,#eed397,#b5862f)!important;color:#28251e;box-shadow:0 10px 28px #0003}
+.lp-gateway-primary{background:#936514!important;box-shadow:0 8px 20px #93651429!important}
+.lp-gateway-secondary{border-color:#d6c7a8!important;color:#45371f!important}
+.lp-gateway-visual p,.lp-gateway-trust{color:#f0e1bf!important}
+.lp-gateway-dot{background:#eed397!important;box-shadow:0 0 0 4px #eed39722!important}
+.lp-gateway-legal{color:#746c5c!important}
+#authForm input{background:#fffdf8!important;border-color:#e5dac4!important;color:#28251e!important}
+#authForm input:focus{outline-color:#936514!important}
+#passkeyLoginButton,#skipBiometricButton{color:#936514!important;border-color:#d6c7a8!important;background:#fffdf8!important}
+#lpAuthBrand span,#enableBiometricButton,#authForm button[type=submit]{background:#936514!important;border-color:#936514!important}
+.lp-auth-step span{background:#e5dac4}.lp-auth-step span.active{background:#936514}
+@media(prefers-reduced-motion:reduce){.lp-gold-site{scroll-behavior:auto}}

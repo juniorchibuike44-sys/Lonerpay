@@ -203,20 +203,20 @@ document.addEventListener("DOMContentLoaded", async function () {
       welcomeScreen.id = "lpWelcomeBack";
       welcomeScreen.setAttribute("aria-label", "Welcome back to LonerPay");
       welcomeScreen.style.cssText =
-        "position:fixed;inset:0;z-index:20000;background:#f4f7fc;overflow:auto;display:flex;align-items:center;justify-content:center;padding:24px;box-sizing:border-box;font-family:Arial,sans-serif";
+        "position:fixed;inset:0;z-index:20000;background:#faf8f2;overflow:auto;display:flex;align-items:center;justify-content:center;padding:24px;box-sizing:border-box;font-family:Arial,sans-serif";
 
       welcomeScreen.innerHTML = `
-        <div style="width:100%;max-width:390px;text-align:center;color:#12233e">
-          <div style="width:68px;height:68px;display:grid;place-items:center;margin:0 auto 28px;border-radius:22px;background:#0863d8;color:white;font-size:36px;font-weight:bold">L</div>
-          <div style="font-size:13px;color:#0863d8;font-weight:bold;letter-spacing:2px">LONERPAY</div>
+        <div style="width:100%;max-width:390px;text-align:center;color:#28251e">
+          <div style="width:68px;height:68px;display:grid;place-items:center;margin:0 auto 28px;border-radius:22px;background:#936514;color:white;font-size:36px;font-weight:bold">L</div>
+          <div style="font-size:13px;color:#936514;font-weight:bold;letter-spacing:2px">LONERPAY</div>
           <h1 id="lpWelcomeTitle" style="font-size:30px;margin:16px 0 10px">Welcome back</h1>
-          <p style="color:#62718a;line-height:1.6;margin-bottom:28px">Unlock securely and continue to your dashboard.</p>
-          <button id="lpWelcomeUnlock" type="button" style="width:100%;border:0;border-radius:15px;background:#0863d8;color:white;padding:17px;font-size:16px;font-weight:bold">Unlock with phone security</button>
-          <p id="lpWelcomeHelp" style="color:#62718a;font-size:12px;line-height:1.6"></p>
+          <p style="color:#746c5c;line-height:1.6;margin-bottom:28px">Unlock securely and continue to your dashboard.</p>
+          <button id="lpWelcomeUnlock" type="button" style="width:100%;border:0;border-radius:15px;background:#936514;color:white;padding:17px;font-size:16px;font-weight:bold">Unlock with phone security</button>
+          <p id="lpWelcomeHelp" style="color:#746c5c;font-size:12px;line-height:1.6"></p>
           <p id="lpWelcomeError" role="status" aria-live="polite" style="min-height:22px;color:#b42318;font-size:13px;line-height:1.5"></p>
-          <button id="lpWelcomeSetupPin" type="button" style="display:none;width:100%;background:#eef5ff;border:1px solid #b9d4f7;border-radius:15px;color:#0863d8;padding:15px;font-size:14px;font-weight:bold;margin-bottom:12px">Set up 6-digit login PIN</button>
-          <button id="lpWelcomePassword" type="button" style="width:100%;background:white;border:1px solid #d8e2ef;border-radius:15px;color:#12233e;padding:15px;font-size:14px;font-weight:bold">Use email and password</button>
-          <button id="lpWelcomeSwitch" type="button" style="border:0;background:transparent;color:#62718a;padding:20px;font-size:13px">Use another account</button>
+          <button id="lpWelcomeSetupPin" type="button" style="display:none;width:100%;background:#f3ecd9;border:1px solid #ddc58f;border-radius:15px;color:#936514;padding:15px;font-size:14px;font-weight:bold;margin-bottom:12px">Set up 6-digit login PIN</button>
+          <button id="lpWelcomePassword" type="button" style="width:100%;background:white;border:1px solid #e5dac4;border-radius:15px;color:#28251e;padding:15px;font-size:14px;font-weight:bold">Use email and password</button>
+          <button id="lpWelcomeSwitch" type="button" style="border:0;background:transparent;color:#746c5c;padding:20px;font-size:13px">Use another account</button>
         </div>`;
 
       document.body.appendChild(welcomeScreen);
@@ -227,9 +227,9 @@ document.addEventListener("DOMContentLoaded", async function () {
 
       pinForm.innerHTML = `
         <label for="lpLoginPin" style="display:block;font-size:14px;font-weight:700;margin-bottom:12px">Enter your 6-digit login PIN</label>
-        <input id="lpLoginPin" type="password" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="off" required aria-label="Six-digit login PIN" style="width:100%;height:58px;border:1px solid #dce5f1;border-radius:14px;background:#fff;color:#12233e;text-align:center;font-size:24px;letter-spacing:12px;box-sizing:border-box">
-        <button type="submit" style="width:100%;background:#0863d8;color:#fff;border:0;border-radius:13px;margin-top:14px;min-height:52px;font-size:15px;font-weight:bold">Log in with PIN</button>
-        <button id="lpForgotLoginPin" type="button" style="border:0;background:transparent;color:#0863d8;margin-top:8px">Forgot login PIN?</button>`;
+        <input id="lpLoginPin" type="password" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="off" required aria-label="Six-digit login PIN" style="width:100%;height:58px;border:1px solid #e5dac4;border-radius:14px;background:#fff;color:#28251e;text-align:center;font-size:24px;letter-spacing:12px;box-sizing:border-box">
+        <button type="submit" style="width:100%;background:#936514;color:#fff;border:0;border-radius:13px;margin-top:14px;min-height:52px;font-size:15px;font-weight:bold">Log in with PIN</button>
+        <button id="lpForgotLoginPin" type="button" style="border:0;background:transparent;color:#936514;margin-top:8px">Forgot login PIN?</button>`;
 
       welcomeScreen.querySelector("#lpWelcomeUnlock").before(pinForm);
 
@@ -423,26 +423,26 @@ document.addEventListener("DOMContentLoaded", async function () {
       const screen = document.createElement("section");
       screen.id = "lpLoginPinSetup";
       screen.style.cssText =
-        "position:fixed;inset:0;z-index:23000;background:#f4f7fc;overflow:auto;display:flex;align-items:center;justify-content:center;padding:24px;box-sizing:border-box;font-family:Arial,sans-serif;color:#12233e";
+        "position:fixed;inset:0;z-index:23000;background:#faf8f2;overflow:auto;display:flex;align-items:center;justify-content:center;padding:24px;box-sizing:border-box;font-family:Arial,sans-serif;color:#28251e";
 
       screen.innerHTML = `
         <form style="width:100%;max-width:390px;text-align:center">
-          <div style="width:58px;height:58px;border-radius:19px;margin:0 auto 24px;background:#0863d8;color:white;font-size:30px;display:grid;place-items:center;font-weight:bold">L</div>
+          <div style="width:58px;height:58px;border-radius:19px;margin:0 auto 24px;background:#936514;color:white;font-size:30px;display:grid;place-items:center;font-weight:bold">L</div>
           <h1 style="font-size:27px">${forcePinSetup ? "Reset your login PIN" : "Create your login PIN"}</h1>
-          <p style="color:#62718a;font-size:14px;line-height:1.6">Choose six digits to sign in on this phone. Your payment PIN stays separate.</p>
+          <p style="color:#746c5c;font-size:14px;line-height:1.6">Choose six digits to sign in on this phone. Your payment PIN stays separate.</p>
           <label for="lpNewLoginPin" style="display:block;text-align:left;font-size:13px;margin:20px 0 8px">New 6-digit login PIN</label>
           <input id="lpNewLoginPin" type="password" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="new-password" required>
           <label for="lpConfirmLoginPin" style="display:block;text-align:left;font-size:13px;margin:16px 0 8px">Confirm login PIN</label>
           <input id="lpConfirmLoginPin" type="password" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="new-password" required>
           <p id="lpPinSetupError" role="status" style="min-height:20px;color:#b42318;font-size:13px;line-height:1.5"></p>
-          <button type="submit" style="background:#0863d8;color:white;border:0;font-weight:bold">Save login PIN</button>
-          <button id="lpSkipLoginPin" type="button" style="background:white;color:#52647d;border:1px solid #d8e2ef;font-weight:bold;margin-top:10px">Not now — continue to dashboard</button>
-          <p style="margin-top:14px;color:#62718a;font-size:12px;line-height:1.5">This PIN is optional and is used only for faster login on this phone. Your payment PIN stays separate.</p>
+          <button type="submit" style="background:#936514;color:white;border:0;font-weight:bold">Save login PIN</button>
+          <button id="lpSkipLoginPin" type="button" style="background:white;color:#746c5c;border:1px solid #e5dac4;font-weight:bold;margin-top:10px">Not now — continue to dashboard</button>
+          <p style="margin-top:14px;color:#746c5c;font-size:12px;line-height:1.5">This PIN is optional and is used only for faster login on this phone. Your payment PIN stays separate.</p>
         </form>`;
 
       screen.querySelectorAll("input").forEach(input => {
         input.style.cssText =
-          "width:100%;height:54px;border:1px solid #dce5f1;border-radius:13px;background:white;color:#12233e;text-align:center;font-size:22px;letter-spacing:10px;box-sizing:border-box";
+          "width:100%;height:54px;border:1px solid #e5dac4;border-radius:13px;background:white;color:#28251e;text-align:center;font-size:22px;letter-spacing:10px;box-sizing:border-box";
 
         input.oninput = e => {
           e.target.value = e.target.value.replace(/\D/g, "").slice(0, 6);
@@ -979,3 +979,4 @@ document.addEventListener("DOMContentLoaded", async function () {
     }
   });
 }); 
+

@@ -1,35 +1,35 @@
 <!doctype html>
 <html lang="en">
 <head>
-<script src="notice-client.js?v=20261014"></script>
+<script src="notice-client.js?v=20261017-unified"></script>
   <meta charset="utf-8">
   <meta name="referrer" content="no-referrer">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>LonerPay — Everyday Payments</title> 
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css?v=20261017-unified">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.105.0/dist/umd/supabase.js"></script>
 <style id="lp-auth-design-v2">
-:root{--lp-blue:#0863d8;--lp-navy:#12233e;--lp-muted:#62718a;--lp-line:#dce5f1}
-#modal{position:fixed!important;inset:0!important;z-index:21000!important;background:#f4f7fc!important;overflow-y:auto!important;align-items:flex-start!important;justify-content:center!important;padding:32px 18px!important;box-sizing:border-box!important;font-family:Arial,sans-serif!important}
-#modal>.modal-card{position:relative!important;width:100%!important;max-width:430px!important;margin:auto!important;background:#fff!important;border:1px solid var(--lp-line)!important;border-radius:26px!important;padding:30px 24px!important;box-shadow:0 12px 40px rgba(18,35,62,.06)!important;box-sizing:border-box!important;color:var(--lp-navy)!important}
+:root{--lp-blue:#936514;--lp-navy:#28251e;--lp-muted:#746c5c;--lp-line:#e5dac4}
+#modal{position:fixed!important;inset:0!important;z-index:21000!important;background:#faf8f2!important;overflow-y:auto!important;align-items:flex-start!important;justify-content:center!important;padding:32px 18px!important;box-sizing:border-box!important;font-family:Arial,sans-serif!important}
+#modal>.modal-card{position:relative!important;width:100%!important;max-width:430px!important;margin:auto!important;background:#fff!important;border:1px solid var(--lp-line)!important;border-radius:26px!important;padding:30px 24px!important;box-shadow:0 12px 40px rgba(40,37,30,.06)!important;box-sizing:border-box!important;color:var(--lp-navy)!important}
 #lpAuthBrand{display:flex;align-items:center;gap:10px;margin-bottom:34px;font-size:21px;font-weight:800;color:var(--lp-navy)}
 #lpAuthBrand span{display:grid;place-items:center;width:40px;height:40px;border-radius:13px;background:var(--lp-blue);color:#fff;font-size:25px}
 #modalTitle{font-size:28px!important;line-height:1.2!important;margin:0 0 10px!important;letter-spacing:-.7px!important;color:var(--lp-navy)!important}
 #modalText{font-size:14px!important;line-height:1.6!important;color:var(--lp-muted)!important;margin:0 0 26px!important}
-#authForm input{width:100%!important;height:54px!important;background:#f8fafd!important;border:1px solid var(--lp-line)!important;border-radius:13px!important;padding:0 15px!important;margin:0 0 13px!important;font:16px Arial,sans-serif!important;color:var(--lp-navy)!important;box-sizing:border-box!important}
-#authForm input:focus{outline:2px solid #0863d8!important;outline-offset:2px!important;background:#fff!important}
+#authForm input{width:100%!important;height:54px!important;background:#fffdf8!important;border:1px solid var(--lp-line)!important;border-radius:13px!important;padding:0 15px!important;margin:0 0 13px!important;font:16px Arial,sans-serif!important;color:var(--lp-navy)!important;box-sizing:border-box!important}
+#authForm input:focus{outline:2px solid #936514!important;outline-offset:2px!important;background:#fff!important}
 #authForm button,#biometricModal button{width:100%!important;min-height:52px!important;border-radius:13px!important;padding:13px 16px!important;font:700 14px Arial,sans-serif!important;cursor:pointer!important;box-sizing:border-box!important}
-#authForm button[type=submit],#enableBiometricButton{background:var(--lp-blue)!important;border:1px solid var(--lp-blue)!important;color:#fff!important;box-shadow:0 5px 12px rgba(8,99,216,.12)!important}
+#authForm button[type=submit],#enableBiometricButton{background:var(--lp-blue)!important;border:1px solid var(--lp-blue)!important;color:#fff!important;box-shadow:0 5px 12px rgba(147,101,20,.12)!important}
 #authForm button:disabled,#biometricModal button:disabled{opacity:.65!important;cursor:wait!important}
 #passkeyLoginButton,#skipBiometricButton{background:#fff!important;border:1px solid var(--lp-line)!important;color:var(--lp-blue)!important}
 #passkeyHelp{font-size:12px!important;color:var(--lp-muted)!important;line-height:1.5!important;text-align:center!important;opacity:1!important}
-#modal>.modal-card>.close{position:absolute!important;top:22px!important;right:20px!important;width:36px!important;height:36px!important;border:0!important;border-radius:50%!important;background:#f0f4f9!important;color:var(--lp-muted)!important;font-size:24px!important}
-#biometricModal{position:fixed!important;inset:0!important;z-index:22000!important;background:#f4f7fc!important;overflow:auto!important;align-items:center!important;justify-content:center!important;padding:24px 18px!important;box-sizing:border-box!important;font-family:Arial,sans-serif!important}
-#biometricModal>.modal-card{width:100%!important;max-width:400px!important;padding:32px 24px!important;border-radius:26px!important;background:#fff!important;border:1px solid var(--lp-line)!important;box-sizing:border-box!important;color:var(--lp-navy)!important;box-shadow:0 12px 40px rgba(18,35,62,.06)!important}
+#modal>.modal-card>.close{position:absolute!important;top:22px!important;right:20px!important;width:36px!important;height:36px!important;border:0!important;border-radius:50%!important;background:#f3ecd9!important;color:var(--lp-muted)!important;font-size:24px!important}
+#biometricModal{position:fixed!important;inset:0!important;z-index:22000!important;background:#faf8f2!important;overflow:auto!important;align-items:center!important;justify-content:center!important;padding:24px 18px!important;box-sizing:border-box!important;font-family:Arial,sans-serif!important}
+#biometricModal>.modal-card{width:100%!important;max-width:400px!important;padding:32px 24px!important;border-radius:26px!important;background:#fff!important;border:1px solid var(--lp-line)!important;box-sizing:border-box!important;color:var(--lp-navy)!important;box-shadow:0 12px 40px rgba(40,37,30,.06)!important}
 #biometricModal h2{font-size:25px!important;letter-spacing:-.5px!important;margin:22px 0 12px!important}
 #biometricModal p{font-size:14px!important;color:var(--lp-muted)!important;line-height:1.6!important}
-#biometricModal .lp-fingerprint{width:74px;height:74px;padding:16px;box-sizing:border-box;border-radius:23px;background:#edf5ff;color:var(--lp-blue);margin:auto}
-#lpWelcomeBack{background:#f4f7fc!important;padding:24px 20px!important;z-index:20000!important}
+#biometricModal .lp-fingerprint{width:74px;height:74px;padding:16px;box-sizing:border-box;border-radius:23px;background:#f3ecd9;color:var(--lp-blue);margin:auto}
+#lpWelcomeBack{background:#faf8f2!important;padding:24px 20px!important;z-index:20000!important}
 #lpWelcomeBack>div{max-width:390px!important}
 #lpWelcomeBack>div>div:first-child{width:58px!important;height:58px!important;border-radius:19px!important;font-size:30px!important;margin-bottom:23px!important}
 #lpWelcomeTitle{font-size:28px!important;letter-spacing:-.6px!important;line-height:1.25!important;margin-top:20px!important}
@@ -38,15 +38,15 @@
 #lpWelcomeError:empty{display:none!important}
 #lpWelcomeError{padding:10px!important;background:#fff1f0!important;border-radius:10px!important}
 #lpWelcomeSwitch{margin-top:8px!important;font-size:12px!important}
-#lpAuthGateway{position:fixed;inset:0;z-index:19000;display:flex;align-items:center;justify-content:center;overflow:auto;padding:24px;background:radial-gradient(circle at 85% 10%,rgba(0,207,143,.18),transparent 32%),linear-gradient(155deg,#061a35 0%,#07346e 58%,#0874db 100%);font-family:Arial,sans-serif}
+#lpAuthGateway{position:fixed;inset:0;z-index:19000;display:flex;align-items:center;justify-content:center;overflow:auto;padding:24px;background:radial-gradient(circle at 85% 10%,rgba(208,163,77,.18),transparent 32%),linear-gradient(155deg,#211d16 0%,#4c3b20 58%,#936514 100%);font-family:Arial,sans-serif}
 .lp-gateway-card{width:100%;max-width:430px;min-height:610px;display:flex;flex-direction:column;color:#fff;padding:22px 8px 12px;box-sizing:border-box}
-.lp-gateway-brand{display:flex;align-items:center;gap:11px;font-size:21px;font-weight:800;letter-spacing:-.3px}.lp-gateway-mark{width:44px;height:44px;display:grid;place-items:center;border-radius:15px;background:linear-gradient(145deg,#02d391,#00a96f);box-shadow:0 10px 28px rgba(0,0,0,.2);font-size:25px}
-.lp-gateway-visual{margin:auto 0 30px;padding-top:44px}.lp-gateway-kicker{display:inline-flex;align-items:center;gap:7px;padding:7px 11px;border:1px solid rgba(255,255,255,.18);border-radius:999px;background:rgba(255,255,255,.08);font-size:11px;font-weight:800;letter-spacing:.7px}.lp-gateway-visual h1{font-size:42px;line-height:1.05;letter-spacing:-1.6px;margin:18px 0 14px;max-width:360px}.lp-gateway-visual p{font-size:15px;line-height:1.65;color:#d8e8fb;max-width:350px;margin:0}.lp-gateway-trust{display:flex;gap:15px;margin-top:24px;color:#d8e8fb;font-size:12px}.lp-gateway-trust span{display:flex;align-items:center;gap:6px}.lp-gateway-dot{width:7px;height:7px;border-radius:50%;background:#14dda0;box-shadow:0 0 0 4px rgba(20,221,160,.13)}
-.lp-gateway-actions{background:#fff;color:var(--lp-navy);border-radius:24px;padding:18px;box-shadow:0 18px 50px rgba(1,15,35,.3)}.lp-gateway-actions button{width:100%;min-height:54px;border-radius:14px;font-size:15px;font-weight:800;cursor:pointer}.lp-gateway-primary{border:0;background:#0863d8;color:#fff;box-shadow:0 8px 20px rgba(8,99,216,.22)}.lp-gateway-secondary{margin-top:10px;border:1px solid #d8e2ef;background:#fff;color:#12345b}.lp-gateway-legal{text-align:center;color:#77869a;font-size:10.5px;line-height:1.5;margin:13px 8px 0}
+.lp-gateway-brand{display:flex;align-items:center;gap:11px;font-size:21px;font-weight:800;letter-spacing:-.3px}.lp-gateway-mark{width:44px;height:44px;display:grid;place-items:center;border-radius:15px;background:linear-gradient(145deg,#eed397,#b5862f);box-shadow:0 10px 28px rgba(0,0,0,.2);font-size:25px}
+.lp-gateway-visual{margin:auto 0 30px;padding-top:44px}.lp-gateway-kicker{display:inline-flex;align-items:center;gap:7px;padding:7px 11px;border:1px solid rgba(255,255,255,.18);border-radius:999px;background:rgba(255,255,255,.08);font-size:11px;font-weight:800;letter-spacing:.7px}.lp-gateway-visual h1{font-size:42px;line-height:1.05;letter-spacing:-1.6px;margin:18px 0 14px;max-width:360px}.lp-gateway-visual p{font-size:15px;line-height:1.65;color:#f0e1bf;max-width:350px;margin:0}.lp-gateway-trust{display:flex;gap:15px;margin-top:24px;color:#f0e1bf;font-size:12px}.lp-gateway-trust span{display:flex;align-items:center;gap:6px}.lp-gateway-dot{width:7px;height:7px;border-radius:50%;background:#eed397;box-shadow:0 0 0 4px rgba(238,211,151,.13)}
+.lp-gateway-actions{background:#fff;color:var(--lp-navy);border-radius:24px;padding:18px;box-shadow:0 18px 50px rgba(40,37,30,.3)}.lp-gateway-actions button{width:100%;min-height:54px;border-radius:14px;font-size:15px;font-weight:800;cursor:pointer}.lp-gateway-primary{border:0;background:#936514;color:#fff;box-shadow:0 8px 20px rgba(147,101,20,.22)}.lp-gateway-secondary{margin-top:10px;border:1px solid #e5dac4;background:#fff;color:#45371f}.lp-gateway-legal{text-align:center;color:#746c5c;font-size:10.5px;line-height:1.5;margin:13px 8px 0}
 #authStatus{display:none;margin:0 0 13px;padding:11px 12px;border-radius:11px;background:#fff1f0;color:#b42318;font-size:12.5px;line-height:1.45}
 #authModeSwitch{text-align:center;color:var(--lp-muted);font-size:13px;margin:17px 0 0}#authModeSwitch button,#forgotPasswordButton{border:0;background:transparent;color:var(--lp-blue);font-weight:800;cursor:pointer;padding:5px}
 #forgotPasswordButton{display:block;margin:-5px 0 10px auto;font-size:12px}
-.lp-auth-step{display:flex;align-items:center;gap:7px;margin:-12px 0 20px}.lp-auth-step span{height:4px;flex:1;border-radius:99px;background:#e3eaf3}.lp-auth-step span.active{background:#0863d8}
+.lp-auth-step{display:flex;align-items:center;gap:7px;margin:-12px 0 20px}.lp-auth-step span{height:4px;flex:1;border-radius:99px;background:#e5dac4}.lp-auth-step span.active{background:#936514}
 @media(max-width:480px){#modal{padding:28px 22px!important}#modal>.modal-card{border:0!important;background:transparent!important;box-shadow:none!important;padding:22px 0!important;max-width:390px!important;margin:0 auto!important}#modal>.modal-card>.close{top:22px!important;right:0!important}#lpAuthBrand{margin-bottom:48px}#biometricModal>.modal-card{border:0!important;box-shadow:none!important;background:transparent!important;padding:24px 8px!important}}
 </style>
 <script id="lp-auth-copy-v2">
@@ -101,11 +101,11 @@ document.addEventListener('DOMContentLoaded',function(){
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"Organization","name":"LonerPay","url":"https://lonerpay.com/","description":"An online platform for everyday payments in Nigeria.","email":"support@lonerpay.com","contactPoint":{"@type":"ContactPoint","contactType":"customer support","email":"support@lonerpay.com","availableLanguage":"English"},"sameAs":["https://www.tiktok.com/@lonerpay"],"legalName":"LONERHUB LIMITED","logo":"https://lonerpay.com/logo.svg"}</script>
 <link rel="icon" type="image/svg+xml" href="/logo.svg?v=20261015-brand">
 <style id="lp-public-business">
-.lp-public-auth{display:flex;gap:8px;align-items:center}.lp-company-strip{padding:18px 9%;background:#edf7f1;border-bottom:1px solid #d5e8dd;color:#173b2b;font-size:15px;line-height:1.6}.lp-company-strip strong,.lp-company-strip span{display:block}.lp-company-strip span{font-size:13px;color:#526b5b}.lp-public-contact p{max-width:780px;line-height:1.8;color:#475467}.lp-public-contact a{color:#0863d8;text-decoration:underline}.lp-public-contact h2{margin-bottom:22px}
+.lp-public-auth{display:flex;gap:8px;align-items:center}.lp-company-strip{padding:18px 9%;background:#f3ecd9;border-bottom:1px solid #e1d0a7;color:#45371f;font-size:15px;line-height:1.6}.lp-company-strip strong,.lp-company-strip span{display:block}.lp-company-strip span{font-size:13px;color:#746c5c}.lp-public-contact p{max-width:780px;line-height:1.8;color:#746c5c}.lp-public-contact a{color:#936514;text-decoration:underline}.lp-public-contact h2{margin-bottom:22px}
 @media(max-width:600px){.nav{padding:0 5%;height:82px}.nav .brand img{width:95px!important}.lp-public-auth button{padding:10px 13px;font-size:13px}.lp-company-strip{padding:16px 7%;font-size:14px}.hero{min-height:0}.hero h1{font-size:clamp(42px,12vw,56px)}.lead{font-size:17px}.actions{gap:17px;flex-wrap:wrap}.section{padding:55px 7%}}
 </style>
-</head>
-<body>
+<link rel="stylesheet" href="site-gold.css?v=20261017-unified"></head>
+<body class="lp-gold-site lp-gold-public">
   <header class="nav">
     <a class="brand" href="#"><img src="/logo.svg?v=20261015-brand" alt="LonerPay" width="150" height="150" style="width:130px;height:auto;display:block"></a>
     <nav>
@@ -288,6 +288,7 @@ document.addEventListener('DOMContentLoaded',function(){
     </p>
   </div>
 </div> 
-  <script src="script.js?v=20261015-confirmation"></script>
+  <script src="script.js?v=20261017-unified"></script>
 </body>
 </html>
+
