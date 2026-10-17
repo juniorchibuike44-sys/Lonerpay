@@ -200,7 +200,7 @@
         })
       });
 
-    const data =
+    let data =
       await response.json();
 
     if (
@@ -215,6 +215,16 @@
       "function"
     ) {
       await window.refreshSecureTransactions();
+    }
+
+    if (response.ok && (data.pending || String(data.code) === "099") && window.waitForSecurePayment) {
+      const confirmation = await window.waitForSecurePayment(data.request_id);
+      if (confirmation.status === "successful") data = { ...data, pending: false, code: "000", content: { transactions: { status: "delivered" } } };
+      if (confirmation.status === "refunded" || confirmation.status === "failed") {
+        const error = new Error(confirmation.status === "refunded" ? "Purchase failed. Your wallet was refunded." : "Purchase failed. Check Transactions for details.");
+        error.refunded = confirmation.status === "refunded";
+        throw error;
+      }
     }
 
     if (!response.ok) {
@@ -359,7 +369,23 @@
         try {
           const result = await purchaseData({network, phone, variationCode:selected.code, amount:selected.amount, pin:pin.value}); pin.value = "";
           const status = String(result?.content?.transactions?.status || "").toLowerCase();
-          if (result.pending || String(result.code) === "099" || status === "pending" || status === "initiated") { fail("Payment is pending confirmation. Do not pay again; check Transactions shortly."); button.disabled=false; button.textContent="Confirm Payment"; return; }
+          if (result.pending || String(result.code) === "099" || status === "pending" || status === "initiated") {
+            sheet.innerHTML = `<div class="ld-review" style="text-align:center;padding-top:38px"><h2>Awaiting Confirmation</h2><p style="color:#66768b">Your request was submitted. If the data has arrived, do not buy it again. We are waiting for the provider’s final status.</p><p style="color:#66768b">Reference: ${escapeText(result.request_id || "")}</p><button class="ld-primary ld-check" type="button">Check Status</button><button class="ld-secondary ld-done" type="button">Done</button><p class="ld-check-result" style="color:#66768b"></p></div>`;
+            sheet.querySelector(".ld-done").onclick = close;
+            sheet.querySelector(".ld-check").onclick = async event => {
+              const check = event.currentTarget; check.disabled = true; check.textContent = "Checking…";
+              const confirmation = await window.waitForSecurePayment?.(result.request_id);
+              if (!sheet.isConnected) return;
+              if (confirmation?.status === "successful") {
+                sheet.innerHTML = `<div class="ld-review" style="text-align:center;padding-top:38px"><h2>Data Purchase Successful</h2><p>${escapeText(selected.name)} was sent to ${phone}.</p><button class="ld-primary ld-done" type="button">Done</button></div>`;
+                sheet.querySelector(".ld-done").onclick = close;
+              } else {
+                sheet.querySelector(".ld-check-result").textContent = confirmation?.status === "refunded" ? "Purchase failed. Your wallet was refunded." : confirmation?.status === "failed" ? "Purchase failed. Check Transactions for details." : "Still awaiting the provider’s confirmation. You can close this screen and check Transactions later.";
+                check.disabled = false; check.textContent = "Check Status";
+              }
+            };
+            return;
+          }
           if (String(result.code) !== "000" || status !== "delivered") throw new Error("Data payment was not confirmed as delivered.");
           sheet.innerHTML = `<div class="ld-review" style="text-align:center;padding-top:38px"><div style="width:68px;height:68px;border-radius:50%;background:#e8faf2;color:#07865a;display:grid;place-items:center;margin:auto;font-size:34px">✓</div><h2>Data Purchase Successful</h2><p style="color:#66768b">${escapeText(selected.name)} was sent to ${phone}.</p><button class="ld-primary ld-done" type="button">Done</button></div>`; sheet.querySelector(".ld-done").onclick=close;
         } catch (purchaseError) { const refund = purchaseError.refunded ? " Your wallet was refunded." : purchaseError.refund_error ? ` Refund issue: ${purchaseError.refund_error}` : ""; fail((purchaseError.message || "Data payment failed.") + refund); button.disabled=false; button.textContent="Confirm Payment"; }
@@ -381,4 +407,5 @@
         purchaseData
     });
 })(); 
+
 

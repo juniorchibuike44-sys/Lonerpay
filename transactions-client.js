@@ -208,3 +208,38 @@ window.getSecureTransactionHistory = function () {
 document.addEventListener("visibilitychange", () => {
   if (!document.hidden && lastPendingReferences) refreshSecureTransactions();
 });
+
+
+// Confirm the existing purchase; this function never submits another payment.
+const secureConfirmationRequests = new Map();
+window.waitForSecurePayment = function (requestId) {
+  const token = localStorage.getItem("lonerpay_access_token");
+  if (!token || !/^\d{12}[A-Za-z0-9_-]*$/.test(String(requestId || ""))) return Promise.resolve({ status: "pending", resolved: false });
+  const key = token + ":" + requestId;
+  if (secureConfirmationRequests.has(key)) return secureConfirmationRequests.get(key);
+  const task = (async () => {
+    const deadline = Date.now() + 30000;
+    do {
+      if (localStorage.getItem("lonerpay_access_token") !== token) return { status: "pending", resolved: false };
+      const saved = window.getSecureTransactionHistory?.()?.find(t => t.request_id === requestId);
+      if (saved && ["successful", "refunded", "failed"].includes(String(saved.status).toLowerCase())) return { status: String(saved.status).toLowerCase(), resolved: true };
+      try {
+        const r = await fetch("/api/vtpass-requery", {
+          method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ request_id: requestId }), signal: AbortSignal.timeout(7000)
+        });
+        const data = await r.json();
+        if (r.ok && data.resolved && ["successful", "refunded", "failed"].includes(data.status)) {
+          Promise.resolve(window.refreshSecureTransactions?.()).catch(() => {});
+          Promise.resolve(window.refreshSecureWallet?.()).catch(() => {});
+          return data;
+        }
+      } catch (_) { /* A failed lookup is not a failed purchase. */ }
+      if (Date.now() + 3000 >= deadline) break;
+      await new Promise(resolve => setTimeout(resolve, 3000));
+    } while (Date.now() < deadline);
+    return { status: "pending", resolved: false };
+  })().finally(() => secureConfirmationRequests.delete(key));
+  secureConfirmationRequests.set(key, task);
+  return task;
+};

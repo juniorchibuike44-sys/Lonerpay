@@ -2835,11 +2835,11 @@ function openAITips() {
   
   
 </script>
-<script src="data-client.js?v=20261017-pairgate-return"></script>
+<script src="data-client.js?v=20261017-payment-confirmation"></script>
 <script src="electricity-client.js"></script>
 <script src="tv-client.js"></script>
 <script src="wallet-client.js"></script>
-<script src="transactions-client.js?v=20261017-pending-followup"></script>  
+<script src="transactions-client.js?v=20261017-payment-confirmation"></script>  
 
 <nav class="lp-bottom-nav" aria-label="Main navigation">
   <button class="lp-nav-item active" type="button" onclick="window.scrollTo({top:0,behavior:'smooth'})"><span>⌂</span>Home</button>
@@ -3226,16 +3226,41 @@ function openAITips() {
             })
           });
           pin.value = "";
-          const data = await response.json().catch(()=>({}));
+          let data = await response.json().catch(()=>({}));
           await refreshSecureState();
+          if (response.ok && (data.pending || String(data.code)==="099") && window.waitForSecurePayment) {
+            const confirmation = await window.waitForSecurePayment(data.request_id);
+            if (confirmation.status==="successful") data = {...data, pending:false, code:"000", content:{transactions:{status:"delivered"}}};
+            if (confirmation.status==="refunded" || confirmation.status==="failed") {
+              sheet.querySelector(".lp-svc-pin").disabled = true;
+              button.textContent = "Done"; button.disabled = false; button.onclick = () => overlay.remove();
+              sheet.querySelector(".lp-air-back").onclick = () => overlay.remove();
+              showInline(err,confirmation.status==="refunded" ? "Purchase failed. Your wallet was refunded." : "Purchase failed. Check Transactions for details.","info");
+              return;
+            }
+          }
           if (!response.ok) {
             const refund = data.refunded ? " Your wallet has been refunded." : (data.refund_error ? ` Refund error: ${data.refund_error}` : "");
             throw new Error((data.error || data.message || "Payment failed.") + refund);
           }
           const status = String(data?.content?.transactions?.status || "").toLowerCase();
           if (String(data.code)==="099" || status==="pending" || status==="initiated") {
-            showInline(err,"Payment is pending. Please check Recent Transactions shortly.","info");
-            button.disabled=false; button.textContent="Confirm Payment"; return;
+            showInline(err,"Request submitted. Awaiting provider confirmation. If the airtime has arrived, do not buy it again.","info");
+            sheet.querySelector(".lp-svc-pin").disabled = true;
+            const back = sheet.querySelector(".lp-air-back"); back.textContent = "Done"; back.onclick = () => overlay.remove();
+            button.disabled = false; button.textContent = "Check Status";
+            button.onclick = async () => {
+              button.disabled = true; button.textContent = "Checking...";
+              const confirmation = await window.waitForSecurePayment?.(data.request_id);
+              if (!sheet.isConnected) return;
+              if (confirmation?.status === "successful") {
+                successScreen(overlay,"Airtime Successful",a,[["Network",network],["Phone",p],["Status","Successful"]]);
+              } else {
+                showInline(err, confirmation?.status === "refunded" ? "Purchase failed. Your wallet was refunded." : confirmation?.status === "failed" ? "Purchase failed. Check Transactions for details." : "Still awaiting provider confirmation. You can check Transactions later.","info");
+                button.disabled = false; button.textContent = "Check Status";
+              }
+            };
+            return;
           }
           if (String(data.code)!=="000" || (status && status!=="delivered")) throw new Error("Airtime payment failed.");
           if (typeof recordTransaction === "function") recordTransaction("Airtime",a,`Network: ${network} | Phone: ${p}`);
