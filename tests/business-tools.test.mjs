@@ -1,0 +1,17 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import handler,{validateInvoice} from '../api/business-tools.js';
+import voice from '../api/voice-receipt.js';
+const id='12345678-1234-1234-1234-123456789abc';
+process.env.SUPABASE_URL='https://test.invalid';process.env.SUPABASE_SECRET_KEY='server-secret';
+const draft={id,business_name:'Foam shop',customer_name:'Customer',items:[{description:'Foam',quantity:2,unit_kobo:2500000}],due_date:'2026-10-20'};
+function res(){return {setHeader(){},status(n){this.code=n;return this;},json(d){this.data=d;return this;}};}
+function mock(rest){const calls=[];global.fetch=async(url,opts={})=>{calls.push({url:String(url),opts});if(String(url).endsWith('/auth/v1/user'))return new Response(JSON.stringify({id:'customer-a',email:'customer@example.com'}));return rest(String(url),opts);};return calls;}
+const req=(method,body,query={})=>({method,body,query,headers:{authorization:'Bearer session-token'}});
+test('invoice validation keeps prices in integer kobo and rejects invalid dates / amounts',()=>{const p=validateInvoice(draft);assert.equal(p.p_items[0].unit_kobo,2500000);assert.throws(()=>validateInvoice({...draft,items:[{description:'bad',quantity:1.5,unit_kobo:100}]}));assert.throws(()=>validateInvoice({...draft,due_date:'2026-02-30'}));assert.throws(()=>validateInvoice({...draft,items:[{description:'bad',quantity:9999,unit_kobo:9999999999}]}));});
+test('list scopes all records and summary to authenticated customer',async()=>{const calls=mock((url)=>new Response(JSON.stringify(url.includes('/rpc/')?{outstanding_kobo:0}:[])));const r=res();await handler(req('GET'),r);assert.equal(r.code,200);assert.ok(calls[1].url.includes('user_id=eq.customer-a'));assert.equal(JSON.parse(calls[2].opts.body).p_owner,'customer-a');});
+test('cannot read another customer invoice or its payments',async()=>{const calls=mock(()=>new Response('[]'));const r=res();await handler(req('GET',null,{id}),r);assert.equal(r.code,404);assert.equal(calls.length,2);assert.ok(calls[1].url.includes('user_id=eq.customer-a'));});
+test('forged owner and total are ignored when creating invoices',async()=>{const calls=mock(()=>new Response(JSON.stringify({id})));const r=res();await handler(req('POST',{...draft,action:'create',user_id:'victim',total_kobo:1}),r);assert.equal(r.code,200);const p=JSON.parse(calls[1].opts.body);assert.equal(p.p_owner,'customer-a');assert.equal(p.total_kobo,undefined);});
+test('repayment sends stable id and authenticated owner to atomic RPC',async()=>{const calls=mock(()=>new Response(JSON.stringify({id})));const r=res();await handler(req('POST',{action:'payment',id,payment_id:id,amount_kobo:10000,user_id:'victim'}),r);assert.equal(r.code,200);const p=JSON.parse(calls[1].opts.body);assert.equal(p.p_owner,'customer-a');assert.equal(p.p_payment,id);assert.equal(p.p_amount,10000);});
+test('anonymous access is rejected before reading records',async()=>{let called=false;global.fetch=async()=>{called=true;};const r=res();await handler({method:'GET',headers:{}},r);assert.equal(r.code,401);assert.equal(called,false);});
+test('voice endpoint preserves pending status and scopes reference lookup',async()=>{const calls=mock(()=>new Response(JSON.stringify([{request_id:id,status:'pending',amount:80,service:'data'}])));const r=res();await voice(req('GET',null,{reference:id}),r);assert.equal(r.code,200);assert.equal(r.data.transaction.status,'pending');assert.ok(calls[1].url.includes('user_id=eq.customer-a'));assert.ok(calls[1].url.includes('request_id=eq.'));});
