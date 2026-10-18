@@ -1,5 +1,6 @@
 import { enforceRateLimit, hardenResponse } from "./_security.js";
 import { pairgateMessage, pairgateRequest } from "./_pairgate.js";
+import { electricityProviderId } from "./_electricity-providers.js";
 
 const allowedProviders = new Set([
   "ikedc", "eko", "enugu", "yola", "benin", "ph",
@@ -15,7 +16,7 @@ export default async function handler(req, res) {
   const authorization = req.headers.authorization;
   const supabaseUrl = process.env.SUPABASE_URL;
   const supabaseSecretKey = process.env.SUPABASE_SECRET_KEY;
-  const providerId = String(req.body?.provider_id || req.body?.serviceID || "").trim().toLowerCase();
+  const providerId = electricityProviderId(req.body?.provider_id || req.body?.serviceID);
   const meterNumber = String(req.body?.meter_number || req.body?.billersCode || "").trim();
   const meterTypeText = String(req.body?.meter_type || req.body?.type || "").trim().toLowerCase();
   const meterType = meterTypeText === "prepaid" || meterTypeText === "1" ? 1
@@ -60,3 +61,4 @@ export default async function handler(req, res) {
     });
   }
 }
+

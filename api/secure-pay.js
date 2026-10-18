@@ -1,3 +1,4 @@
+import {electricityProviderId} from "./_electricity-providers.js";
 import {pairgateAccounting,savePairgateCost} from "./_provider-accounting.js";
 import { sharedCatalogueRequest, cataloguePlanTypes } from "./_catalogue.js";
 import { pbkdf2Sync, timingSafeEqual, randomUUID } from "node:crypto";
@@ -212,7 +213,7 @@ export default async function handler(
 
   const usesPairgate = airtimeServices.has(String(req.body?.serviceID || "")) ||
     dataServices.has(String(req.body?.serviceID || "")) ||
-    electricityServices.has(String(req.body?.serviceID || "")) ||
+    electricityServices.has(electricityProviderId(req.body?.serviceID)) ||
     tvServices.has(String(req.body?.serviceID || "")) ||
     educationServices.has(String(req.body?.serviceID || "")) ||
     epinServices.has(String(req.body?.serviceID || ""));
@@ -243,7 +244,7 @@ export default async function handler(
 
 
   const {
-    serviceID,
+    serviceID: requestedServiceID,
     billersCode,
     variation_code,
     amount,
@@ -255,6 +256,8 @@ export default async function handler(
     recipient_name
   } = req.body || {};
 
+
+  const serviceID=electricityProviderId(requestedServiceID)||requestedServiceID;
 
   const paymentAmount =
     Number(amount);
@@ -1912,5 +1915,6 @@ export default async function handler(
       });
   }
   } 
+
 
 
