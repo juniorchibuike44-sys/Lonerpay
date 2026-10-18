@@ -187,9 +187,9 @@ console.log("Paystack webhook event:", eventType);
         if(!records.length&&businessReference(refundTransaction?.reference))records=await businessDb(businessAuth,'lp_business_subscription_payments?reference=eq.'+encodeURIComponent(refundTransaction.reference)+'&limit=1');
       }
       if(records.length){
-        if(records[0].status==='pending'){if(!refundTransaction)throw Error('Refund transaction details are required');validateBusinessPayment({...refundTransaction,status:'success'},records[0]);}
+        let refundVerified=null;if(records[0].status==='pending'){if(!refundTransaction)throw Error('Refund transaction details are required');refundVerified=validateBusinessPayment({...refundTransaction,status:'success'},records[0]);}
         if(!eventData.id||eventData.domain!=='live'||eventData.currency!=='NGN'||!Number.isSafeInteger(eventData.amount)||eventData.amount<=0)throw Error('Invalid Business subscription refund');
-        await businessDb(businessAuth,'rpc/lp_business_subscription_refund','POST',{p_reference:records[0].reference,p_refund:String(eventData.id),p_amount:eventData.amount,p_provider:providerId?String(providerId):null,p_paid:refundTransaction?.paid_at||null});
+        await businessDb(businessAuth,'rpc/lp_business_subscription_refund_v2','POST',{p_reference:records[0].reference,p_refund:String(eventData.id),p_amount:eventData.amount,p_provider:providerId?String(providerId):null,p_paid:refundTransaction?.paid_at||refundTransaction?.paidAt||null,p_received:refundVerified?.p_received??null,p_fees:refundVerified?.p_fees??null});
         return res.status(200).json({received:true,business_refund:true});
       }
       return res.status(200).json({received:true,ignored:true});
@@ -685,4 +685,5 @@ console.log("Fund Wallet amount check:", {
     });
   }
         } 
+
 
