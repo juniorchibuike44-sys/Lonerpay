@@ -30,8 +30,9 @@
  const page=['sales','stock','store'].includes(key)?'business-growth.html':'business.html';
  workspace.querySelectorAll('iframe').forEach(f=>f.hidden=true);
  frame=workspace.querySelector('iframe[data-page="'+page+'"]');
- if(!frame){workspace.querySelector('.hubFrameStatus').hidden=false;frame=document.createElement('iframe');frame.dataset.page=page;frame.title='LonerPay Business Tools';frame.src=page+'?embedded=1&tool='+key;const created=frame;frame.onload=()=>{if(!created.isConnected||!workspace.isConnected||created.hidden)return;workspace.querySelector('.hubFrameStatus').hidden=true;created.contentWindow.postMessage({type:'lp-business-tool',tool:pendingTool},location.origin);};workspace.append(frame);}else{frame.hidden=false;workspace.querySelector('.hubFrameStatus').hidden=true;frame.contentWindow.postMessage({type:'lp-business-tool',tool:key},location.origin);}
+ if(!frame){workspace.querySelector('.hubFrameStatus').hidden=false;frame=document.createElement('iframe');frame.dataset.page=page;frame.title='LonerPay Business Tools';frame.src=page+'?embedded=1&v=20261018-photos&tool='+key;const created=frame;frame.onload=()=>{if(!created.isConnected||!workspace.isConnected||created.hidden)return;workspace.querySelector('.hubFrameStatus').hidden=true;created.contentWindow.postMessage({type:'lp-business-tool',tool:pendingTool},location.origin);};workspace.append(frame);}else{frame.hidden=false;workspace.querySelector('.hubFrameStatus').hidden=true;frame.contentWindow.postMessage({type:'lp-business-tool',tool:key},location.origin);}
  });back.focus();
  };
 })();
+
 
