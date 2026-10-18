@@ -1,3 +1,4 @@
+import {pairgateAccounting,savePairgateCost} from "./_provider-accounting.js";
 import { settleVtu } from "./_vtu-settle.js";
 import {
   isPairgateFailedStatus,
@@ -85,6 +86,7 @@ export default async function handler(req, res) {
               status: "successful",
               details: {
                 ...(transaction.details || {}),
+                ...(pairgateAccounting(providerResult.data,transaction.amount)||{}),
                 provider: "pairgate",
                 provider_status: providerStatus,
                 provider_reference: providerReference
@@ -94,6 +96,7 @@ export default async function handler(req, res) {
           }
         );
         if (!savedResponse.ok) throw new Error("Could not save confirmed Pairgate status");
+        try{await savePairgateCost({base:supabaseUrl,key:secretKey,requestId,providerReference,facts:pairgateAccounting(providerResult.data,transaction.amount)});}catch{console.error('Provider cost reconciliation is required',{request_id:requestId});}
         return res.status(200).json({ resolved: true, status: "successful" });
       }
 
@@ -108,7 +111,7 @@ export default async function handler(req, res) {
           })
         });
         const refund = await refundResponse.json().catch(() => null);
-        if (!refundResponse.ok) {
+        if (!refundResponse.ok || (Array.isArray(refund)?refund[0]:refund)?.success===false) {
           return res.status(500).json({ error: "Transaction failed but refund confirmation is pending" });
         }
         return res.status(200).json({ resolved: true, status: "refunded", refund });
@@ -135,7 +138,7 @@ export default async function handler(req, res) {
     const providerStatus = String(providerData?.content?.transactions?.status || "").toLowerCase();
 
     if (providerResponse.ok && code === "000" && providerStatus === "delivered") {
-      await fetch(
+      const savedResponse=await fetch(
         `${supabaseUrl}/rest/v1/wallet_transactions?user_id=eq.${encodeURIComponent(user.id)}&request_id=eq.${encodeURIComponent(requestId)}`,
         {
           method: "PATCH",
@@ -154,6 +157,7 @@ export default async function handler(req, res) {
           })
         }
       );
+      if(!savedResponse.ok)throw Error("Could not save confirmed VTpass status");
       return res.status(200).json({ resolved: true, status: "successful" });
     }
 
@@ -168,7 +172,7 @@ export default async function handler(req, res) {
         })
       });
       const refund = await refundResponse.json().catch(() => null);
-      if (!refundResponse.ok) return res.status(500).json({ error: "Transaction failed but refund confirmation is pending" });
+      if (!refundResponse.ok || (Array.isArray(refund)?refund[0]:refund)?.success===false) return res.status(500).json({ error: "Transaction failed but refund confirmation is pending" });
       return res.status(200).json({ resolved: true, status: "refunded", refund });
     }
 
@@ -177,5 +181,6 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: "Could not confirm transaction status", message: error.message });
   }
 }
+
 
 

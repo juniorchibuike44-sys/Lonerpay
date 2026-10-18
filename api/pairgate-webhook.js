@@ -1,3 +1,4 @@
+import {pairgateAccounting,savePairgateCost} from "./_provider-accounting.js";
 import crypto from "crypto";
 
 export const config = {
@@ -129,25 +130,18 @@ export default async function handler(req, res) {
       throw new Error("Supabase configuration missing");
     }
 
-    // Electricity webhooks may contain only Pairgate's reference_code. Resolve
-    // it back to LonerPay's original request_id before finalizing or refunding.
-    let matchedTransaction = null;
-    if (!event.reference && event.reference_code) {
-      const lookupUrl =
-        `${supabaseUrl}/rest/v1/wallet_transactions?select=id,user_id,request_id,details,status` +
-        `&details-%3E%3Eprovider_reference=eq.${encodeURIComponent(event.reference_code)}` +
-        `&order=created_at.desc&limit=1`;
-      const lookupResponse = await fetch(lookupUrl, {
-        headers: {
-          apikey: supabaseKey,
-          Authorization: `Bearer ${supabaseKey}`
-        }
-      });
-      if (lookupResponse.ok) {
-        const rows = await lookupResponse.json();
-        matchedTransaction = rows[0] || null;
-        if (matchedTransaction?.request_id) event.reference = matchedTransaction.request_id;
-      }
+    // Always load the original row before merging callbacks, including callbacks
+    // that already carry our request reference. Never replace saved receipt facts.
+    let matchedTransaction=null;
+    if(event.reference||event.reference_code){
+      const filter=event.reference?'request_id=eq.'+encodeURIComponent(event.reference):'details-%3E%3Eprovider_reference=eq.'+encodeURIComponent(event.reference_code);
+      const lookup=await fetch(`${supabaseUrl}/rest/v1/wallet_transactions?select=user_id,request_id,details,status,amount&transaction_type=eq.debit&${filter}&limit=1`,{headers:{apikey:supabaseKey,Authorization:`Bearer ${supabaseKey}`},cache:'no-store'});
+      if(!lookup.ok)throw Error('Original transaction lookup failed');
+      const rows=await lookup.json();matchedTransaction=rows[0]||null;
+      if(!matchedTransaction)return res.status(200).json({success:true,message:'No matching purchase'});
+      if(matchedTransaction.details?.provider!=='pairgate')return res.status(200).json({success:true,message:'Provider does not match'});
+      if(event.reference_code&&matchedTransaction.details?.provider_reference&&event.reference_code!==matchedTransaction.details.provider_reference)return res.status(200).json({success:true,message:'Provider reference does not match'});
+      event.reference=matchedTransaction.request_id;
     }
 
     if (status === "successful" && event.reference) {
@@ -163,15 +157,13 @@ export default async function handler(req, res) {
           },
           body: JSON.stringify({
             status: "successful",
-            ...(event.pin ? {
-              details: {
-                ...(matchedTransaction?.details || {}),
-                provider: "pairgate",
-                provider_reference: String(event.reference_code || ""),
-                provider_status: status,
-                purchased_code: String(event.pin)
-              }
-            } : {}),
+            details:{
+              ...(matchedTransaction?.details||{}),
+              ...(matchedTransaction?.details?.provider_cost==null?(pairgateAccounting(event,matchedTransaction?.amount)||{}):{}),
+              provider:'pairgate',provider_reference:String(event.reference_code||matchedTransaction?.details?.provider_reference||''),provider_status:status,
+              ...(event.pin?{purchased_code:String(event.pin)}:{}),
+              ...(event.plan?{plan_name:String(event.plan).slice(0,200)}:{})
+            },
             updated_at: new Date().toISOString()
           })
         }
@@ -180,9 +172,11 @@ export default async function handler(req, res) {
       if (!updateResponse.ok) {
         throw new Error("Could not finalize successful Pairgate transaction");
       }
+      try{await savePairgateCost({base:supabaseUrl,key:supabaseKey,requestId:event.reference,providerReference:String(event.reference_code||matchedTransaction?.details?.provider_reference||''),facts:pairgateAccounting(event,matchedTransaction?.amount)});}catch{console.error('Provider cost reconciliation is required',{request_id:event.reference});}
     }
 
     if (status === "failed" && event.reference) {
+      if(matchedTransaction?.status==='successful'||matchedTransaction?.status==='refunded')return res.status(200).json({success:true,message:'Purchase already finalized'});
       const transactionResponse = await fetch(
         `${supabaseUrl}/rest/v1/wallet_transactions?request_id=eq.${encodeURIComponent(
           event.reference
@@ -231,9 +225,10 @@ export default async function handler(req, res) {
         }
       );
 
-      if (!refundResponse.ok) {
+      const refundBody=await refundResponse.json().catch(()=>null);
+      if (!refundResponse.ok || (Array.isArray(refundBody)?refundBody[0]:refundBody)?.success===false) {
         const refundError =
-          await refundResponse.text();
+          JSON.stringify({success:false});
 
         console.error(
           "refund_wallet failed:",
@@ -268,3 +263,4 @@ export default async function handler(req, res) {
     });
   }
 } 
+

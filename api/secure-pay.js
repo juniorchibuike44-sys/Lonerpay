@@ -1,3 +1,4 @@
+import {pairgateAccounting,savePairgateCost} from "./_provider-accounting.js";
 import { sharedCatalogueRequest, cataloguePlanTypes } from "./_catalogue.js";
 import { pbkdf2Sync, timingSafeEqual, randomUUID } from "node:crypto";
 import { enforceRateLimit, hardenResponse } from "./_security.js";
@@ -469,28 +470,17 @@ export default async function handler(
       : data;
   }
 
+  let recordedPairgateFacts=null,recordedPairgateReference='';
   async function updateTransaction(status, providerData = {}, providerName = "vtpass") {
     if (!user?.id || !requestId) return;
     try {
-      const providerDetails = providerData?.data || {};
-      const balanceBefore = Number(providerDetails.balance_before);
-      const balanceAfter = Number(providerDetails.balance_after);
-      const balanceCharge = balanceBefore - balanceAfter;
-      const pinCost = Array.isArray(providerDetails.pins)
-        ? providerDetails.pins.reduce((sum, item) => sum + Number(item?.price || 0), 0)
-        : 0;
-      const reportedCost = Number(providerDetails.total_amount || providerDetails.unit_price || pinCost);
-      const providerCost = providerName === "pairgate" && Number.isFinite(balanceCharge) && balanceCharge > 0
-        ? balanceCharge
-        : providerName === "pairgate" && Number.isFinite(reportedCost) && reportedCost > 0
-          ? reportedCost
-        : null;
-      const grossProfit = providerCost !== null
-        ? Math.max(0, Number(paymentAmount) - providerCost)
-        : null;
+      if(providerName==='pairgate'){recordedPairgateFacts=pairgateAccounting(providerData,paymentAmount)||recordedPairgateFacts;recordedPairgateReference=String(providerData?.data?.reference_code||providerData?.reference_code||recordedPairgateReference);}
+      const facts=providerName==='pairgate'?recordedPairgateFacts:null;
+      const providerCost=facts?.provider_cost??null;
+      const grossProfit=facts?.gross_profit??null;
 
       await fetch(
-        `${supabaseUrl}/rest/v1/wallet_transactions?user_id=eq.${encodeURIComponent(user.id)}&request_id=eq.${encodeURIComponent(requestId)}`,
+        `${supabaseUrl}/rest/v1/wallet_transactions?user_id=eq.${encodeURIComponent(user.id)}&request_id=eq.${encodeURIComponent(requestId)}&status=${status==='pending'?'eq.pending':status==='successful'?'in.(pending,successful)':'in.(pending,refunded)'}`,
         {
           method: "PATCH",
           headers: {
@@ -509,7 +499,8 @@ export default async function handler(
               phone: phone || "",
               provider_code: String(providerData?.code || ""),
               provider_status: String(providerData?.content?.transactions?.status || providerData?.data?.status || ""),
-              provider_reference: String(providerData?.requestId || providerData?.request_id || providerData?.data?.reference_code || providerData?.reference_code || ""),
+              provider_reference: String(providerData?.requestId || providerData?.request_id || providerData?.data?.reference_code || providerData?.reference_code || recordedPairgateReference || ""),
+              ...(facts||{}),
               provider_cost: providerCost,
               gross_profit: grossProfit,
               sale_amount: Number(paymentAmount),
@@ -520,6 +511,9 @@ export default async function handler(
           })
         }
       );
+      if(providerName==='pairgate'&&facts){
+        try{await savePairgateCost({base:supabaseUrl,key:secretKey,requestId,providerReference:String(providerData?.data?.reference_code||providerData?.reference_code||acceptedPairgateData?.data?.reference_code||''),facts});}catch{console.error('Provider cost reconciliation is required',{request_id:requestId});}
+      }
     } catch (error) {
       console.error("TRANSACTION STATUS UPDATE ERROR:", error);
     }
@@ -1060,7 +1054,7 @@ export default async function handler(
       const denominations = pairgateEpinDenominations(available.data, network);
       if (!available.response.ok || available.data?.status !== "success" || !denominations.includes(denomination)) {
         const refund = await refundWallet("Selected recharge-card denomination is unavailable");
-        await updateTransaction("refunded", available.data, "pairgate");
+        await updateTransaction(refund.success ? "refunded" : "pending", available.data, "pairgate");
         return res.status(409).json({
           error: "This recharge-card denomination is no longer available. Refresh and try again.",
           request_id: requestId,
@@ -1082,7 +1076,7 @@ export default async function handler(
       const delivered = purchase.response.ok && purchase.data?.status === "success" && pins.length === orderQuantity;
       if (!delivered) {
         const refund = await refundWallet(pairgateMessage(purchase.data, "Pairgate rejected the recharge-card purchase"));
-        await updateTransaction("refunded", purchase.data, "pairgate");
+        await updateTransaction(refund.success ? "refunded" : "pending", purchase.data, "pairgate");
         return res.status(502).json({
           error: pairgateMessage(purchase.data, "Recharge-card purchase failed"),
           request_id: requestId,
@@ -1309,7 +1303,7 @@ export default async function handler(
 
       if (!isPairgateAccepted(purchase.response, purchase.data)) {
         const refund = await refundWallet(pairgateMessage(purchase.data, "Pairgate rejected the electricity payment"));
-        await updateTransaction("refunded", purchase.data, "pairgate");
+        await updateTransaction(refund.success ? "refunded" : "pending", purchase.data, "pairgate");
         return res.status(purchase.response.status >= 400 ? 502 : 400).json({
           error: pairgateMessage(purchase.data, "Electricity payment failed"),
           request_id: requestId,
@@ -1378,7 +1372,7 @@ export default async function handler(
 
       if (query?.response?.ok && isPairgateFailedStatus(finalStatus)) {
         const refund = await refundWallet(pairgateMessage(query.data, "Pairgate electricity transaction failed"));
-        await updateTransaction("refunded", combinedData, "pairgate");
+        await updateTransaction(refund.success ? "refunded" : "pending", combinedData, "pairgate");
         return res.status(502).json({
           error: pairgateMessage(query.data, "Electricity payment failed"),
           request_id: requestId,
@@ -1421,7 +1415,7 @@ export default async function handler(
 
       if (!isPairgateAccepted(purchase.response, purchase.data)) {
         const refund = await refundWallet(pairgateMessage(purchase.data, "Pairgate rejected the TV subscription"));
-        await updateTransaction("refunded", purchase.data, "pairgate");
+        await updateTransaction(refund.success ? "refunded" : "pending", purchase.data, "pairgate");
         return res.status(purchase.response.status >= 400 ? 502 : 400).json({
           error: pairgateMessage(purchase.data, "TV subscription failed"),
           request_id: requestId,
@@ -1485,7 +1479,7 @@ export default async function handler(
 
       if (query?.response?.ok && isPairgateFailedStatus(finalStatus)) {
         const refund = await refundWallet(pairgateMessage(query.data, "Pairgate TV transaction failed"));
-        await updateTransaction("refunded", combinedData, "pairgate");
+        await updateTransaction(refund.success ? "refunded" : "pending", combinedData, "pairgate");
         return res.status(502).json({
           error: pairgateMessage(query.data, "TV subscription failed"),
           request_id: requestId,
@@ -1526,7 +1520,7 @@ export default async function handler(
 
       if (!isPairgateAccepted(purchase.response, purchase.data)) {
         const refund = await refundWallet(pairgateMessage(purchase.data, "Pairgate rejected the education PIN purchase"));
-        await updateTransaction("refunded", purchase.data, "pairgate");
+        await updateTransaction(refund.success ? "refunded" : "pending", purchase.data, "pairgate");
         return res.status(purchase.response.status >= 400 ? 502 : 400).json({
           error: pairgateMessage(purchase.data, "Education PIN purchase failed"),
           request_id: requestId,
@@ -1585,7 +1579,7 @@ export default async function handler(
 
       if (query?.response?.ok && isPairgateFailedStatus(finalStatus)) {
         const refund = await refundWallet(pairgateMessage(query.data, "Pairgate education transaction failed"));
-        await updateTransaction("refunded", combinedData, "pairgate");
+        await updateTransaction(refund.success ? "refunded" : "pending", combinedData, "pairgate");
         return res.status(502).json({
           error: pairgateMessage(query.data, "Education PIN purchase failed"),
           request_id: requestId,
@@ -1781,7 +1775,7 @@ export default async function handler(
           "VTpass rejected the payment"
         );
 
-      await updateTransaction("refunded", vtpassData);
+      await updateTransaction(refund.success ? "refunded" : "pending", vtpassData);
 
 
       return res
@@ -1918,4 +1912,5 @@ export default async function handler(
       });
   }
   } 
+
 
