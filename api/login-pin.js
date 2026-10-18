@@ -68,7 +68,7 @@ export default async function handler(req, res) {
 
   const { action, pin, password } = req.body;
 
-  if (!['status', 'enroll', 'verify', 'forget'].includes(action)) {
+  if (!['status', 'enroll', 'attach', 'reset', 'verify', 'forget'].includes(action)) {
     return fail(400, 'Invalid login PIN action');
   }
 
@@ -97,7 +97,7 @@ export default async function handler(req, res) {
 
   async function rpc(name, body) {
     const r = await call('/rest/v1/rpc/' + name, { method: 'POST', body });
-    if (!r.ok) throw new Error('Database unavailable');
+    if (!r.ok) {const e=new Error('Database unavailable');if(['PGRST202','42883','42P01'].includes(r.data?.code))e.setup=true;throw e;}
     return r.data;
   }
 
@@ -106,21 +106,17 @@ export default async function handler(req, res) {
       .update(`login-pin:v1:${id}:${value}`)
       .digest('hex');
 
+  const accountProof=(value,userId)=>createHmac('sha256',Buffer.from(pepper,'hex')).update(`login-pin:v2:${userId}:${value}`).digest('hex');
+
   try {
     if (action === 'forget') {
-      if (current) {
-        const r = await call(
-          `/rest/v1/login_pin_devices?id=eq.${current.id}&device_hash=eq.${current.hash}`,
-          { method: 'DELETE' }
-        );
-        if (!r.ok) throw new Error('Database unavailable');
-      }
+      if(current)await rpc('forget_login_pin_device',{p_id:current.id,p_hash:current.hash});
 
       res.setHeader('Set-Cookie', cookie('', 0));
       return res.status(200).json({ success: true });
     }
 
-    if (action === 'status' || action === 'enroll') {
+    if (['status','enroll','attach','reset'].includes(action)) {
       const authorization = req.headers.authorization;
 
       if (!authorization?.startsWith('Bearer ')) {
@@ -135,41 +131,28 @@ export default async function handler(req, res) {
 
       const user = auth.data;
 
-      if (action === 'status') {
-        if (!current) {
-          return res.status(200).json({ has_pin: false });
-        }
-
-        const r = await call(
-          `/rest/v1/login_pin_devices?id=eq.${current.id}&device_hash=eq.${current.hash}&user_id=eq.${user.id}&select=expires_at`
-        );
-
-        if (!r.ok) throw new Error('Database unavailable');
-
-        return res.status(200).json({
-          has_pin: Boolean(
-            r.data?.[0] &&
-            Date.parse(r.data[0].expires_at) > Date.now()
-          )
-        });
-      }
+      const context=await rpc('login_pin_account_context',{p_user:user.id,p_id:current?.id||null,p_hash:current?.hash||null});
+      if(action==='status')return res.status(200).json({has_pin:context.has_pin===true,device_ready:context.device_ready===true,account_pin:true});
 
       if (typeof pin !== 'string' || !/^\d{6}$/.test(pin)) {
         return fail(400, 'Enter exactly six digits.');
       }
 
-      if (/^(\d)\1{5}$/.test(pin) || pin === '123456' || pin === '654321') {
+      if (action!=='attach' && (/^(\d)\1{5}$/.test(pin) || pin === '123456' || pin === '654321')) {
         return fail(400, 'Choose a less predictable six-digit PIN.');
       }
 
-      if (typeof password !== 'string' || !password || password.length > 1024) {
+      if (action!=='attach' && (typeof password !== 'string' || !password || password.length > 1024)) {
         return fail(400, 'Enter your account password to set up or reset your PIN.');
       }
+
+      if(action==='attach'&&!user.email_confirmed_at)return fail(403,'Verify your email before linking PIN login.');
 
       if (mfaEnabled(user)) {
         return fail(403, 'Use your existing multi-factor login. PIN login is not enabled for this account.');
       }
 
+      if(action!=='attach'){
       const fresh = await call('/auth/v1/token?grant_type=password', {
         method: 'POST',
         body: { email: user.email, password }
@@ -189,24 +172,25 @@ export default async function handler(req, res) {
         authorization: `Bearer ${fresh.data.access_token}`
       });
 
+      }
+
       const id = randomUUID();
       const secret = randomBytes(32).toString('hex');
 
-      await rpc('enroll_login_pin', {
-        p_id: id,
-        p_user_id: user.id,
-        p_device_hash: sha(secret),
-        p_pin_proof: proof(pin, id),
-        p_previous_id: current?.id || null,
-        p_previous_hash: current?.hash || null
+      const result=await rpc('configure_account_login_pin',{
+        p_user:user.id,p_proof:accountProof(pin,user.id),p_mode:action,p_id:id,p_hash:sha(secret),p_device_proof:proof(pin,id),
+        p_legacy:(context.legacy_ids||[]).map(previous=>({id:previous,proof:proof(pin,previous)}))
       });
+      if(result?.status==='already_set')return fail(409,'Your account already has a login PIN. Enter your existing PIN to link this device.');
+      if(result?.status==='locked')return fail(423,'Too many wrong attempts. Try again in 15 minutes, or reset your PIN after signing in with your password.');
+      if(result?.status!=='ok')return fail(401,'Login PIN is incorrect. Enter the PIN you already created.');
 
       res.setHeader('Set-Cookie', cookie(id + '.' + secret));
       return res.status(200).json({ success: true, has_pin: true });
     }
 
     if (!current) {
-      return fail(401, 'Log in with email and password to set up your login PIN on this phone.');
+      return fail(401, 'Sign in with email and password first, then enter your existing login PIN to link this device.');
     }
 
     if (typeof pin !== 'string' || !/^\d{6}$/.test(pin)) {
@@ -215,11 +199,10 @@ export default async function handler(req, res) {
 
     const lease = randomUUID();
 
-    const result = await rpc('check_login_pin', {
-      p_id: current.id,
-      p_device_hash: current.hash,
-      p_pin_proof: proof(pin, current.id),
-      p_lease_id: lease
+    const context=await rpc('login_pin_account_context',{p_user:null,p_id:current.id,p_hash:current.hash});
+    if(!context.user_id)return fail(401,'This device approval expired. Sign in with email and password, then use your existing login PIN.');
+    const result=await rpc('check_account_login_pin',{
+      p_id:current.id,p_hash:current.hash,p_account_proof:accountProof(pin,context.user_id),p_legacy_proof:proof(pin,current.id),p_lease:lease
     });
 
     if (result?.status === 'locked') {
@@ -239,7 +222,7 @@ export default async function handler(req, res) {
         401,
         result?.status === 'incorrect'
           ? 'Login PIN is incorrect.'
-          : 'Please log in with email and password and set up your PIN again.'
+          : 'Sign in with email and password, then enter your existing PIN to approve this device.'
       );
     }
 
@@ -304,8 +287,10 @@ export default async function handler(req, res) {
         // The lease expires automatically.
       }
     }
-  } catch (_) {
+  } catch (error) {
+    if(error?.setup)return fail(503,'Account login PIN update is required. Run supabase/account-login-pin.sql. Your existing PIN has not been changed.');
     // Never log PINs, passwords, cookies, or session data.
     return fail(503, 'Unable to complete PIN login right now. Please use email and password.');
   }
 } 
+

@@ -299,7 +299,7 @@ document.addEventListener("DOMContentLoaded", async function () {
 
       welcomeScreen.querySelector("#lpWelcomeSetupPin").onclick = () => {
         if (passkeyBusy || pinBusy) return;
-        forcePinSetup = true;
+        forcePinSetup = false;
         window.showModal("login");
       };
 
@@ -405,23 +405,29 @@ document.addEventListener("DOMContentLoaded", async function () {
         session.access_token
       );
     } catch (error) {
-      // Do not silently skip mandatory PIN setup. If the backend is not ready,
-      // keep the user on the login screen and show the real safe error message.
+      // Password login remains available during the additive database upgrade.
+      if(String(error?.message||'').includes('account-login-pin.sql')){
+        await window.lpNotice('You are signed in. Login PIN access is being upgraded; use email and password until it is ready. Your existing PIN has not changed.');
+        return;
+      }
       throw new Error(
         error?.message ||
         "Login PIN setup could not be loaded. Please try again."
       );
     }
 
-    if (status.has_pin && !forcePinSetup) {
+    if (status.has_pin && status.device_ready && !forcePinSetup) {
       markPinReady();
       return;
     }
 
-    if (!forcePinSetup && rememberedUser()?.pinPromptDismissed === true) {
+    if (!status.has_pin && !forcePinSetup && rememberedUser()?.pinPromptDismissed === true) {
       return;
     }
 
+    const pinMode=status.has_pin?(forcePinSetup?'reset':'attach'):'enroll';
+    const linking=pinMode==='attach';
+    const pinTitle=linking?'Use your existing login PIN':pinMode==='reset'?'Reset your login PIN':'Create your login PIN';
     await new Promise(resolve => {
       const screen = document.createElement("section");
       screen.id = "lpLoginPinSetup";
@@ -431,16 +437,16 @@ document.addEventListener("DOMContentLoaded", async function () {
       screen.innerHTML = `
         <form style="width:100%;max-width:390px;text-align:center">
           <div style="width:58px;height:58px;border-radius:19px;margin:0 auto 24px;background:#936514;color:white;font-size:30px;display:grid;place-items:center;font-weight:bold">L</div>
-          <h1 style="font-size:27px">${forcePinSetup ? "Reset your login PIN" : "Create your login PIN"}</h1>
-          <p style="color:#746c5c;font-size:14px;line-height:1.6">Choose six digits to sign in on this phone. Your payment PIN stays separate.</p>
-          <label for="lpNewLoginPin" style="display:block;text-align:left;font-size:13px;margin:20px 0 8px">New 6-digit login PIN</label>
+          <h1 style="font-size:27px">${pinTitle}</h1>
+          <p style="color:#746c5c;font-size:14px;line-height:1.6">${linking?"Enter the six-digit PIN you already created to approve this device. You do not need a new PIN.":pinMode==='reset'?"Choose a new account login PIN. Resetting it removes PIN approval from your other devices.":"Create one six-digit PIN for your LonerPay account. Use the same PIN when approving another device. Your payment PIN stays separate."}</p>
+          <label for="lpNewLoginPin" style="display:block;text-align:left;font-size:13px;margin:20px 0 8px">${linking?"Existing 6-digit login PIN":"New 6-digit login PIN"}</label>
           <input id="lpNewLoginPin" type="password" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="new-password" required>
-          <label for="lpConfirmLoginPin" style="display:block;text-align:left;font-size:13px;margin:16px 0 8px">Confirm login PIN</label>
-          <input id="lpConfirmLoginPin" type="password" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="new-password" required>
+          <label for="lpConfirmLoginPin" style="display:${linking?'none':'block'};text-align:left;font-size:13px;margin:16px 0 8px">Confirm login PIN</label>
+          <input id="lpConfirmLoginPin" ${linking?'hidden':''} type="password" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="new-password" ${linking?'':'required'}>
           <p id="lpPinSetupError" role="status" style="min-height:20px;color:#b42318;font-size:13px;line-height:1.5"></p>
-          <button type="submit" style="background:#936514;color:white;border:0;font-weight:bold">Save login PIN</button>
+          <button type="submit" style="background:#936514;color:white;border:0;font-weight:bold">${linking?"Use existing PIN":"Save login PIN"}</button>
           <button id="lpSkipLoginPin" type="button" style="background:white;color:#746c5c;border:1px solid #e5dac4;font-weight:bold;margin-top:10px">Not now — continue to dashboard</button>
-          <p style="margin-top:14px;color:#746c5c;font-size:12px;line-height:1.5">This PIN is optional and is used only for faster login on this phone. Your payment PIN stays separate.</p>
+          <p style="margin-top:14px;color:#746c5c;font-size:12px;line-height:1.5">Your account PIN stays the same until you change or reset it. A new or expired device approval may require email and password first.</p>
         </form>`;
 
       screen.querySelectorAll("input").forEach(input => {
@@ -493,7 +499,7 @@ document.addEventListener("DOMContentLoaded", async function () {
           return;
         }
 
-        if (pin.value !== confirm.value) {
+        if (!linking && pin.value !== confirm.value) {
           error.textContent = "The two PINs do not match.";
           return;
         }
@@ -505,7 +511,7 @@ document.addEventListener("DOMContentLoaded", async function () {
         try {
           await pinApi(
             {
-              action: "enroll",
+              action: pinMode,
               pin: pin.value,
               password: accountPassword
             },
@@ -520,7 +526,7 @@ document.addEventListener("DOMContentLoaded", async function () {
           confirm.value = "";
         } finally {
           button.disabled = false;
-          button.textContent = "Save login PIN";
+          button.textContent = linking?"Use existing PIN":"Save login PIN";
         }
       };
 
@@ -982,4 +988,5 @@ document.addEventListener("DOMContentLoaded", async function () {
     }
   });
 }); 
+
 
