@@ -5,7 +5,7 @@ export async function completeFinanceDetails(auth, summary) {
   const headers={apikey:auth.secretKey,Authorization:`Bearer ${auth.secretKey}`};
   async function get(path,extra={},signal=AbortSignal.timeout(8000)) {
     const r=await fetch(auth.supabaseUrl+path,{headers:{...headers,...extra},cache:'no-store',signal});
-    const body=await r.json();if(!r.ok)throw Error('Source unavailable');return {body,headers:r.headers};
+    const body=await r.json();if(!r.ok){const e=Error('Source unavailable');e.diagnostic='HTTP '+r.status+(typeof body?.code==='string'&&/^[A-Z0-9_]{2,20}$/.test(body.code)?' / '+body.code:'');throw e;}return {body,headers:r.headers};
   }
   let wallets=[],purchases=[];
   const work=[];
@@ -20,7 +20,7 @@ export async function completeFinanceDetails(auth, summary) {
       const listed=wallets.reduce((s,w)=>s+Math.round(Number(w.balance)*100),0)/100;
       data.breakdown_other_balance=Math.round((Number(data.customer_available)-listed)*100)/100;
       data.balance_snapshot_changed=data.breakdown_other_balance<0;
-    }catch{data.balance_breakdown_error='Wallet details could not be read from the connected database. Refresh to retry; no balance was changed.';}
+    }catch(e){data.balance_breakdown_error='Wallet details unavailable ('+(e.diagnostic||'network or response error')+'). Finance database update v3 is not available. Run admin-finance-details-v3.sql in the connected LonerPay database. No balance was changed.';}
   })());
   if(!Array.isArray(data.last_purchases))work.push((async()=>{
     try{
@@ -30,7 +30,7 @@ export async function completeFinanceDetails(auth, summary) {
       if(!Array.isArray(w.body)||!Array.isArray(s.body))throw Error();
       purchases=[...w.body.map(p=>({user_id:p.user_id,reference:p.request_id,service:p.service,amount:p.amount,status:p.status,date:p.created_at,bundle:p.details?.plan_name||p.details?.variation_name||p.details?.bundle||null,plan_code:p.details?.variation_code||null})),...s.body.map(p=>({user_id:p.user_id,reference:p.reference,service:'Business Tools subscription',amount:Number(p.received_kobo??p.amount_kobo)/100,status:p.status,date:p.paid_at||p.created_at,bundle:'One month'}))].sort((a,b)=>Date.parse(b.date)-Date.parse(a.date)||String(b.reference).localeCompare(String(a.reference))).slice(0,3);
       data.last_purchases=purchases;
-    }catch{data.last_purchases_error='Recent purchases could not be read from the connected database. Refresh to retry.';}
+    }catch(e){data.last_purchases_error='Purchase details unavailable ('+(e.diagnostic||'network or response error')+'). Finance database update v3 is not available.';}
   })());
   await Promise.all(work);
   const ids=[...new Set([...wallets,...purchases].map(x=>x.user_id).filter(Boolean))];

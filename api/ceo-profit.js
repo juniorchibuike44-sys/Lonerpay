@@ -26,6 +26,13 @@ async function providerBalances() {
 
 async function companyFinances(auth) {
   try {
+    // Prefer a distinctly named RPC so older saved SQL cannot silently pass as the new schema.
+    const versioned = await fetch(`${auth.supabaseUrl}/rest/v1/rpc/lp_admin_finances_v3`, {
+      method:'POST',headers:{apikey:auth.secretKey,Authorization:`Bearer ${auth.secretKey}`,'Content-Type':'application/json'},
+      body:'{}',cache:'no-store',signal:AbortSignal.timeout(15000)
+    });
+    const current=await versioned.json();
+    if(versioned.ok && current?.scope==='company' && Number(current.schema_version)===3 && Array.isArray(current.balance_breakdown) && Array.isArray(current.last_purchases))return {data:current,error:null};
     const response = await fetch(`${auth.supabaseUrl}/rest/v1/rpc/lp_admin_finances`, {
       method: 'POST', headers: {apikey: auth.secretKey, Authorization: `Bearer ${auth.secretKey}`, 'Content-Type':'application/json'},
       body: '{}', cache: 'no-store', signal: AbortSignal.timeout(15000)

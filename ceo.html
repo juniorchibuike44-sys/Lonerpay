@@ -21,7 +21,7 @@ function financeOverview(){
  if(!f)return '<div class="notice">'+esc(report.finance_error||'Company financial totals are unavailable.')+'</div>';
  const last=f.last_purchases?.[0]||f.latest_transaction;
  const lastDetail=last?esc(last.service)+' · '+money(last.amount)+' · '+esc(last.status)+'<br>'+esc(new Date(last.date).toLocaleString('en-NG',{timeZone:'Africa/Lagos'}))+'<br>'+esc(last.customer_email||'')+'<br>'+esc(last.reference):'No transactions yet';
- return '<section class="panel section" style="margin:0 0 20px"><h2>Customer money & company earnings</h2><p class="sub">All-time company totals · independent of the report period below</p><div class="metrics finance-metrics">'+
+ return '<section class="panel section" style="margin:0 0 20px"><h2>Customer money & company earnings</h2><p class="sub">All-time company totals · independent of the report period below'+(Number(f.schema_version)===3?' · Database v3 verified':'')+'</p><div class="metrics finance-metrics">'+
  '<article class="metric"><h3>Combined available wallet balances</h3><strong>'+money(Number(f.missing_balances)>0?null:f.customer_available)+'</strong><small>Sum across all wallets, including owner/testing wallets</small></article>'+
  '<article class="metric"><h3>Total profit · recorded</h3><strong>'+money(f.recorded_profit)+'</strong><small>'+(f.profit_complete?'Before operating expenses and wallet funding fees':'Incomplete: some costs are missing')+'</small></article>'+
  '<article class="metric"><h3>Latest purchase customer</h3><strong style="font-size:20px">'+esc(last?.customer_name||'No transactions yet')+'</strong><small style="line-height:1.7;overflow-wrap:anywhere">'+lastDetail+'</small></article></div>'+
