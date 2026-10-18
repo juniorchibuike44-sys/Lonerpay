@@ -1,3 +1,4 @@
+import {requireBusiness,businessAccess} from './_business-subscription.js';
 import {requireUser,hardenResponse,enforceRateLimit} from './_security.js';
 const bucket='business-products',uuid=x=>typeof x==='string'&&/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(x);
 export const config={api:{bodyParser:{sizeLimit:'3mb'}}};
@@ -14,13 +15,13 @@ export default async function handler(req,res){
  let a;
  try{
  if(req.method==='GET'){a={supabaseUrl:process.env.SUPABASE_URL,secretKey:process.env.SUPABASE_SECRET_KEY||process.env.SUPABASE_SERVICE_ROLE_KEY};if(!a.supabaseUrl||!a.secretKey)return res.status(503).json({error:'Photo unavailable'});}
- else{a=await requireUser(req,res);if(!a)return;}
+ else{a=await requireUser(req,res);if(!a)return;if(!await requireBusiness(a,res))return;}
  const headers={apikey:a.secretKey,Authorization:'Bearer '+a.secretKey};
  async function db(path,method='GET',body){const r=await fetch(a.supabaseUrl+'/rest/v1/'+path,{method,headers:{...headers,'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined,cache:'no-store',signal:AbortSignal.timeout(12000)});const data=await r.json();if(!r.ok){const e=Error(['PGRST202','PGRST204','42703'].includes(data?.code)?'Product photos need setup. Run supabase/business-product-photos.sql.':data?.code==='P0001'?String(data.message).slice(0,160):'Could not save product photo. Please retry.');e.status=data?.code==='P0001'?409:503;throw e;}return data;}
  if(req.method==='GET'){
   const id=req.query?.id;if(!uuid(id))return res.status(404).json({error:'Photo not found'});
   const rows=await db('lp_business_products?id=eq.'+id+'&active=eq.true&published=eq.true&select=id,user_id,image_path&limit=1');const p=rows[0];if(!p?.image_path||!validPath(p.image_path,p.user_id,p.id))return res.status(404).json({error:'Photo not found'});
-  const stores=await db('lp_business_stores?user_id=eq.'+p.user_id+'&published=eq.true&select=user_id&limit=1');if(!stores.length)return res.status(404).json({error:'Photo not found'});
+  const stores=await db('lp_business_stores?user_id=eq.'+p.user_id+'&published=eq.true&select=user_id&limit=1');if(!stores.length)return res.status(404).json({error:'Photo not found'});if(!(await businessAccess(a,p.user_id)).active)return res.status(404).json({error:'Photo not found'});
   const r=await fetch(a.supabaseUrl+'/storage/v1/object/authenticated/'+bucket+'/'+p.image_path,{headers,cache:'no-store',signal:AbortSignal.timeout(12000)});if(!r.ok)return res.status(404).json({error:'Photo not found'});
   const bytes=Buffer.from(await r.arrayBuffer());if(bytes.length>2097152)return res.status(503).json({error:'Photo unavailable'});
   res.setHeader('Content-Type','image/jpeg');res.setHeader('Content-Disposition','inline; filename="product.jpg"');return res.status(200).send(bytes);
@@ -42,3 +43,4 @@ export default async function handler(req,res){
  return res.status(200).json({product});
  }catch(e){return res.status(e.status||503).json({error:e.status?e.message:'Photo service is unavailable. Please retry.'});}
 }
+

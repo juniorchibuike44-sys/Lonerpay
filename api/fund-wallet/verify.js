@@ -28,6 +28,8 @@ export default async function handler(req, res) {
 
   const reference = String(req.body?.reference || "").trim();
 
+  if (reference.startsWith("LPBIZ-")) return res.status(400).json({ error: "Business subscription payments do not fund wallets" });
+
   if (!reference) {
     return res.status(400).json({
       error: "Payment reference is required"
@@ -162,3 +164,4 @@ const creditText = await creditResponse.text();
     });
   }
           } 
+

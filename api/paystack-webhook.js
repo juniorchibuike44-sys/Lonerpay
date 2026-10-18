@@ -1,3 +1,4 @@
+import {businessReference,businessDb,confirmBusinessPayment,validateBusinessPayment} from './_business-subscription.js';
 import crypto from "crypto";
 
 export const config = {
@@ -166,6 +167,33 @@ export default async function handler(req, res) {
     const eventType = event.event;
     const eventData = event.data || {};
 console.log("Paystack webhook event:", eventType); 
+
+    const businessAuth={supabaseUrl,secretKey:supabaseSecretKey};
+    if(eventType==='charge.success'&&businessReference(eventData.reference)){
+      await confirmBusinessPayment(businessAuth,eventData);
+      return res.status(200).json({received:true,business_subscription:true});
+    }
+    if(eventType==='refund.processed'){
+      const nested=eventData.transaction;
+      const providerId=typeof nested==='object'?nested?.id:nested;
+      const reference=typeof nested==='object'?nested?.reference:null;
+      let records=[];
+      if(businessReference(reference))records=await businessDb(businessAuth,'lp_business_subscription_payments?reference=eq.'+encodeURIComponent(reference)+'&limit=1');
+      else if(providerId&&/^[0-9]+$/.test(String(providerId)))records=await businessDb(businessAuth,'lp_business_subscription_payments?provider_id=eq.'+encodeURIComponent(providerId)+'&limit=1');
+      let refundTransaction=null;
+      if(providerId&&/^[0-9]+$/.test(String(providerId))&&(!records.length||records[0].status==='pending')){
+        const response=await fetch('https://api.paystack.co/transaction/'+encodeURIComponent(providerId),{headers:{Authorization:'Bearer '+paystackSecretKey},cache:'no-store',signal:AbortSignal.timeout(12000)});
+        const result=await response.json();if(!response.ok||!result.status)throw Error('Could not reconcile refund transaction');refundTransaction=result.data;
+        if(!records.length&&businessReference(refundTransaction?.reference))records=await businessDb(businessAuth,'lp_business_subscription_payments?reference=eq.'+encodeURIComponent(refundTransaction.reference)+'&limit=1');
+      }
+      if(records.length){
+        if(records[0].status==='pending'){if(!refundTransaction)throw Error('Refund transaction details are required');validateBusinessPayment({...refundTransaction,status:'success'},records[0]);}
+        if(!eventData.id||eventData.domain!=='live'||eventData.currency!=='NGN'||!Number.isSafeInteger(eventData.amount)||eventData.amount<=0)throw Error('Invalid Business subscription refund');
+        await businessDb(businessAuth,'rpc/lp_business_subscription_refund','POST',{p_reference:records[0].reference,p_refund:String(eventData.id),p_amount:eventData.amount,p_provider:providerId?String(providerId):null,p_paid:refundTransaction?.paid_at||null});
+        return res.status(200).json({received:true,business_refund:true});
+      }
+      return res.status(200).json({received:true,ignored:true});
+    }
 
     // -----------------------------------------
     // OUTBOUND BANK TRANSFERS
@@ -657,3 +685,4 @@ console.log("Fund Wallet amount check:", {
     });
   }
         } 
+

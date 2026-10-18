@@ -1,3 +1,4 @@
+import {requireBusiness,businessAccess} from './_business-subscription.js';
 import {requireUser,hardenResponse,enforceRateLimit} from './_security.js';
 export const validId=x=>typeof x==='string'&&/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(x);
 function field(x,max,required=false){if(typeof x!=='string'||x.length>max||/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(x)||(required&&!x.trim()))throw Error('Check the text fields.');return x.trim();}
@@ -15,9 +16,9 @@ export default async function handler(req,res){
  try{
  const publicRead=req.method==='GET'&&req.query?.view==='catalogue';
  if(publicRead){a={supabaseUrl:process.env.SUPABASE_URL,secretKey:process.env.SUPABASE_SECRET_KEY||process.env.SUPABASE_SERVICE_ROLE_KEY};if(!a.supabaseUrl||!a.secretKey)return res.status(503).json({error:'Store is unavailable. Please try again.'});}
- else{a=await requireUser(req,res);if(!a)return;}
+ else{a=await requireUser(req,res);if(!a)return;if(!await requireBusiness(a,res))return;}
  async function db(path,method='GET',body){const response=await fetch(a.supabaseUrl+'/rest/v1/'+path,{method,headers:{apikey:a.secretKey,Authorization:'Bearer '+a.secretKey,'Content-Type':'application/json',Prefer:'return=representation'},body:body?JSON.stringify(body):undefined,cache:'no-store',signal:AbortSignal.timeout(15000)});const data=await response.json();if(!response.ok){const missing=['PGRST202','PGRST205','42P01'].includes(data?.code);const e=Error(missing?'New Business Tools needs database setup. Run supabase/business-growth.sql.':data?.code==='P0001'?String(data.message).slice(0,180):'Could not save business records. Please refresh and try again.');e.status=missing?503:data?.code==='P0001'?409:503;throw e;}return data;}
- if(publicRead){const id=req.query?.id;if(!validId(id))return res.status(404).json({error:'Store not found'});const stores=await db('lp_business_stores?user_id=eq.'+id+'&published=eq.true&select=name,description,whatsapp&limit=1');if(!stores.length)return res.status(404).json({error:'This store is not published.'});const products=await db('lp_business_products?user_id=eq.'+id+'&published=eq.true&active=eq.true&select=*&order=name.asc,id.asc&limit=500');return res.status(200).json(publicCatalogue(stores[0],products));}
+ if(publicRead){const id=req.query?.id;if(!validId(id))return res.status(404).json({error:'Store not found'});const stores=await db('lp_business_stores?user_id=eq.'+id+'&published=eq.true&select=name,description,whatsapp&limit=1');if(!stores.length)return res.status(404).json({error:'This store is not published.'});if(!(await businessAccess(a,id)).active)return res.status(404).json({error:'This store is temporarily unavailable.'});const products=await db('lp_business_products?user_id=eq.'+id+'&published=eq.true&active=eq.true&select=*&order=name.asc,id.asc&limit=500');return res.status(200).json(publicCatalogue(stores[0],products));}
  if(req.method==='GET'){
   if(req.query?.view==='report'){let range;try{range=validateRange(req.query.from,req.query.to);}catch(e){return res.status(400).json({error:e.message});}return res.status(200).json({report:await db('rpc/lp_business_report','POST',{p_owner:a.user.id,...range})});}
   const [products,stores,moves]=await Promise.all([db('lp_business_products?user_id=eq.'+a.user.id+'&order=created_at.desc,id.asc&limit=500'),db('lp_business_stores?user_id=eq.'+a.user.id+'&limit=1'),db('lp_business_stock_moves?user_id=eq.'+a.user.id+'&order=created_at.desc,id.desc&limit=50')]);await attachPrivatePhotos(products,a);return res.status(200).json({products,store:stores[0]||null,movements:moves,store_id:a.user.id});
@@ -43,3 +44,4 @@ export async function attachPrivatePhotos(products,a){
  for(const p of products){const item=signed.find(x=>x.path===p.image_path&&!x.error);if(!item?.signedURL)continue;const url=new URL(a.supabaseUrl+'/storage/v1'+item.signedURL);if(url.origin===new URL(a.supabaseUrl).origin&&url.pathname.startsWith('/storage/v1/object/sign/business-products/'))p.image_url=url.href;}
  }catch{}
 }
+

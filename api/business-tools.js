@@ -1,3 +1,4 @@
+import {requireBusiness,businessAccess} from './_business-subscription.js';
 import {requireUser,hardenResponse,enforceRateLimit} from './_security.js';
 const validId=x=>typeof x==='string'&&/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(x);
 function text(x,max,required=false){if(typeof x!=='string'||x.length>max||(required&&!x.trim())||/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(x))throw Error('Check the invoice fields.');return x.trim();}
@@ -11,7 +12,7 @@ export function validateInvoice(d){
 export default async function handler(req,res){
  hardenResponse(res);if(!['GET','POST'].includes(req.method))return res.status(405).json({error:'Method not allowed'});
  if(!enforceRateLimit(req,res,{key:'business-tools',limit:100,windowMs:60000}))return;
- const a=await requireUser(req,res);if(!a)return;
+ const a=await requireUser(req,res);if(!a)return;if(!await requireBusiness(a,res))return;
  async function db(path,method='GET',body){const r=await fetch(a.supabaseUrl+'/rest/v1/'+path,{method,headers:{apikey:a.secretKey,Authorization:'Bearer '+a.secretKey,'Content-Type':'application/json',Prefer:'return=representation'},body:body?JSON.stringify(body):undefined,cache:'no-store'});const data=await r.json();if(!r.ok){const e=Error(['PGRST202','PGRST205','42P01'].includes(data?.code)?'Business Tools needs database setup. Run supabase/business-tools.sql.':data?.code==='P0001'?'Check the invoice reference, amount and status.':'Could not save business records. Please try again.');e.status=data?.code==='P0001'?400:503;throw e;}return data;}
  try{
  if(req.method==='GET'){
@@ -28,3 +29,4 @@ export default async function handler(req,res){
  return res.status(400).json({error:'Unknown action'});
  }catch(e){return res.status(e.status||500).json({error:e.status?e.message:'Business Tools could not load. Please try again.'});}
 }
+
