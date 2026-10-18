@@ -1,5 +1,6 @@
 import { enforceRateLimit, hardenResponse, requireUser } from "./_security.js";
 import { pairgateRequest } from "./_pairgate.js";
+import { completeFinanceDetails } from "./_admin-finance-details.js";
 
 const CEO_EMAIL = "juniorchibuike44@gmail.com";
 const money = value => value === null || value === undefined || value === "" ? null : (Number.isFinite(Number(value)) ? Math.round(Number(value) * 100) / 100 : null);
@@ -31,7 +32,7 @@ async function companyFinances(auth) {
     });
     const data = await response.json();
     if (!response.ok || data?.scope !== 'company') throw Error('Finance report unavailable');
-    return {data, error:null};
+    return {data:await completeFinanceDetails(auth,data), error:null};
   } catch {
     return {data:null, error:'Company totals are unavailable. Run supabase/admin-finances.sql and check the server credential permissions. No customer balance or profit has been estimated.'};
   }
