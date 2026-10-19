@@ -8,7 +8,7 @@ const nav=dashboard.match(/<script id="lp-view-navigation">([\s\S]*?)<\/script>/
 function setup(){
  const dom=new JSDOM('<head></head><body><div class="services"></div></body>',{url:'https://lonerpay.com/dashboard.html',runScripts:'outside-only',pretendToBeVisual:true});
  const w=dom.window;let requests=0,locations=0;
- w.fetch=()=>{requests++;throw Error('Unexpected network request');};w.navigator.geolocation={getCurrentPosition(){locations++;}};w.scrollTo=()=>{};
+ w.fetch=async(_url,options={})=>{if(options.method==='POST'){requests++;throw Error('Unexpected billable request');}return {ok:true,json:async()=>({enabled:false})};};w.navigator.geolocation={getCurrentPosition(){locations++;}};w.scrollTo=()=>{};
  const computed=w.getComputedStyle.bind(w);w.getComputedStyle=e=>{const c=computed(e);if(e.classList?.contains('lp-discovery-overlay'))return {position:'fixed',display:'flex',visibility:'visible',top:'0px',bottom:'0px'};return c;};
  w.eval(code);w.document.dispatchEvent(new w.Event('DOMContentLoaded'));w.eval(nav);w.document.dispatchEvent(new w.Event('DOMContentLoaded'));
  const flush=()=>new Promise(r=>setTimeout(r,20));
