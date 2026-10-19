@@ -96,10 +96,8 @@ export default async function handler(req, res) {
     // A single database read warms every network without calling Pairgate.
     // Snapshots are display-only; secure-pay independently verifies the price.
     if (dataServices.has(serviceID) && req.query?.snapshot === "1") {
-      const cutoff = new Date(Date.now() - 24 * 60 * 60_000).toISOString();
       const url = new URL("/rest/v1/lp_catalogue_cache", supabaseUrl);
       url.searchParams.set("select", "path,payload,saved_at");
-      url.searchParams.set("saved_at", "gte." + cutoff);
       const response = await fetch(url, { headers: { apikey: supabaseSecretKey, Authorization: `Bearer ${supabaseSecretKey}` }, signal: AbortSignal.timeout(5000) });
       if (!response.ok) return res.status(503).json({ error: "Saved data plans could not be loaded." });
       const rows = await response.json();
