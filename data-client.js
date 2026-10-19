@@ -14,6 +14,28 @@
   let catalogueCooldownUntil = 0;
   const PLAN_FRESH_MS = 10 * 60_000;
   const PLAN_DISPLAY_MS = 24 * 60 * 60_000;
+  const planKey=network=>`lonerpay_data_plans_pairgate_v3_${String(network).toLowerCase()}`;
+  function markPlans(plans,partial,refreshedTypes=[]){
+    Object.defineProperties(plans,{partial:{value:partial===true},refreshedTypes:{value:refreshedTypes}});
+    return plans;
+  }
+  function keepFullCatalogue(network,incoming,{partial,savedAt=Date.now(),refreshedTypes=[]}={}){
+    const previous=cachedDataPlans(network,PLAN_DISPLAY_MS);
+    // Only a complete response may replace the whole catalogue. Partial results
+    // refresh successful families and keep saved plans from missing families.
+    let displayed=incoming;
+    if(partial&&previous){
+      const refreshed=new Set(refreshedTypes);
+      const merged=new Map(previous.filter(p=>!p.planType||!refreshed.has(p.planType)).map(p=>[p.code,p]));
+      for(const plan of incoming)merged.set(plan.code,plan);
+      displayed=[...merged.values()].sort((a,b)=>a.amount-b.amount);
+    }
+    // Do not renew the age or downgrade the quality of a complete saved list.
+    if(!partial||!previous){
+      try{localStorage.setItem(planKey(network),JSON.stringify({savedAt,partial:partial===true,plans:displayed}));}catch(_){}
+    }
+    return markPlans(displayed,partial,refreshedTypes);
+  }
   function cachedDataPlans(network, maxAge = PLAN_FRESH_MS) {
     try {
       const cached = JSON.parse(localStorage.getItem(`lonerpay_data_plans_pairgate_v3_${String(network).toLowerCase()}`) || "null");
@@ -21,8 +43,7 @@
           Array.isArray(cached.plans) && cached.plans.length &&
           cached.plans.every(p => p.network === network && p.serviceID === serviceIDs[network] &&
             p.code && Number.isFinite(Number(p.amount)) && Number(p.amount) > 0)) {
-        Object.defineProperty(cached.plans, "partial", { value: cached.partial === true });
-        return cached.plans;
+        return markPlans(cached.plans,cached.partial);
       }
     } catch (_) {}
     return null;
@@ -45,12 +66,12 @@
           const saved = data.catalogues?.[serviceID];
           if (!saved || !Number.isFinite(saved.savedAt) || Date.now() - saved.savedAt >= PLAN_DISPLAY_MS) continue;
           const plans = (saved.variations || []).filter(p => p.code && Number.isFinite(Number(p.amount)) && Number(p.amount) > 0)
-            .map(p => ({ code: String(p.code), name: String(p.name), amount: Number(p.amount), network, serviceID }));
+            .map(p => ({ code: String(p.code), name: String(p.name), amount: Number(p.amount), planType:p.planType||null, network, serviceID }));
           if (!plans.length) continue;
-          const key = `lonerpay_data_plans_pairgate_v3_${network.toLowerCase()}`;
           try {
-            const previous = JSON.parse(localStorage.getItem(key) || "null");
-            if (!previous || previous.savedAt < saved.savedAt) localStorage.setItem(key, JSON.stringify({ savedAt: saved.savedAt, partial: true, plans }));
+            // A snapshot has no proof of complete category coverage. It must not
+            // replace a usable local catalogue merely because its timestamp is newer.
+            if(!cachedDataPlans(network,PLAN_DISPLAY_MS))keepFullCatalogue(network,plans,{partial:true,savedAt:saved.savedAt});
           } catch (_) {}
         }
         snapshotLoadedAt = Date.now();
@@ -80,6 +101,7 @@
           headers: { Authorization: `Bearer ${accessToken}` }, cache: "no-store", signal: controller.signal
         });
         const data = await response.json();
+        if(getAccessToken()!==accessToken)throw Object.assign(new Error("Please log in again."),{auth:true});
         if (response.status === 429) {
           catalogueCooldownUntil = Date.now() + Math.max(1, Number(data.retryAfter) || 60) * 1000;
         }
@@ -91,16 +113,13 @@
         const plans = (Array.isArray(data.variations) ? data.variations : [])
           .filter(item => item && item.code && Number.isFinite(Number(item.amount)) && Number(item.amount) > 0)
           .map(item => ({ code: String(item.code), name: String(item.name || "Data plan"),
-            amount: Number(item.amount), network, serviceID }));
+            amount: Number(item.amount), planType:item.planType||null, network, serviceID }));
         if (!plans.length) throw new Error("No data plans are available for this network.");
-        Object.defineProperty(plans, "partial", { value: data.partial === true });
-        {
-          try { localStorage.setItem(`lonerpay_data_plans_pairgate_v3_${String(network).toLowerCase()}`, JSON.stringify({ savedAt: Date.now(), partial: data.partial === true, plans })); } catch (_) {}
-        }
-        return plans;
+        return keepFullCatalogue(network,plans,{partial:data.partial===true,refreshedTypes:Array.isArray(data.refreshedTypes)?data.refreshedTypes:[]});
       } catch (error) {
         const fallback = !error.auth && cachedDataPlans(network, PLAN_DISPLAY_MS);
         if (fallback) return fallback;
+        if(error.auth)throw error;
         throw new Error(error.name === "AbortError" ? "Plans could not be loaded. Please try again." : error.message);
       } finally { clearTimeout(timeout); }
     })();
@@ -266,7 +285,7 @@
   }
 
   // The dashboard used to show a hard-coded MTN preview that could never
-  // complete payment. This live catalogue always uses VTpass variation codes.
+  // complete payment. This catalogue uses the provider’s saved plan IDs.
   window.buyData = function buyLiveData() {
     document.getElementById("lpLiveData")?.remove();
     const overlay = document.createElement("div");
@@ -281,7 +300,7 @@
         @media(max-width:370px){.ld-plans{grid-template-columns:1fr}.ld-network{font-size:10px}}
       </style>
       <div class="ld-sheet"><div class="ld-head"><div class="ld-handle"></div><div class="ld-top"><div><h2>Buy Data</h2><p>Live bundles from your selected network</p></div><button class="ld-close" type="button">×</button></div></div>
-      <div class="ld-body"><div class="lp-mobile-promo"><small>LONERPAY DATA</small><h3>More data.<br>More possibilities.</h3><p>Find the right bundle for your day, week or month.</p></div><span class="ld-label">Select network</span><div class="ld-networks">${Object.keys(serviceIDs).map((name,index)=>`<button class="ld-network ${index===0?"on":""}" data-network="${name}" type="button">${name}</button>`).join("")}</div><label class="ld-label" for="lpDataRecipient">Recipient phone number</label><input id="lpDataRecipient" class="ld-input ld-phone" type="tel" inputmode="numeric" maxlength="11" autocomplete="tel" placeholder="Phone number • 08012345678"><div class="ld-filters">${["All","Daily","2 Days","Weekly","Monthly","Other"].map((name,index)=>`<button class="ld-filter ${index===0?"on":""}" data-filter="${name}" type="button">${name}</button>`).join("")}</div><span class="ld-label">Available bundles</span><div class="ld-plans"><div class="ld-skeleton" role="status" aria-label="Loading data plans"><span></span><span></span><span></span><span></span></div></div></div>
+      <div class="ld-body"><div class="lp-mobile-promo"><small>LONERPAY DATA</small><h3>More data.<br>More possibilities.</h3><p>Find the right bundle for your day, week or month.</p></div><span class="ld-label">Select network</span><div class="ld-networks">${Object.keys(serviceIDs).map((name,index)=>`<button class="ld-network ${index===0?"on":""}" data-network="${name}" type="button">${name}</button>`).join("")}</div><label class="ld-label" for="lpDataRecipient">Recipient phone number</label><input id="lpDataRecipient" class="ld-input ld-phone" type="tel" inputmode="numeric" maxlength="11" autocomplete="tel" placeholder="Phone number • 08012345678"><div class="ld-filters">${["All","Daily","2 Days","Weekly","Monthly","Other"].map((name,index)=>`<button class="ld-filter ${index===0?"on":""}" data-filter="${name}" type="button">${name}</button>`).join("")}</div><span class="ld-label">Data bundles</span><div class="ld-plans"><div class="ld-skeleton" role="status" aria-label="Loading data plans"><span></span><span></span><span></span><span></span></div></div></div>
       <div class="ld-checkout"><div class="ld-summary">Select a data bundle to continue</div><button class="ld-primary ld-continue" type="button" disabled>Continue</button><div class="ld-error"></div></div></div>`;
     document.body.appendChild(overlay);
 
@@ -335,12 +354,17 @@
         }
         plans = loaded; renderPlans();
         if (loaded.partial) {
-          summary.textContent = "Some bundles could not be loaded. Tap to refresh the list.";
+          summary.textContent = "Some categories could not refresh. Saved bundles remain shown; prices are checked before payment. Tap to retry.";
           summary.style.cursor = "pointer";
           summary.onclick = () => { summary.onclick = null; load(); };
         }
       } catch (loadError) {
         if (sequence !== loadSequence || !overlay.isConnected || !grid.isConnected) return;
+        if(loadError.auth){
+          plans=[];selected=null;next.disabled=true;
+          grid.innerHTML='<div class="ld-state">Your session expired. Please sign in again to load data bundles.</div>';
+          return;
+        }
         if (plans.length) {
           summary.textContent = "Saved bundles shown. The price is checked before payment.";
           return;
@@ -412,5 +436,6 @@
         purchaseData
     });
 })(); 
+
 
 

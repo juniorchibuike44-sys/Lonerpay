@@ -118,7 +118,7 @@ export default async function handler(req, res) {
             const savedAt = Date.parse(row.saved_at);
             if (!previous || savedAt > previous.savedAt) byCode.set(code, {
               code, name: `${String(plan.name || "Data plan")} · ${Number(plan.duration || 0) || "—"} days`,
-              amount, savedAt
+              amount, planType:parsed.searchParams.get("plan_type"), savedAt
             });
           }
         }
@@ -175,7 +175,7 @@ export default async function handler(req, res) {
       if (!unique.length) return res.status(502).json({ error: failedTypes.length ? "Data plans are temporarily unavailable. Please try again shortly." : "No data bundles are currently available for this network." });
       // A successful family must not turn failed families into a cached full catalogue.
       if (!failedTypes.length) cacheSet(`plans:${network}`, unique);
-      return res.status(200).json({ serviceID, serviceName: `${network.toUpperCase()} Data`, provider: "pairgate", partial: failedTypes.length > 0, retryAfter: catalogueError?.retryAfter, variations: unique });
+      return res.status(200).json({ serviceID, serviceName: `${network.toUpperCase()} Data`, provider: "pairgate", partial: failedTypes.length > 0, refreshedTypes:planTypes.filter(type=>!failedTypes.includes(type)), failedTypes, retryAfter: catalogueError?.retryAfter, variations: unique });
     }
 
     // Get service variations from VTpass
@@ -261,4 +261,5 @@ export default async function handler(req, res) {
     });
   }
 } 
+
 
