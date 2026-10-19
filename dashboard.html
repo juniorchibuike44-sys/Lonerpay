@@ -344,8 +344,8 @@ button:active {
 @media(min-width:500px){#lpLiveData .ld-plans{grid-template-columns:repeat(3,minmax(0,1fr))}}
 </style>
 <link rel="stylesheet" href="dashboard-gold.css?v=20261017-alignment">
-<script src="dashboard-gold.js?v=20261017-highlights" defer></script>
-<script src="notifications-client.js?v=20261017-inbox" defer></script><script src="business-session.js?v=20261017-session" defer></script><script src="business-launcher.js?v=20261017-hub" defer></script><script src="business-hub.js?v=20261018-paid" defer></script><script src="voice-control.js?v=20261019-navigation" defer></script></head>
+<script src="dashboard-gold.js?v=20261019-places" defer></script>
+<script src="notifications-client.js?v=20261017-inbox" defer></script><script src="business-session.js?v=20261017-session" defer></script><script src="business-launcher.js?v=20261017-hub" defer></script><script src="business-hub.js?v=20261018-paid" defer></script><script src="voice-control.js?v=20261019-navigation" defer></script><script src="discovery-client.js?v=20261019-places" defer></script></head>
 
 <body class="lp-gold-dashboard">
 
@@ -2341,141 +2341,6 @@ overlay.remove();
 }; 
   
 } 
-  function openGiftCards() {
-  const overlay = document.createElement("div");
-
-  overlay.style.cssText = `
-    position:fixed;
-    inset:0;
-    background:rgba(0,0,0,.55);
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    z-index:9999;
-    padding:20px;
-  `;
-
-  overlay.innerHTML = `
-    <div style="
-      background:white;
-      width:100%;
-      max-width:420px;
-      border-radius:24px;
-      padding:24px;
-      box-sizing:border-box;
-    ">
-      <h2 style="margin-top:0;">🎁 Gift Cards</h2>
-      <p>Buy or sell gift cards.</p>
-
-      <label>Transaction Type</label>
-      <select id="giftAction" style="
-        width:100%;
-        padding:14px;
-        margin:8px 0 16px;
-        border-radius:10px;
-      ">
-        <option value="">Select Buy or Sell</option>
-        <option value="buy">Buy Gift Card</option>
-        <option value="sell">Sell Gift Card</option>
-      </select>
-
-      <label>Gift Card</label>
-      <select id="giftCard" style="
-        width:100%;
-        padding:14px;
-        margin:8px 0 16px;
-        border-radius:10px;
-      ">
-        <option value="">Select Gift Card</option>
-        <option value="amazon">Amazon</option>
-        <option value="apple">Apple</option>
-        <option value="google-play">Google Play</option>
-        <option value="steam">Steam</option>
-      </select>
-<label>Country / Region</label>
-<select id="giftRegion" style="
-  width:100%;
-  padding:14px;
-  margin:8px 0 16px;
-  border-radius:10px;
-">
-  <option value="">Select Country / Region</option>
-  <option value="usa">USA</option>
-  <option value="uk">United Kingdom</option>
-  <option value="canada">Canada</option>
-  <option value="europe">Europe</option>
-</select> 
-      <label>Amount</label>
-      <input id="giftAmount" type="number"
-        placeholder="Enter amount"
-        style="
-          width:100%;
-          padding:14px;
-          margin:8px 0 18px;
-          border:1px solid #ccc;
-          border-radius:10px;
-          box-sizing:border-box;
-        ">
-
-      <button id="giftContinue" style="
-        width:100%;
-        padding:15px;
-        border:0;
-        border-radius:12px;
-        background:#00c853;
-        color:white;
-        font-weight:bold;
-        font-size:16px;
-      ">Continue</button>
-
-      <button id="giftCancel" style="
-        width:100%;
-        padding:14px;
-        margin-top:8px;
-        border:0;
-        background:transparent;
-        font-size:16px;
-      ">Cancel</button>
-    </div>
-  `;
-
-  document.body.appendChild(overlay);
-
-  overlay.querySelector("#giftCancel").onclick = () => {
-    overlay.remove();
-  };
-
-  overlay.querySelector("#giftContinue").onclick = () => {
-    const action = overlay.querySelector("#giftAction").value;
-    const card = overlay.querySelector("#giftCard").value;
-    const region = overlay.querySelector("#giftRegion").value; 
-    const amount = Number(
-      overlay.querySelector("#giftAmount").value
-    );
-
-    if (!action) {
-      alert("Please select Buy or Sell.");
-      return;
-    }
-
-    if (!card) {
-      alert("Please select a gift card.");
-      return;
-    }
-if (!region) {
-  alert("Please select a Country / Region.");
-  return;
-} 
-    if (!amount || amount <= 0) {
-      alert("Please enter a valid amount.");
-      return;
-    }
-
-    alert(
-  `Gift Card\n\nType: ${action}\nCard: ${card}\nRegion: ${region}\nAmount: ${amount}`
-); 
-  };
-  } 
 document.addEventListener("DOMContentLoaded", function () {
   updateWalletDisplay();
 

@@ -12,6 +12,7 @@
     bet:'M4 4h16v4a8 8 0 0 1-16 0V4M4 6H1v3q0 4 4 4m15-7h3v3q0 4-4 4M12 16v5m-4 0h8',
     cards:'M3 5h18v14H3zM3 10h18M7 15h3',
     ai:'m12 2 2.5 7.5L22 12l-7.5 2.5L12 22l-2.5-7.5L2 12l7.5-2.5L12 2',
+    nearby:'M12 22s8-8 8-13a8 8 0 0 0-16 0c0 5 8 13 8 13M12 12a3 3 0 1 0 0-6 3 3 0 0 0 0 6',
     flight:'m21 3-7 18-3-8-8-3 18-7M11 13l5-5',
     refund:'M4 10a8 8 0 1 1 0 6M4 4v6h6',
     home:'m3 10 9-7 9 7v11h-6v-7H9v7H3V10',
@@ -24,7 +25,7 @@
     support:'M4 14v-3a8 8 0 0 1 16 0v3M4 12H2v6h4v-6H4m16 0h2v6h-4v-6h2M20 18v3h-6'
   };
   const icon=key=>`<svg class="lg-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="${paths[key]||paths.services}"/></svg>`;
-  function nameKey(name){return /airtime/i.test(name)?'airtime':/data/i.test(name)?'data':/electric/i.test(name)?'electricity':/tv|cable/i.test(name)?'tv':/education|exam/i.test(name)?'education':/bet/i.test(name)?'bet':/recharge|gift|card/i.test(name)?'cards':/transfer|send/i.test(name)?'transfer':/virtual|account/i.test(name)?'account':/flight/i.test(name)?'flight':/refund/i.test(name)?'refund':/ai|tip/i.test(name)?'ai':'services'}
+  function nameKey(name){return /nearby|places/i.test(name)?'nearby':/airtime/i.test(name)?'airtime':/data/i.test(name)?'data':/electric/i.test(name)?'electricity':/tv|cable/i.test(name)?'tv':/education|exam/i.test(name)?'education':/bet/i.test(name)?'bet':/recharge|gift|card/i.test(name)?'cards':/transfer|send/i.test(name)?'transfer':/virtual|account/i.test(name)?'account':/flight/i.test(name)?'flight':/refund/i.test(name)?'refund':/ai|tip/i.test(name)?'ai':'services'}
   function paint(){
     document.body.classList.add('lp-gold-dashboard');
     const brand=document.querySelector('.header h1');
