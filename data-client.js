@@ -13,7 +13,9 @@
   const planRequests = new Map();
   let catalogueCooldownUntil = 0;
   const PLAN_FRESH_MS = 10 * 60_000;
-  const PLAN_DISPLAY_MS = 24 * 60 * 60_000;
+  // Saved catalogues are display-only; checkout validates availability and price.
+  const PLAN_DISPLAY_MS = Infinity;
+  const memoryPlans = new Map();
   const planKey=network=>`lonerpay_data_plans_pairgate_v3_${String(network).toLowerCase()}`;
   function markPlans(plans,partial,refreshedTypes=[]){
     Object.defineProperties(plans,{partial:{value:partial===true},refreshedTypes:{value:refreshedTypes}});
@@ -30,15 +32,19 @@
       for(const plan of incoming)merged.set(plan.code,plan);
       displayed=[...merged.values()].sort((a,b)=>a.amount-b.amount);
     }
-    // Do not renew the age or downgrade the quality of a complete saved list.
-    if(!partial||!previous){
-      try{localStorage.setItem(planKey(network),JSON.stringify({savedAt,partial:partial===true,plans:displayed}));}catch(_){}
-    }
+    // Persist partial improvements too, without claiming complete coverage.
+    // Full responses replace the list, removing withdrawn plans.
+    const record = {savedAt, partial:partial===true, plans:displayed};
+    memoryPlans.set(network, record);
+    try{localStorage.setItem(planKey(network),JSON.stringify(record));}catch(_){}
     return markPlans(displayed,partial,refreshedTypes);
   }
   function cachedDataPlans(network, maxAge = PLAN_FRESH_MS) {
     try {
-      const cached = JSON.parse(localStorage.getItem(`lonerpay_data_plans_pairgate_v3_${String(network).toLowerCase()}`) || "null");
+      let cached = memoryPlans.get(network);
+      if (!cached) {
+        try { cached = JSON.parse(localStorage.getItem(planKey(network)) || "null"); } catch (_) {}
+      }
       if (cached?.savedAt && Date.now() - cached.savedAt < maxAge &&
           Array.isArray(cached.plans) && cached.plans.length &&
           cached.plans.every(p => p.network === network && p.serviceID === serviceIDs[network] &&
@@ -87,7 +93,10 @@
     if (!accessToken) return Promise.reject(new Error("Please log in again."));
     const cached = cachedDataPlans(network);
     if (cached && !cached.partial) return Promise.resolve(cached);
-    if (Date.now() < catalogueCooldownUntil) return Promise.reject(new Error("Data plans are busy. Please wait a minute before trying again."));
+    if (Date.now() < catalogueCooldownUntil) {
+      const saved = cachedDataPlans(network, PLAN_DISPLAY_MS);
+      return saved ? Promise.resolve(saved) : Promise.reject(new Error("Data plans are busy. Please wait a minute before trying again."));
+    }
     const key = accessToken + ":" + network;
     if (planRequests.has(key)) return planRequests.get(key);
     const request = (async () => {
@@ -295,7 +304,7 @@
         #lpLiveData{position:fixed;inset:0;z-index:28000;background:rgba(3,15,35,.7);display:flex;align-items:flex-end;justify-content:center;font-family:Inter,system-ui,sans-serif}
         #lpLiveData *{box-sizing:border-box}.ld-sheet{width:100%;max-width:560px;max-height:94vh;display:flex;flex-direction:column;background:#faf8f2;border-radius:28px 28px 0 0;overflow:hidden}
         .ld-head{background:linear-gradient(135deg,#2b271f,#936514);color:#fff;padding:16px 18px 19px}.ld-handle{width:44px;height:5px;border-radius:9px;background:rgba(255,255,255,.35);margin:0 auto 13px}.ld-top{display:flex;align-items:center;justify-content:space-between}.ld-top h2{margin:0;font-size:22px}.ld-top p{margin:3px 0 0;color:#ead7ab;font-size:12px}.ld-close{width:38px;height:38px;border:0;border-radius:50%;background:rgba(255,255,255,.13);color:#fff;font-size:23px}
-        .ld-body{padding:15px;overflow:auto}.ld-label{display:block;margin:2px 0 8px;color:#66768b;font-size:11px;font-weight:900;letter-spacing:.06em;text-transform:uppercase}.ld-networks{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px}.ld-network,.ld-filter{border:1px solid #dfe7f0;background:#fff;color:#536277;border-radius:13px;padding:10px 4px;font-size:11px;font-weight:850}.ld-network.on,.ld-filter.on{border-color:#936514;background:#f3ecd9;color:#0860c7}.ld-filters{display:flex;gap:7px;overflow:auto;padding:13px 0 10px;scrollbar-width:none}.ld-filter{flex:0 0 auto;border-radius:999px;padding:8px 13px}.ld-state{padding:28px 15px;text-align:center;background:#fff;border:1px dashed #cfdae8;border-radius:17px;color:#66768b;font-size:13px}.ld-plans{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.ld-plan{position:relative;min-height:103px;text-align:left;border:1px solid #dfe7f0;background:#fff;border-radius:17px;padding:13px}.ld-plan.on{border:2px solid #936514;background:#f3f8ff}.ld-plan b{display:block;color:#13253d;font-size:13px;line-height:1.35}.ld-plan strong{display:block;color:#936514;font-size:16px;margin-top:11px}.ld-checkout{border-top:1px solid #e3eaf2;background:#fff;padding:13px 15px calc(15px + env(safe-area-inset-bottom))}.ld-input{width:100%;border:1px solid #d7e0eb;border-radius:13px;padding:13px 14px;outline:0}.ld-summary{min-height:17px;margin:7px 2px 10px;color:#6a788c;font-size:11px}.ld-primary{width:100%;border:0;border-radius:14px;padding:14px;background:#936514;color:#fff;font-weight:900}.ld-primary:disabled{opacity:.45}.ld-error{display:none;margin:10px 0 0;padding:10px 11px;border:1px solid #fecdd3;background:#fff1f2;color:#b42318;border-radius:12px;font-size:12px}.ld-review{padding:18px;overflow:auto}.ld-card{background:#fff;border:1px solid #e1e8f0;border-radius:18px;padding:6px 14px}.ld-row{display:flex;justify-content:space-between;gap:15px;padding:11px 0;border-bottom:1px solid #ebf0f5;font-size:13px}.ld-row:last-child{border:0}.ld-pin{margin-top:15px;text-align:center;letter-spacing:9px;font-size:19px}.ld-secondary{width:100%;border:0;background:transparent;padding:13px;color:#536277;font-weight:800}
+        .ld-body{padding:15px;overflow:auto}.ld-label{display:block;margin:2px 0 8px;color:#66768b;font-size:11px;font-weight:900;letter-spacing:.06em;text-transform:uppercase}.ld-networks{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px}.ld-network,.ld-filter{border:1px solid #dfe7f0;background:#fff;color:#536277;border-radius:13px;padding:10px 4px;font-size:11px;font-weight:850}.ld-network.on,.ld-filter.on{border-color:#936514;background:#f3ecd9;color:#0860c7}.ld-filters{display:flex;gap:7px;overflow:auto;padding:13px 0 10px;scrollbar-width:none}.ld-filter{flex:0 0 auto;border-radius:999px;padding:8px 13px}.ld-state{grid-column:1/-1;padding:28px 15px;text-align:center;background:#fff;border:1px dashed #cfdae8;border-radius:17px;color:#66768b;font-size:13px}.ld-plans{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.ld-plan{position:relative;min-height:103px;text-align:left;border:1px solid #dfe7f0;background:#fff;border-radius:17px;padding:13px}.ld-plan.on{border:2px solid #936514;background:#f3f8ff}.ld-plan b{display:block;color:#13253d;font-size:13px;line-height:1.35}.ld-plan strong{display:block;color:#936514;font-size:16px;margin-top:11px}.ld-checkout{border-top:1px solid #e3eaf2;background:#fff;padding:13px 15px calc(15px + env(safe-area-inset-bottom))}.ld-input{width:100%;border:1px solid #d7e0eb;border-radius:13px;padding:13px 14px;outline:0}.ld-summary{min-height:17px;margin:7px 2px 10px;color:#6a788c;font-size:11px}.ld-primary{width:100%;border:0;border-radius:14px;padding:14px;background:#936514;color:#fff;font-weight:900}.ld-primary:disabled{opacity:.45}.ld-error{display:none;margin:10px 0 0;padding:10px 11px;border:1px solid #fecdd3;background:#fff1f2;color:#b42318;border-radius:12px;font-size:12px}.ld-review{padding:18px;overflow:auto}.ld-card{background:#fff;border:1px solid #e1e8f0;border-radius:18px;padding:6px 14px}.ld-row{display:flex;justify-content:space-between;gap:15px;padding:11px 0;border-bottom:1px solid #ebf0f5;font-size:13px}.ld-row:last-child{border:0}.ld-pin{margin-top:15px;text-align:center;letter-spacing:9px;font-size:19px}.ld-secondary{width:100%;border:0;background:transparent;padding:13px;color:#536277;font-weight:800}
         .ld-skeleton{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;grid-column:1/-1}.ld-skeleton span{height:103px;border-radius:17px;background:linear-gradient(90deg,#e8dfcf,#f6f8fc,#e8dfcf);background-size:200% 100%;animation:ld-shimmer 1.2s ease-in-out infinite}@keyframes ld-shimmer{to{background-position:-200% 0}}@media(prefers-reduced-motion:reduce){.ld-skeleton span{animation:none}}
         @media(max-width:370px){.ld-plans{grid-template-columns:1fr}.ld-network{font-size:10px}}
       </style>
