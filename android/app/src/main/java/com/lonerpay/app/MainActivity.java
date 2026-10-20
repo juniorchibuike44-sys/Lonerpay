@@ -58,7 +58,11 @@ public final class MainActivity extends Activity {
             message.setText("You’re offline. Connect to Wi-Fi or mobile data, then tap Open LonerPay. Payments need an internet connection.");
             return;
         }
-        try { startActivity(new Intent(this,WebActivity.class)); finish(); }
+        // LauncherActivity requires NEW_TASK. Supplying it here avoids its internal
+        // restart while the first launcher instance is still alive.
+        Intent launch = new Intent(this, WebActivity.class);
+        launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        try { startActivity(launch); }
         catch(ActivityNotFoundException e) { message.setText("Install or enable a compatible browser, then try again."); }
     }
     private int dp(int value) { return Math.round(value*getResources().getDisplayMetrics().density); }
