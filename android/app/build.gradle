@@ -1,0 +1,42 @@
+plugins { id 'com.android.application' }
+
+def signingNames = ['ANDROID_KEYSTORE_PATH','ANDROID_KEYSTORE_PASSWORD','ANDROID_KEY_ALIAS','ANDROID_KEY_PASSWORD']
+def canSign = signingNames.every { System.getenv(it) }
+android {
+    namespace 'com.lonerpay.app'
+    compileSdk 36
+    defaultConfig {
+        applicationId 'com.lonerpay.app'
+        minSdk 23
+        targetSdk 36
+        versionCode 1
+        versionName '1.0.0'
+        resValue 'string', 'app_name', 'LonerPay'
+    }
+    signingConfigs {
+        if (canSign) {
+            upload {
+                storeFile file(System.getenv('ANDROID_KEYSTORE_PATH'))
+                storePassword System.getenv('ANDROID_KEYSTORE_PASSWORD')
+                keyAlias System.getenv('ANDROID_KEY_ALIAS')
+                keyPassword System.getenv('ANDROID_KEY_PASSWORD')
+            }
+        }
+    }
+    buildTypes {
+        debug {
+            applicationIdSuffix '.debug'
+            versionNameSuffix '-test'
+            resValue 'string', 'app_name', 'LonerPay Test'
+        }
+        release {
+            minifyEnabled false
+            if (canSign) signingConfig signingConfigs.upload
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+dependencies { implementation 'com.google.androidbrowserhelper:androidbrowserhelper:2.6.2' }

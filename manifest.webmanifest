@@ -1,0 +1,16 @@
+{
+  "id": "/",
+  "name": "LonerPay",
+  "short_name": "LonerPay",
+  "description": "One app. Everyday payments.",
+  "start_url": "/index.html",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#faf8f2",
+  "theme_color": "#936514",
+  "lang": "en-NG",
+  "icons": [
+    {"src": "/icons/lonerpay-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable"},
+    {"src": "/icons/lonerpay-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable"}
+  ]
+}
