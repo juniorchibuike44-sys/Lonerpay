@@ -44,6 +44,7 @@ export default async function handler(req, res) {
         name:
           user.user_metadata?.full_name ||
           user.user_metadata?.name ||
+          [user.user_metadata?.first_name, user.user_metadata?.last_name].filter(Boolean).join(" ") ||
           "",
         phone:
           user.user_metadata?.phone ||
@@ -108,3 +109,4 @@ export default async function handler(req, res) {
     });
   }
 } 
+

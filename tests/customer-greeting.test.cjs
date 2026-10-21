@@ -1,0 +1,13 @@
+const {JSDOM}=require('jsdom'),fs=require('fs'),assert=require('node:assert/strict');
+const source=fs.readFileSync(__dirname+'/../wallet-client.js','utf8').split('function installCustomerGreeting(welcome) {')[1].split('function escapeDashboardText')[0];
+const tick=()=>new Promise(r=>setImmediate(r));
+function token(metadata){return 'x.'+Buffer.from(JSON.stringify({user_metadata:metadata})).toString('base64url')+'.x'}
+function setup(metadata,hour=9){const dom=new JSDOM('<section class="lp-welcome"><p></p><h2 id="lpCustomerName"></h2></section><button class="lp-avatar"></button>',{url:'https://lonerpay.com',runScripts:'outside-only'}),w=dom.window;w.TextDecoder=TextDecoder;w.Date=class extends Date{getHours(){return hour}};w.setInterval=()=>0;w.localStorage.setItem('lonerpay_access_token',token(metadata));let requests=[];w.fetch=(url,options)=>new Promise(resolve=>requests.push({resolve,options}));w.eval('function installCustomerGreeting(welcome) {'+source);w.installCustomerGreeting(w.document.querySelector('section'));return {w,requests};}
+(async()=>{
+ let r=setup({first_name:'Ada',last_name:'Obi'});assert.equal(r.w.document.querySelector('h2').textContent,'Ada 👋');assert.equal(r.w.document.querySelector('p').textContent,'Good morning');r.requests[0].resolve({ok:true,json:async()=>({name:'Ada Obi'})});await tick();assert.equal(r.w.document.querySelector('h2').textContent,'Ada 👋');
+ r=setup({full_name:'Élodie Nwosu'},14);assert.equal(r.w.document.querySelector('h2').textContent,'Élodie 👋');assert.equal(r.w.document.querySelector('p').textContent,'Good afternoon');
+ r=setup({},20);assert.equal(r.w.document.querySelector('h2').textContent,'Welcome back 👋');assert.equal(r.w.document.querySelector('p').textContent,'Good evening');
+ r=setup({first_name:'<img/onerror=alert(1)>'});assert.equal(r.w.document.querySelector('h2 img'),null);
+ r=setup({first_name:'Simon'});r.w.localStorage.setItem('lonerpay_access_token',token({first_name:'Amaka'}));r.w.dispatchEvent(new r.w.StorageEvent('storage',{key:'lonerpay_access_token'}));assert.equal(r.w.document.querySelector('h2').textContent,'Amaka 👋');r.requests[0].resolve({ok:true,json:async()=>({name:'Simon'})});await tick();assert.equal(r.w.document.querySelector('h2').textContent,'Amaka 👋');r.requests[1].resolve({ok:true,json:async()=>({name:'Amaka Obi'})});await tick();r.w.localStorage.removeItem('lonerpay_access_token');r.w.dispatchEvent(new r.w.StorageEvent('storage',{key:'lonerpay_access_token'}));assert.equal(r.w.document.querySelector('h2').textContent,'Welcome back 👋');
+ console.log('Greeting checks passed: registered names, Unicode, three time periods, safe text, account switch, logout.');
+})();

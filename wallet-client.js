@@ -286,10 +286,51 @@ function upgradeDashboardExperience() {
         virtualAccount.querySelector(".lp-va-badge").textContent = "Unavailable";
         virtualAccount.querySelector(".lp-va-message").innerHTML = "<strong>Account details unavailable</strong>Pull down to refresh or try again shortly.";
     });
-    if (token) fetch("/api/profile", {headers:{Authorization:`Bearer ${token}`},cache:"no-store"}).then(r => r.ok ? r.json() : null).then(data => {
-        const name = String(data?.name || data?.full_name || "").trim().split(/\s+/)[0];
-        if (name) { document.getElementById("lpCustomerName").textContent = `${name} 👋`; document.querySelector(".lp-avatar").textContent = name.slice(0,2).toUpperCase(); }
-    }).catch(() => {});
+    installCustomerGreeting(welcome);
+}
+
+// Display-only identity from the current session; the profile API remains authoritative.
+function installCustomerGreeting(welcome) {
+    let session, name = "", sequence = 0;
+    const currentToken = () => localStorage.getItem("lonerpay_access_token") || "";
+    const firstName = value => typeof value === "string" ? value.trim().split(/\s+/)[0] : "";
+    function paint() {
+        const hour = new Date().getHours();
+        welcome.querySelector("p").textContent = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
+        welcome.querySelector("#lpCustomerName").textContent = name ? `${name} 👋` : "Welcome back 👋";
+        const avatar = document.querySelector(".lp-avatar");
+        if (avatar) avatar.textContent = name ? Array.from(name).slice(0, 2).join("").toUpperCase() : "LP";
+    }
+    async function refresh(force = false) {
+        const token = currentToken();
+        if (!force && token === session) { paint(); return; }
+        const changed = token !== session;
+        session = token;
+        const request = ++sequence;
+        if (changed) {
+            name = "";
+            try {
+                const part = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+                const bytes = Uint8Array.from(atob(part.padEnd(Math.ceil(part.length / 4) * 4, "=")), ch => ch.charCodeAt(0));
+                const metadata = JSON.parse(new TextDecoder().decode(bytes)).user_metadata || {};
+                name = firstName(metadata.full_name || metadata.name || metadata.first_name);
+            } catch {}
+        }
+        paint();
+        if (!token) return;
+        try {
+            const response = await fetch("/api/profile", {headers: {Authorization: `Bearer ${token}`}, cache: "no-store"});
+            const data = response.ok ? await response.json() : null;
+            if (request !== sequence || token !== currentToken()) return;
+            if (data) { name = firstName(data.name || data.full_name || data.first_name); paint(); }
+        } catch {}
+    }
+    refresh();
+    window.addEventListener("storage", event => { if (!event.key || event.key === "lonerpay_access_token") refresh(); });
+    window.addEventListener("pageshow", () => refresh(true));
+    window.addEventListener("focus", () => refresh(true));
+    document.addEventListener("visibilitychange", () => { if (!document.hidden) refresh(true); });
+    setInterval(() => refresh(), 60_000);
 }
 
 function escapeDashboardText(value) {
@@ -314,3 +355,4 @@ if (!document.querySelector('script[data-lp-ai-tips]')) {
     aiTipsScript.dataset.lpAiTips = "true";
     document.head.appendChild(aiTipsScript);
 }
+
