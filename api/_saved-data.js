@@ -28,10 +28,10 @@ export function savedDataCatalogues(rows) {
   return catalogues;
 }
 export async function readSavedDataCatalogues() {
-  if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SECRET_KEY) throw new Error("Saved catalogue is not configured.");
+  if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SECRET_KEY) throw Object.assign(new Error("Saved catalogue is not configured."), {catalogueState:"not-configured"});
   const url = new URL("/rest/v1/lp_catalogue_cache", process.env.SUPABASE_URL);
   url.searchParams.set("select", "path,payload,saved_at");
   const response = await fetch(url, {headers:{apikey:process.env.SUPABASE_SECRET_KEY,Authorization:`Bearer ${process.env.SUPABASE_SECRET_KEY}`},signal:AbortSignal.timeout(5000)});
-  if (!response.ok) throw new Error("Saved catalogue is unavailable.");
+  if (!response.ok) throw Object.assign(new Error("Saved catalogue is unavailable."), {catalogueState:`storage-${response.status}`});
   return savedDataCatalogues(await response.json());
 }
