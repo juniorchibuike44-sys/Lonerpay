@@ -18,7 +18,7 @@
   const memoryPlans = new Map();
   const planKey=network=>`lonerpay_data_plans_pairgate_v3_${String(network).toLowerCase()}`;
   function markPlans(plans,partial,refreshedTypes=[]){
-    Object.defineProperties(plans,{partial:{value:partial===true},refreshedTypes:{value:refreshedTypes}});
+    Object.defineProperties(plans,{partial:{value:partial===true,configurable:true},refreshedTypes:{value:refreshedTypes,configurable:true}});
     return plans;
   }
   function keepFullCatalogue(network,incoming,{partial,savedAt=Date.now(),refreshedTypes=[]}={}){
@@ -136,7 +136,24 @@
     request.finally(() => planRequests.delete(key)).catch(() => {});
     return request;
   }
-  // Read saved catalogues once on dashboard entry; this sends no provider requests.
+  // This public, display-only bootstrap is delivered before this script. It
+  // contains no customer/session data and works with empty device storage.
+  const sharedSaved = window.LonerPaySavedData?.catalogues;
+  if (sharedSaved && typeof sharedSaved === "object") {
+    let seeded = 0;
+    for (const [network, serviceID] of Object.entries(serviceIDs)) {
+      const saved = sharedSaved[serviceID];
+      if (!saved || !Number.isFinite(saved.savedAt) || !Array.isArray(saved.variations)) continue;
+      const plans = saved.variations.filter(p => p && p.code && Number.isFinite(Number(p.amount)) && Number(p.amount) > 0)
+        .map(p => ({code:String(p.code),name:String(p.name || "Data plan"),amount:Number(p.amount),planType:p.planType || null,network,serviceID}));
+      if (!plans.length) continue;
+      if (!cachedDataPlans(network, PLAN_DISPLAY_MS)) keepFullCatalogue(network, plans, {partial:true,savedAt:saved.savedAt});
+      seeded++;
+    }
+    if (seeded === Object.keys(serviceIDs).length) snapshotLoadedAt = Date.now();
+  }
+  // Read saved catalogues once on dashboard entry if bootstrap was unavailable.
+  // This fallback also sends no provider requests.
   warmDataPlans();
 
   async function purchaseData({
@@ -445,6 +462,7 @@
         purchaseData
     });
 })(); 
+
 
 
 

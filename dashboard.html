@@ -2702,7 +2702,9 @@ function openAITips() {
   
   
 </script>
-<script src="data-client.js?v=20261019-persistent-catalogue"></script>
+<!-- Shared display-only bundles load before the data UI, including on a new device. -->
+<script src="/api/data-catalogue"></script>
+<script src="data-client.js?v=20261021-shared-start"></script>
 <script src="electricity-client.js?v=20261017-gold-screens"></script>
 <script src="tv-client.js?v=20261017-gold-screens"></script>
 <script src="wallet-client.js?v=20261017-gold-screens"></script>

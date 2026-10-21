@@ -1,3 +1,4 @@
+import { readSavedDataCatalogues } from "./_saved-data.js";
 import { sharedCatalogueRequest as catalogueRequest, cataloguePlanTypes } from "./_catalogue.js";
 
 const dataPlanCache = globalThis.__lonerPayDataPlanCacheV2 || new Map();
@@ -96,36 +97,7 @@ export default async function handler(req, res) {
     // A single database read warms every network without calling Pairgate.
     // Snapshots are display-only; secure-pay independently verifies the price.
     if (dataServices.has(serviceID) && req.query?.snapshot === "1") {
-      const url = new URL("/rest/v1/lp_catalogue_cache", supabaseUrl);
-      url.searchParams.set("select", "path,payload,saved_at");
-      const response = await fetch(url, { headers: { apikey: supabaseSecretKey, Authorization: `Bearer ${supabaseSecretKey}` }, signal: AbortSignal.timeout(5000) });
-      if (!response.ok) return res.status(503).json({ error: "Saved data plans could not be loaded." });
-      const rows = await response.json();
-      const catalogues = {};
-      for (const id of dataServices) {
-        const slug = id === "etisalat-data" ? "9mobile" : id.replace(/-data$/, "");
-        const byCode = new Map();
-        for (const row of rows) {
-          const parsed = new URL(row.path, "https://catalogue.invalid");
-          if (parsed.pathname !== "/data-plans" || parsed.searchParams.get("provider_id") !== slug || row.payload?.status !== "success") continue;
-          for (const plan of pairgatePlans(row.payload?.data)) {
-            const code = String(plan?.plan_id || plan?.id || "").trim();
-            const amount = Number(plan?.price || plan?.amount);
-            if (!code || !Number.isFinite(amount) || amount <= 0) continue;
-            const previous = byCode.get(code);
-            const savedAt = Date.parse(row.saved_at);
-            if (!previous || savedAt > previous.savedAt) byCode.set(code, {
-              code, name: `${String(plan.name || "Data plan")} · ${Number(plan.duration || 0) || "—"} days`,
-              amount, planType:parsed.searchParams.get("plan_type"), savedAt
-            });
-          }
-        }
-        const plans = [...byCode.values()].sort((a, b) => a.amount - b.amount);
-        if (plans.length) catalogues[id] = {
-          savedAt: Math.min(...plans.map(plan => plan.savedAt)),
-          variations: plans.map(({ savedAt, ...plan }) => plan)
-        };
-      }
+      const catalogues = await readSavedDataCatalogues();
       return res.status(200).json({ catalogues });
     }
 
@@ -259,5 +231,6 @@ export default async function handler(req, res) {
     });
   }
 } 
+
 
 
