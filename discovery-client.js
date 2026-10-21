@@ -86,12 +86,6 @@
   const initialToken=token();fetch('/api/places',{headers:{Authorization:'Bearer '+initialToken},cache:'no-store'}).then(async r=>{const d=await r.json();if(!o.isConnected||token()!==initialToken)return;if(!r.ok)throw Error(d.error||'Place search unavailable');enabled=d.enabled===true;search.disabled=locate.disabled=!enabled;status.textContent=enabled?'Enter an area or choose Use my location, then tap Find places.':'In-app place search is awaiting activation. Google Maps search still works below.';}).catch(e=>{if(o.isConnected)status.textContent=e.message||'In-app search is unavailable. Try Google Maps below.';});
   const observer=new MutationObserver(()=>{if(!o.isConnected){controller?.abort();clearTimeout(expiry);sequence++;locate.disabled=false;observer.disconnect();}});observer.observe(document.body,{childList:true});
  }
- function openGiftCards(){
-  if(window.LonerPayGiftCards)return window.LonerPayGiftCards.open();
-  const o=sheet('lpGiftCards','Gift Cards','Buy and sell — activation in progress.');
-  o.querySelector('.discovery-body').innerHTML='<div class="discovery-intro"><span class="discovery-eyebrow">SERVICE NOT ACTIVE YET</span><h3>Your gift-card hub</h3><p>Gift-card trading is being prepared. Buying and selling will open after provider access, live rates and settlement checks are ready.</p></div><section class="discovery-result"><h3>Buy gift cards</h3><p>Choose a supported brand, country and value. Review the final naira price before payment, then receive the confirmed card details.</p><span class="discovery-status">Purchases unavailable</span></section><section class="discovery-result"><h3>Sell gift cards</h3><p>Review a provider-backed offer, submit through the secure trading flow and track verification before any confirmed settlement.</p><span class="discovery-status">Sales unavailable</span></section><div class="discovery-note"><strong>Keep your card codes private</strong><p>We are not collecting gift-card codes, PINs, photos or payments here. Do not send them to support or people promising to activate this service.</p></div><button type="button" class="discovery-secondary discovery-done">Back</button>';
-  o.querySelector('.discovery-done').onclick=()=>o.remove();
- }
  function install(){
   if(document.getElementById('lpDiscoveryStyles'))return;
   const style=document.createElement('style');style.id='lpDiscoveryStyles';style.textContent=`
@@ -99,14 +93,14 @@
   .places-location-row{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}.places-location-row button,.places-photo button{background:white;border:1px solid #decda8;border-radius:11px;color:#795519;padding:10px 13px;cursor:pointer}.places-links{display:flex;gap:9px;flex-wrap:wrap;margin:15px 0}.places-links a{color:#795519;border:1px solid #e3d5b8;padding:8px 11px;border-radius:10px;text-decoration:none;font-size:12px}.places-card details{font-size:12px;margin:12px 0}.places-card details p{font-size:12px;margin:3px 0}.places-card .places-meta{font-size:12px;color:#6c604c}.places-photo{margin:15px 0 0}.places-photo>img{display:block;width:100%;max-height:230px;object-fit:cover;border-radius:12px}.places-authors{display:flex;align-items:center;flex-wrap:wrap;gap:8px;font-size:11px;margin:10px 0}.places-authors span{display:inline-flex;align-items:center;gap:5px}.places-authors a{color:#5e5e5e}.places-authors img{border-radius:50%;object-fit:cover}.places-attribution{font-family:Arial,sans-serif!important;font-style:normal;font-weight:400!important;font-size:14px!important;letter-spacing:normal;white-space:nowrap;color:#5e5e5e!important;margin:16px 0!important}#lpPlacesStatus{font-size:13px;line-height:1.6;color:#6e5937;min-height:22px}.discovery-body button:disabled{opacity:.55;cursor:wait}
   `;document.head.append(style);
   const services=document.querySelector('.services');if(!services)return;
-  for(const [id,name,description,fn] of [['lpGiftCardsService','Gift Cards','Buy & sell · not active',openGiftCards],['lpNearbyService','Nearby Places','Hotels, food & shops',openNearbyPlaces]]){
+  for(const [id,name,description,fn] of [['lpNearbyService','Nearby Places','Hotels, food & shops',openNearbyPlaces]]){
    if(document.getElementById(id))continue;
    const card=document.createElement('div');card.id=id;card.className='service';card.setAttribute('role','button');card.tabIndex=0;
-   card.innerHTML='<div aria-hidden="true">'+(id==='lpGiftCardsService'?'🎁':'⌖')+'</div><h3>'+name+'</h3><p>'+description+'</p>';card.onclick=fn;card.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();card.click();}};services.append(card);
+   card.innerHTML='<div aria-hidden="true">'+'⌖'+'</div><h3>'+name+'</h3><p>'+description+'</p>';card.onclick=fn;card.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();card.click();}};services.append(card);
   }
  }
- window.openGiftCards=openGiftCards;window.openNearbyPlaces=openNearbyPlaces;
- window.LonerPayDiscovery=Object.freeze({openGiftCards,openNearbyPlaces});
+ window.openNearbyPlaces=openNearbyPlaces;
+ window.LonerPayDiscovery=Object.freeze({openNearbyPlaces});
  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});else install();
 })();
 
