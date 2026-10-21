@@ -1,0 +1,10 @@
+const fs=require('fs'),assert=require('node:assert/strict'),{JSDOM}=require('jsdom');
+const src=fs.readFileSync(__dirname+'/../script.js','utf8');const fn=src.slice(src.indexOf('  function goToDashboard() {'),src.indexOf('  function saveSession('));
+function setup(reduced=false){const dom=new JSDOM('<body><form><input name="password" value="secret"></form></body>',{url:'https://lonerpay.com'});const {document,localStorage}=dom.window;localStorage.setItem('lonerpay_access_token','a');let timers=[],destinations=[];const fakeWindow={location:{replace:u=>destinations.push(u)},matchMedia:()=>({matches:reduced})};const go=new Function('document','localStorage','window','form','setTimeout',fn+';return goToDashboard;')(document,localStorage,fakeWindow,document.querySelector('form'),(f,ms)=>timers.push({f,ms}));return {go,document,localStorage,timers,destinations};}
+let r=setup();r.go();assert.ok(r.document.querySelector('#lpSigninWelcome'));assert.match(r.document.body.textContent,/Welcome to LonerPay/);assert.equal(r.document.querySelector('input').value,'');assert.equal(r.destinations.length,0);assert.equal(r.timers[0].ms,1800);assert.equal(r.document.querySelector('form').inert,true);r.go();assert.equal(r.timers.length,1);r.timers[0].f();assert.deepEqual(r.destinations,['dashboard.html']);
+r=setup(true);r.go();assert.equal(r.timers[0].ms,700);
+r=setup();r.localStorage.removeItem('lonerpay_access_token');r.go();assert.equal(r.timers.length,0);
+r=setup();r.go();r.localStorage.setItem('lonerpay_explicit_logout','1');r.timers[0].f();assert.equal(r.destinations.length,0);assert.equal(r.document.querySelector('#lpSigninWelcome'),null);assert.notEqual(r.document.querySelector('form').inert,true);
+r=setup();r.go();r.localStorage.setItem('lonerpay_access_token','b');r.timers[0].f();assert.equal(r.destinations.length,0);
+assert.equal((src.match(/location\.replace\("dashboard.html"\)/g)||[]).length,1);
+console.log('Welcome checks passed: delayed redirect, repeat guard, cleared password, focus isolation, reduced motion, missing session, logout and account change.');
