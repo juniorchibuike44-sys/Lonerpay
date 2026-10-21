@@ -120,6 +120,7 @@ document.addEventListener("DOMContentLoaded", async function () {
         <div class="lp-intro-mark" aria-hidden="true">L</div>
         <p class="lp-intro-eyebrow">Simple. Secure. Everyday.</p>
         <h1 id="lpSigninWelcomeTitle">Welcome to LonerPay</h1>
+        <p id="lpSigninWelcomeName" style="margin:0 0 18px;font-size:22px;font-weight:700;line-height:1.4;overflow-wrap:anywhere;" hidden></p>
         <p class="lp-intro-tagline">One app. Everyday payments.</p>
         <div class="lp-intro-progress" aria-hidden="true"></div>
         <p class="lp-intro-status" role="status">Opening your dashboard…</p>
@@ -129,6 +130,23 @@ document.addEventListener("DOMContentLoaded", async function () {
     previous.forEach(([node]) => { node.inert = true; });
     document.body.appendChild(screen);
     screen.focus();
+    const showName = value => {
+      if (!screen.isConnected || token !== localStorage.getItem("lonerpay_access_token") || localStorage.getItem("lonerpay_explicit_logout")) return;
+      const name = typeof value === "string" ? value.trim().replace(/\s+/g, " ") : "";
+      const label = screen.querySelector("#lpSigninWelcomeName");
+      label.textContent = name;
+      label.hidden = !name;
+    };
+    try {
+      const part = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+      const bytes = Uint8Array.from(atob(part.padEnd(Math.ceil(part.length / 4) * 4, "=")), ch => ch.charCodeAt(0));
+      const metadata = JSON.parse(new TextDecoder().decode(bytes)).user_metadata || {};
+      showName(metadata.full_name || metadata.name || [metadata.first_name, metadata.last_name].filter(Boolean).join(" "));
+    } catch {}
+    fetch("/api/profile", {headers: {Authorization: `Bearer ${token}`}, cache: "no-store"})
+      .then(response => response.ok ? response.json() : null)
+      .then(profile => { if (profile) showName(profile.name || profile.full_name || [profile.first_name, profile.last_name].filter(Boolean).join(" ")); })
+      .catch(() => {});
     setTimeout(() => {
       if (token !== localStorage.getItem("lonerpay_access_token") || localStorage.getItem("lonerpay_explicit_logout")) {
         screen.remove();
@@ -1034,6 +1052,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     }
   });
 }); 
+
 
 
 
