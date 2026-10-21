@@ -109,7 +109,7 @@ document.addEventListener("DOMContentLoaded", async function () {
         #lpSigninWelcome h1{font-size:clamp(27px,7vw,38px);line-height:1.2;letter-spacing:-1px;margin:0 0 16px}
         #lpSigninWelcome .lp-intro-tagline{font-size:17px;line-height:1.5;color:#74684f;margin:0}
         #lpSigninWelcome .lp-intro-progress{width:100px;height:3px;border-radius:4px;background:#e9dfca;overflow:hidden;margin:36px auto 18px}
-        #lpSigninWelcome .lp-intro-progress:after{content:'';display:block;width:100%;height:100%;background:#a77b29;transform-origin:left;animation:lpIntroProgress 1.8s linear both}
+        #lpSigninWelcome .lp-intro-progress:after{content:'';display:block;width:100%;height:100%;background:#a77b29;transform-origin:left;animation:lpIntroProgress 5s linear both}
         #lpSigninWelcome .lp-intro-status{font-size:12px;color:#8b806c;margin:0}
         @keyframes lpIntroAppear{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
         @keyframes lpIntroMark{from{transform:scale(.9)}to{transform:scale(1)}}
@@ -136,7 +136,7 @@ document.addEventListener("DOMContentLoaded", async function () {
         return;
       }
       window.location.replace("dashboard.html");
-    }, window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ? 700 : 1800);
+    }, 5000);
   }
 
   function saveSession(session) {
