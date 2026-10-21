@@ -3845,7 +3845,7 @@ body{background:var(--lp-bg)!important}
 </script>
 
 <script id="lonerpay-virtual-account-restore-2026">
-function openVirtualAccount() {
+async function openVirtualAccount() {
   const old = document.getElementById("virtualAccountOverlay");
   if (old) old.remove();
 
@@ -3856,6 +3856,46 @@ function openVirtualAccount() {
     align-items:center;justify-content:center;z-index:18000;padding:18px;
     box-sizing:border-box;overflow:auto;
   `;
+
+  const accessToken = localStorage.getItem("lonerpay_access_token");
+  const stillCurrent = () => overlay.isConnected && accessToken === localStorage.getItem("lonerpay_access_token");
+  const showStatus = (title, message, account, retry = false) => {
+    const escape = value => String(value || "").replace(/[&<>"']/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));
+    overlay.innerHTML = `<section style="background:#fff;width:100%;max-width:440px;border-radius:22px;padding:24px;box-sizing:border-box;" role="dialog" aria-modal="true" aria-label="Virtual Account">
+      <h2 style="margin-top:0;">${escape(title)}</h2><p style="color:#6b7280;line-height:1.5;" role="status">${escape(message)}</p>
+      ${account ? `<div style="background:#faf6e9;border-radius:16px;padding:18px;overflow-wrap:anywhere;">
+        <div>Bank</div><strong>${escape(account.bank_name)}</strong>
+        <div style="margin-top:14px;">Account number</div><strong style="font-size:26px;">${escape(account.account_number)}</strong>
+        <div style="margin-top:14px;">Account name</div><strong>${escape(account.account_name)}</strong></div>` : ""}
+      ${retry ? '<button id="vaRetry" type="button" style="padding:12px;margin-top:16px;">Check again</button>' : ""}
+      <button id="vaClose" type="button" style="width:100%;padding:15px;margin-top:18px;border:0;border-radius:12px;background:#936514;color:white;font-weight:800;">Close</button></section>`;
+    overlay.querySelector("#vaClose").onclick = () => overlay.remove();
+    const retryButton = overlay.querySelector("#vaRetry");
+    if (retryButton) retryButton.onclick = () => openVirtualAccount();
+  };
+  document.body.appendChild(overlay);
+  showStatus("Virtual Account", "Checking your account…");
+  try {
+    if (!accessToken) throw new Error("Please log in again to view your virtual account.");
+    const response = await fetch("/api/virtual-account", {headers: {Authorization: `Bearer ${accessToken}`}, cache: "no-store"});
+    const data = await response.json();
+    if (!stillCurrent()) { overlay.remove(); return; }
+    if (!response.ok || data.success !== true) throw new Error("Unable to check your virtual account. Please try again.");
+    const account = data.virtual_account;
+    if (account?.account_number) {
+      showStatus("Your Virtual Account", "Your dedicated account has already been created. Use these details to fund your LonerPay wallet.", account);
+      return;
+    }
+    const status = account?.assignment_status || data.assignment_status;
+    if (account && !["not_requested", "identification_failed", "failed"].includes(status)) {
+      showStatus("Account request in progress", "Your request is already being processed. Check again for your account details.", null, true);
+      return;
+    }
+  } catch (error) {
+    if (stillCurrent()) showStatus("Virtual Account", error.message || "Unable to check your account.", null, true);
+    else overlay.remove();
+    return;
+  }
 
   overlay.innerHTML = `
     <div style="background:#fff;width:100%;max-width:440px;border-radius:22px;padding:22px;
@@ -3923,6 +3963,7 @@ function openVirtualAccount() {
   overlay.querySelector("#vaClose").onclick = () => overlay.remove();
 
   overlay.querySelector("#vaCreate").onclick = async () => {
+    if (!stillCurrent()) { overlay.remove(); return; }
     const bvn = overlay.querySelector("#vaBvn").value.replace(/\D/g, "");
     const bankCode = overlay.querySelector("#vaBank").value;
     const accountNumber = overlay.querySelector("#vaAccountNumber").value.replace(/\D/g, "");
@@ -3975,6 +4016,8 @@ function openVirtualAccount() {
       });
 
       const data = await response.json().catch(() => ({}));
+
+      if (!stillCurrent()) { overlay.remove(); return; }
 
       // Clear sensitive field as soon as the request completes.
       overlay.querySelector("#vaBvn").value = "";
@@ -4553,3 +4596,4 @@ function openVirtualAccount() {
 </script>
 </body>
 </html> 
+

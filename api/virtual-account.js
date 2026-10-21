@@ -50,7 +50,7 @@ export default async function handler(req, res) {
 
     const user = await userResponse.json();
 
-    if (req.method === "GET") {
+    {
       const accountResponse = await fetch(
         `${supabaseUrl}/rest/v1/virtual_accounts?user_id=eq.${encodeURIComponent(user.id)}&select=provider,bank_name,account_number,account_name,status,assignment_status,updated_at&order=updated_at.desc&limit=1`,
         {
@@ -70,11 +70,16 @@ export default async function handler(req, res) {
       const accounts = await accountResponse.json();
       const account = accounts?.[0] || null;
 
+      if (req.method === "GET" || account?.account_number ||
+          (account && !["not_requested", "identification_failed", "failed"].includes(account.assignment_status))) {
       return res.status(200).json({
         success: true,
+        data: account?.account_number ? account : null,
+        message: account?.account_number ? "Your virtual account already exists." : "Your virtual account request is being processed.",
         virtual_account: account,
         assignment_status: account?.assignment_status || "not_requested"
       });
+      }
     }
 
     if (!secretKey || !secretKey.startsWith("sk_live_")) {
@@ -243,3 +248,4 @@ if (!pendingResponse.ok) {
     });
   }
 }
+
