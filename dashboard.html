@@ -2703,8 +2703,9 @@ function openAITips() {
   
 </script>
 <!-- Shared display-only bundles load before the data UI, including on a new device. -->
+<script src="recipient-phone.js?v=20261021-account-phone"></script>
 <script src="/api/data-catalogue"></script>
-<script src="data-client.js?v=20261021-shared-start"></script>
+<script src="data-client.js?v=20261021-account-phone"></script>
 <script src="electricity-client.js?v=20261017-gold-screens"></script>
 <script src="tv-client.js?v=20261017-gold-screens"></script>
 <script src="wallet-client.js?v=20261017-gold-screens"></script>
@@ -3017,8 +3018,9 @@ function openAITips() {
           <div class="lp-svc-grid4">
             ${["MTN","Airtel","Glo","9mobile"].map((n,i)=>`<button class="lp-svc-choice ${i===0?"active":""}" data-network="${n}" type="button">${n}</button>`).join("")}
           </div>
-          <div class="lp-svc-field"><span class="lp-svc-label">Phone number</span>
-            <input class="lp-svc-input lp-air-phone" type="tel" inputmode="numeric" maxlength="11" autocomplete="tel" placeholder="08012345678">
+          <div class="lp-svc-field"><label class="lp-svc-label" for="lpAirtimeRecipient">Phone number</label>
+            <input id="lpAirtimeRecipient" aria-describedby="lpAirtimeRecipientHelp" class="lp-svc-input lp-air-phone" type="tel" inputmode="numeric" maxlength="11" autocomplete="tel" placeholder="08012345678">
+            <small id="lpAirtimeRecipientHelp" style="display:block;margin-top:8px;color:#7d7566;font-size:11px">You can edit this number to recharge someone else.</small>
           </div>
           <div class="lp-svc-field"><span class="lp-svc-label">Quick amount</span>
             <div class="lp-svc-grid3">
@@ -3035,6 +3037,7 @@ function openAITips() {
       </div>`;
 
     const phone = overlay.querySelector(".lp-air-phone");
+    window.LonerPayRecipientPhone?.attach(phone);
     const amount = overlay.querySelector(".lp-air-amount");
     const error = overlay.querySelector(".lp-svc-error");
     overlay.querySelector(".lp-svc-close").onclick = () => overlay.remove();
@@ -3058,6 +3061,8 @@ function openAITips() {
       if (!Number.isFinite(a) || a <= 0) return showInline(error,"Enter a valid airtime amount.");
 
       const sheet = overlay.querySelector(".lp-svc-sheet");
+      const airtimeForm = Array.from(sheet.childNodes);
+      const airtimeScroll = overlay.querySelector(".lp-svc-body").scrollTop;
       sheet.innerHTML = `
         <div class="lp-svc-head"><div class="lp-svc-handle"></div><div class="lp-svc-title-row">
           <div><div class="lp-svc-title">Review Airtime</div><div class="lp-svc-sub">Confirm before payment</div></div>
@@ -3076,7 +3081,11 @@ function openAITips() {
           <button class="lp-svc-secondary lp-air-back" type="button">Back</button>
         </div>`;
       sheet.querySelector(".lp-svc-close").onclick = () => overlay.remove();
-      sheet.querySelector(".lp-air-back").onclick = () => { overlay.remove(); window.buyAirtime(); };
+      sheet.querySelector(".lp-air-back").onclick = () => {
+        sheet.querySelector(".lp-svc-pin").value = "";
+        sheet.replaceChildren(...airtimeForm);
+        overlay.querySelector(".lp-svc-body").scrollTop = airtimeScroll;
+      };
 
       sheet.querySelector(".lp-air-confirm").onclick = async () => {
         const button = sheet.querySelector(".lp-air-confirm");

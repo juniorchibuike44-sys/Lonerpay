@@ -326,9 +326,10 @@
         @media(max-width:370px){.ld-plans{grid-template-columns:1fr}.ld-network{font-size:10px}}
       </style>
       <div class="ld-sheet"><div class="ld-head"><div class="ld-handle"></div><div class="ld-top"><div><h2>Buy Data</h2><p>Live bundles from your selected network</p></div><button class="ld-close" type="button">×</button></div></div>
-      <div class="ld-body"><div class="lp-mobile-promo"><small>LONERPAY DATA</small><h3>More data.<br>More possibilities.</h3><p>Find the right bundle for your day, week or month.</p></div><span class="ld-label">Select network</span><div class="ld-networks">${Object.keys(serviceIDs).map((name,index)=>`<button class="ld-network ${index===0?"on":""}" data-network="${name}" type="button">${name}</button>`).join("")}</div><label class="ld-label" for="lpDataRecipient">Recipient phone number</label><input id="lpDataRecipient" class="ld-input ld-phone" type="tel" inputmode="numeric" maxlength="11" autocomplete="tel" placeholder="Phone number • 08012345678"><div class="ld-filters">${["All","Daily","2 Days","Weekly","Monthly","Other"].map((name,index)=>`<button class="ld-filter ${index===0?"on":""}" data-filter="${name}" type="button">${name}</button>`).join("")}</div><span class="ld-label">Data bundles</span><div class="ld-plans"><div class="ld-skeleton" role="status" aria-label="Loading data plans"><span></span><span></span><span></span><span></span></div></div></div>
+      <div class="ld-body"><div class="lp-mobile-promo"><small>LONERPAY DATA</small><h3>More data.<br>More possibilities.</h3><p>Find the right bundle for your day, week or month.</p></div><span class="ld-label">Select network</span><div class="ld-networks">${Object.keys(serviceIDs).map((name,index)=>`<button class="ld-network ${index===0?"on":""}" data-network="${name}" type="button">${name}</button>`).join("")}</div><label class="ld-label" for="lpDataRecipient">Recipient phone number</label><input id="lpDataRecipient" aria-describedby="lpDataRecipientHelp" class="ld-input ld-phone" type="tel" inputmode="numeric" maxlength="11" autocomplete="tel" placeholder="Phone number • 08012345678"><small id="lpDataRecipientHelp" style="display:block;margin-top:8px;color:#7d7566;font-size:11px">You can edit this number to recharge someone else.</small><div class="ld-filters">${["All","Daily","2 Days","Weekly","Monthly","Other"].map((name,index)=>`<button class="ld-filter ${index===0?"on":""}" data-filter="${name}" type="button">${name}</button>`).join("")}</div><span class="ld-label">Data bundles</span><div class="ld-plans"><div class="ld-skeleton" role="status" aria-label="Loading data plans"><span></span><span></span><span></span><span></span></div></div></div>
       <div class="ld-checkout"><div class="ld-summary">Select a data bundle to continue</div><button class="ld-primary ld-continue" type="button" disabled>Continue</button><div class="ld-error"></div></div></div>`;
     document.body.appendChild(overlay);
+    window.LonerPayRecipientPhone?.attach(overlay.querySelector(".ld-phone"));
 
     let network = "MTN", filter = "All", plans = [], selected = null;
     const grid = overlay.querySelector(".ld-plans"), summary = overlay.querySelector(".ld-summary"), next = overlay.querySelector(".ld-continue"), error = overlay.querySelector(".ld-error");
@@ -462,6 +463,7 @@
         purchaseData
     });
 })(); 
+
 
 
 
