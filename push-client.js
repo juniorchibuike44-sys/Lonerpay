@@ -8,7 +8,23 @@
    body:body?JSON.stringify(body):undefined,cache:'no-store',signal:AbortSignal.timeout(10000)});
   const d=await r.json();if(!r.ok)throw Error(d.error||'Could not save phone alerts.');return d;
  }
- async function worker(){registration=await navigator.serviceWorker.register('/sw.js');await navigator.serviceWorker.ready;return registration;}
+ async function worker(){
+  await navigator.serviceWorker.register('/sw.js',{updateViaCache:'none'});
+  // ready returns the active registration; register can still be installing.
+  registration=await navigator.serviceWorker.ready;return registration;
+ }
+ async function subscribe(reg,key){
+  for(let attempt=0;attempt<2;attempt++){
+   try{return await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:key});}
+   catch(e){
+    const serviceError=e.name==='AbortError'&&/push service|registration failed/i.test(e.message||'');
+    if(!serviceError)throw e;
+    if(attempt===1)throw Error('Your browser could not register this phone for alerts. Open lonerpay.com in Chrome, try another internet connection, then tap Enable phone alerts again.');
+    paint('Retrying the phone’s push connection…');
+    await new Promise(resolve=>setTimeout(resolve,1200));
+   }
+  }
+ }
  async function bind(owner){
   const reg=registration||await worker();
   (reg.active||navigator.serviceWorker.controller)?.postMessage({type:'LP_PUSH_OWNER',owner:owner||null});
@@ -41,7 +57,8 @@
    let sub=await reg.pushManager.getSubscription();
    if(!sub){
     const key=Uint8Array.from(atob(config.public_key.replaceAll('-','+').replaceAll('_','/')),c=>c.charCodeAt(0));
-    sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:key});
+    if(key.length!==65||key[0]!==4)throw Error('Phone alert configuration is invalid. Please contact support.');
+    sub=await subscribe(reg,key);
    }
    if(token()!==current){await sub.unsubscribe();return;}
    await api('POST',sub.toJSON(),current);
