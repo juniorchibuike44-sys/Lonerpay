@@ -25,5 +25,19 @@
         }
       ]
     }
-  ]
+  ],
+  "crons": [
+    {
+      "path": "/api/push-dispatch",
+      "schedule": "* * * * *"
+    }
+  ],
+  "functions": {
+    "api/push-dispatch.js": {
+      "maxDuration": 60
+    },
+    "api/paystack-webhook.js": {
+      "maxDuration": 60
+    }
+  }
 }

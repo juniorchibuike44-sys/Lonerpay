@@ -1,4 +1,5 @@
 (() => {
+  const pushScript=document.createElement('script');pushScript.src='/push-client.js';pushScript.defer=true;document.head.append(pushScript);
   let items = [], unread = 0, session = '', modal = null, error = '', loaded = false;
   let activeRequest = null, writing = false, filter = 'all', previousOverflow = null;
   const token = () => localStorage.getItem('lonerpay_access_token') || '';
@@ -146,3 +147,4 @@
   document.addEventListener('visibilitychange',()=>{if(!document.hidden)refresh();});
   window.addEventListener('storage',event=>{if(event.key==='lonerpay_access_token' || event.key===null){syncSession();badge();render();refresh();}});
 })();
+

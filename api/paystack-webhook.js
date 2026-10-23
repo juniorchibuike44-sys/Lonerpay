@@ -1,5 +1,11 @@
 import {businessReference,businessDb,confirmBusinessPayment,validateBusinessPayment} from './_business-subscription.js';
 import crypto from "crypto";
+import {deliverPush} from './_push.js';
+
+async function fundingPush(supabaseUrl,secretKey) {
+  try { await deliverPush({supabaseUrl,secretKey}); }
+  catch { console.error('Funding push queued for retry'); }
+}
 
 export const config = {
   api: {
@@ -582,6 +588,7 @@ console.log("Fund Wallet amount check:", {
         });
       }
 
+      await fundingPush(supabaseUrl,supabaseSecretKey);
       return res.status(200).json({
         received: true,
         credited: true,
@@ -666,6 +673,7 @@ console.log("Fund Wallet amount check:", {
         });
       }
 
+      await fundingPush(supabaseUrl,supabaseSecretKey);
       return res.status(200).json({
         received: true,
         credited: true,
@@ -685,5 +693,6 @@ console.log("Fund Wallet amount check:", {
     });
   }
         } 
+
 
 

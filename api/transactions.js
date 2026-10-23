@@ -35,10 +35,20 @@ export default async function handler(req, res) {
     const query = new URLSearchParams({
       user_id: `eq.${user.id}`,
       
-      select: "request_id,service,amount,status,details,created_at",
+      select: "id,transaction_type,request_id,service,amount,status,details,created_at",
       order: "created_at.desc",
       limit: "50"
     });
+    const funding = req.query?.funding;
+    if (funding !== undefined) {
+      if (typeof funding !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(funding)) {
+        return res.status(400).json({error:'Invalid funding transaction'});
+      }
+      query.set('id','eq.'+funding);
+      query.set('transaction_type','eq.credit');
+      query.set('service','eq.paystack_wallet_funding');
+      query.set('status','eq.successful');
+    }
 
     const transactionsResponse = await fetch(
       `${supabaseUrl}/rest/v1/wallet_transactions?${query.toString()}`,
@@ -75,3 +85,4 @@ export default async function handler(req, res) {
     });
   }
 }
+
