@@ -2710,7 +2710,7 @@ function openAITips() {
 <script src="data-client.js?v=20261021-account-phone"></script>
 <script src="electricity-client.js?v=20261017-gold-screens"></script>
 <script src="tv-client.js?v=20261017-gold-screens"></script>
-<script src="wallet-client.js?v=20261021-personal-greeting"></script>
+<script src="wallet-client.js?v=20261024-kyc-20261021-personal-greeting"></script>
 <script src="transactions-client.js?v=20261017-payment-confirmation"></script>  
 
 <nav class="lp-bottom-nav" aria-label="Main navigation">
@@ -3847,7 +3847,10 @@ body{background:var(--lp-bg)!important}
 </script>
 
 <script id="lonerpay-virtual-account-restore-2026">
+let vaPollUntil=0;
 async function openVirtualAccount() {
+  let previousFailure="";
+  if(!vaPollUntil)vaPollUntil=Date.now()+120000;
   const old = document.getElementById("virtualAccountOverlay");
   if (old) old.remove();
 
@@ -3889,8 +3892,10 @@ async function openVirtualAccount() {
       return;
     }
     const status = account?.assignment_status || data.assignment_status;
-    if (account && !["not_requested", "identification_failed", "failed"].includes(status)) {
-      showStatus("Account request in progress", "Your request is already being processed. Check again for your account details.", null, true);
+    if(["identification_failed","assignment_failed","failed"].includes(status)){previousFailure=data.failure_reason || account?.failure_reason || "Your identity could not be verified. Please review your details and try again.";vaPollUntil=0;}
+    if (account && !["not_requested", "identification_failed", "assignment_failed", "failed"].includes(status)) {
+      showStatus("Account request in progress", "Your request is already being processed. We will check for an update automatically. You can also use Check again.", null, true);
+      setTimeout(()=>{if(stillCurrent()&&!document.hidden&&Date.now()<vaPollUntil)openVirtualAccount()},5000);
       return;
     }
   } catch (error) {
@@ -3964,6 +3969,8 @@ async function openVirtualAccount() {
   document.body.appendChild(overlay);
   overlay.querySelector("#vaClose").onclick = () => overlay.remove();
 
+  overlay.querySelector("#vaError").textContent=previousFailure;
+  if(previousFailure)overlay.querySelector("#vaCreate").textContent="Correct details and try again";
   overlay.querySelector("#vaCreate").onclick = async () => {
     if (!stillCurrent()) { overlay.remove(); return; }
     const bvn = overlay.querySelector("#vaBvn").value.replace(/\D/g, "");
@@ -4023,11 +4030,13 @@ async function openVirtualAccount() {
 
       // Clear sensitive field as soon as the request completes.
       overlay.querySelector("#vaBvn").value = "";
+      overlay.querySelector("#vaAccountNumber").value = "";
 
       if (!response.ok || data.success === false) {
         throw new Error(data.message || "Unable to create virtual account.");
       }
 
+      vaPollUntil=Date.now()+120000;
       const account = data?.data?.dedicated_account || data?.data || {};
       const accountNumberResult =
         account.account_number ||
@@ -4063,7 +4072,10 @@ async function openVirtualAccount() {
             Done
           </button>
         </div>`;
-      overlay.querySelector("#vaDone").onclick = () => overlay.remove();
+      const done=overlay.querySelector("#vaDone");
+      done.textContent=accountNumberResult?"Done":"Check verification status";
+      done.onclick=()=>accountNumberResult?overlay.remove():openVirtualAccount();
+      if(!accountNumberResult)setTimeout(()=>{if(stillCurrent()&&!document.hidden)openVirtualAccount()},3000);
     } catch (error) {
       errorBox.textContent = error.message || "Unable to create virtual account.";
       button.disabled = false;
@@ -4598,5 +4610,6 @@ async function openVirtualAccount() {
 </script>
 </body>
 </html> 
+
 
 

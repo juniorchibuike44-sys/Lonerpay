@@ -1,3 +1,4 @@
+import {FAILED_STATUSES,verificationFailure} from "./_verification.js";
 import { enforceRateLimit, hardenResponse } from "./_security.js";
 
 export default async function handler(req, res) {
@@ -52,7 +53,7 @@ export default async function handler(req, res) {
 
     {
       const accountResponse = await fetch(
-        `${supabaseUrl}/rest/v1/virtual_accounts?user_id=eq.${encodeURIComponent(user.id)}&select=provider,bank_name,account_number,account_name,status,assignment_status,updated_at&order=updated_at.desc&limit=1`,
+        `${supabaseUrl}/rest/v1/virtual_accounts?user_id=eq.${encodeURIComponent(user.id)}&select=provider,bank_name,account_number,account_name,status,assignment_status,updated_at,failure_reason,failure_code&order=updated_at.desc&limit=1`,
         {
           headers: {
             apikey: supabaseKey,
@@ -71,13 +72,15 @@ export default async function handler(req, res) {
       const account = accounts?.[0] || null;
 
       if (req.method === "GET" || account?.account_number ||
-          (account && !["not_requested", "identification_failed", "failed"].includes(account.assignment_status))) {
+          (account && !["not_requested", ...FAILED_STATUSES].includes(account.assignment_status))) {
       return res.status(200).json({
         success: true,
         data: account?.account_number ? account : null,
         message: account?.account_number ? "Your virtual account already exists." : "Your virtual account request is being processed.",
         virtual_account: account,
-        assignment_status: account?.assignment_status || "not_requested"
+        assignment_status: account?.assignment_status || "not_requested",
+        failure_reason: FAILED_STATUSES.includes(account?.assignment_status) ? account.failure_reason || verificationFailure().failure_reason : null,
+        can_retry: FAILED_STATUSES.includes(account?.assignment_status)
       });
       }
     }
@@ -180,6 +183,7 @@ const pendingResponse = await fetch(
       customer_email: email,
       provider: "paystack", 
       assignment_status: "pending",
+      failure_reason: null, failure_code: null,
       updated_at: new Date().toISOString()
     })
   }
@@ -220,13 +224,16 @@ if (!pendingResponse.ok) {
     const data = await response.json();
 
     if (!response.ok || data?.status === false) {
+      const failure=verificationFailure(data,response.status>=500?'assignment':'identification');
+      const saved=await fetch(`${supabaseUrl}/rest/v1/virtual_accounts?user_id=eq.${encodeURIComponent(user.id)}&assignment_status=eq.pending`,{method:'PATCH',headers:{apikey:supabaseKey,Authorization:`Bearer ${supabaseKey}`,'Content-Type':'application/json'},body:JSON.stringify({assignment_status:'failed',...failure,updated_at:new Date().toISOString()})});
+      if(!saved.ok)return res.status(503).json({success:false,message:'Unable to save verification status. Please refresh your profile before trying again.'});
       return res
         .status(response.status >= 400 ? response.status : 400)
         .json({
           success: false,
           message:
-            data?.message ||
-            "Paystack could not start virtual account creation"
+            failure.failure_reason,
+          can_retry: true
         });
     }
 
@@ -248,4 +255,5 @@ if (!pendingResponse.ok) {
     });
   }
 }
+
 

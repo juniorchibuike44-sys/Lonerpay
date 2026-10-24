@@ -275,6 +275,14 @@ function upgradeDashboardExperience() {
                 try { await navigator.clipboard.writeText(String(account.account_number)); showToast("Account number copied."); }
                 catch { showToast(`Account number: ${account.account_number}`); }
             };
+        } else if (["identification_failed","assignment_failed","failed"].includes(String(account?.assignment_status || "").toLowerCase())) {
+            badge.textContent = "Action required";
+            const message=virtualAccount.querySelector(".lp-va-message");
+            message.replaceChildren();
+            const title=document.createElement("strong");title.textContent="Verification failed";
+            const reason=document.createElement("p");reason.textContent=data.failure_reason || account.failure_reason || "Your identity could not be verified. Review your profile name, bank account and BVN, then try again.";
+            const retry=document.createElement("a");retry.href="profile.html#verification";retry.textContent="Correct details and try again";
+            message.append(title,reason,retry);
         } else if (account) {
             badge.textContent = "Pending";
             virtualAccount.querySelector(".lp-va-message").innerHTML = "<strong>Virtual account pending</strong>Your bank account details will appear here automatically after Paystack completes the assignment.";
@@ -355,4 +363,5 @@ if (!document.querySelector('script[data-lp-ai-tips]')) {
     aiTipsScript.dataset.lpAiTips = "true";
     document.head.appendChild(aiTipsScript);
 }
+
 

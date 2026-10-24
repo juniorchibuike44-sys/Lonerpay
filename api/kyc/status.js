@@ -1,3 +1,4 @@
+import {FAILED_STATUSES,verificationFailure} from "../_verification.js";
 export default async function handler(req, res) {
   if (req.method !== "GET") {
     return res.status(405).json({
@@ -64,7 +65,7 @@ export default async function handler(req, res) {
     const accountResponse = await fetch(
       `${supabaseUrl}/rest/v1/virtual_accounts?user_id=eq.${encodeURIComponent(
         user.id
-      )}&select=assignment_status,account_number,account_name,bank_name&limit=1`,
+      )}&select=assignment_status,account_number,account_name,bank_name,failure_reason,failure_code&limit=1`,
       {
         headers: {
           apikey: supabaseSecretKey,
@@ -119,12 +120,11 @@ export default async function handler(req, res) {
       verified = true;
       message = "Identity verification completed successfully.";
     } else if (
-      assignmentStatus === "identification_failed" ||
-      assignmentStatus === "assignment_failed"
+      FAILED_STATUSES.includes(assignmentStatus)
     ) {
       status = "action_required";
       message =
-        "Verification was not completed. Please review your information and try again.";
+        account.failure_reason || verificationFailure({},assignmentStatus==='assignment_failed'?'assignment':'identification').failure_reason;
     }
 
     return res.status(200).json({
@@ -132,6 +132,8 @@ export default async function handler(req, res) {
       status,
       verified,
       message,
+      failure_reason: status === "action_required" ? message : null,
+      can_retry: status === "action_required",
 
       // Return these values so profile.html can display
       // the customer's assigned virtual account.
@@ -156,3 +158,4 @@ export default async function handler(req, res) {
     });
   }
 } 
+

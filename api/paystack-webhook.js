@@ -1,5 +1,6 @@
 import {businessReference,businessDb,confirmBusinessPayment,validateBusinessPayment} from './_business-subscription.js';
 import crypto from "crypto";
+import {verificationFailure} from "./_verification.js";
 import {deliverPush} from './_push.js';
 
 async function fundingPush(supabaseUrl,secretKey) {
@@ -34,7 +35,7 @@ async function updateVirtualAccount(
   const response = await fetch(
     `${supabaseUrl}/rest/v1/virtual_accounts?customer_email=eq.${encodeURIComponent(
       email
-    )}`,
+    )}${updates.assignment_status === "assignment_failed" ? "&assignment_status=neq.identification_failed" : ""}`,
     {
       method: "PATCH",
       headers: {
@@ -340,34 +341,10 @@ console.log("Paystack webhook event:", eventType);
     eventData.customer?.email ||
     "";
 
-  // Log only safe diagnostic information.
-  // Do NOT log BVN, bank account number, authorization data,
-  // API keys, or the complete Paystack payload.
-  const failureReason =
-    eventData.reason ||
-    eventData.message ||
-    eventData.description ||
-    eventData.failure_reason ||
-    eventData.errors?.[0]?.message ||
-    eventData.customer?.identification?.reason ||
-    "No failure reason supplied by Paystack";
+  const failure = verificationFailure(eventData);
+  console.error("Paystack customer identification failed:", {code:failure.failure_code});
 
-  const identificationStatus =
-    eventData.status ||
-    eventData.identification?.status ||
-    eventData.customer?.identification?.status ||
-    "failed";
-
-  console.error("Paystack customer identification failed:", {
-    customer_code:
-      eventData.customer_code ||
-      eventData.customer?.customer_code ||
-      null,
-    status: String(identificationStatus),
-    reason: String(failureReason)
-  });
-
-  await updateVirtualAccount(
+  const saved = await updateVirtualAccount(
     supabaseUrl,
     supabaseSecretKey,
     email,
@@ -377,10 +354,12 @@ console.log("Paystack webhook event:", eventType);
         eventData.customer?.customer_code ||
         null,
       assignment_status: "identification_failed",
+      ...failure,
     }
   );
 
-  return res.status(200).json({
+  if (!saved) return res.status(503).json({error:"Unable to save account status"});
+      return res.status(200).json({
     received: true,
     identification: "failed",
   });
@@ -456,6 +435,7 @@ console.log("Paystack webhook event:", eventType);
           bank_name: bankName,
           bank_slug: bankSlug,
           assignment_status: "assigned",
+          failure_code: null, failure_reason: null,
         }
       );
 
@@ -479,7 +459,7 @@ console.log("Paystack webhook event:", eventType);
         eventData.email ||
         "";
 
-      await updateVirtualAccount(
+      const saved = await updateVirtualAccount(
         supabaseUrl,
         supabaseSecretKey,
         email,
@@ -489,9 +469,11 @@ console.log("Paystack webhook event:", eventType);
             eventData.customer_code ||
             null,
           assignment_status: "assignment_failed",
+          ...verificationFailure(eventData, "assignment"),
         }
       );
 
+      if (!saved) return res.status(503).json({error:"Unable to save account status"});
       return res.status(200).json({
         received: true,
         virtual_account: "failed",
@@ -693,6 +675,7 @@ console.log("Fund Wallet amount check:", {
     });
   }
         } 
+
 
 
 
