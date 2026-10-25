@@ -65,13 +65,15 @@ document.addEventListener('DOMContentLoaded',function(){
     if(icon){icon.className='lp-fingerprint';icon.style.cssText='';icon.innerHTML='<svg aria-hidden="true" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M10 21a14 14 0 0 1 28 0M6 18a18 18 0 0 1 36 0M15 23a9 9 0 0 1 18 0v8M24 20a3 3 0 0 1 3 3v7c0 6-2 11-5 15M21 25v5c0 5-2 9-5 12M15 27v3c0 3-1 6-3 9M10 26v5M33 36l-2 7M38 25v7"/></svg>';}
     const heading=biometric.querySelector('h2');if(heading)heading.textContent='Enable quick login';
     const paragraphs=biometric.querySelectorAll('p');
-    if(paragraphs[0])paragraphs[0].textContent='Use your fingerprint or face to sign in faster next time.';
-    if(paragraphs[1])paragraphs[1].textContent='Your phone verifies you securely. LonerPay never receives your fingerprint or face data.';
+    if(paragraphs[0])paragraphs[0].textContent='Enable biometric login to sign in quickly next time.';
+    if(paragraphs[1])paragraphs[1].textContent='Your phone verifies you securely. Your biometric information stays on your device.';
     const enable=document.getElementById('enableBiometricButton');if(enable)enable.textContent='Enable biometric login';
     const skip=document.getElementById('skipBiometricButton');if(skip)skip.textContent='Maybe later';
   }
   document.querySelectorAll('#authForm input').forEach(input=>input.setAttribute('aria-label',input.placeholder||input.name));
   function set(id,text){const node=document.getElementById(id);if(node&&node.textContent!==text)node.textContent=text;}
+  const bioButton=document.getElementById('passkeyLoginButton'), bioHelp=document.getElementById('passkeyHelp'), submitButton=document.querySelector('#authForm button[type="submit"]');
+  if(bioButton&&submitButton){submitButton.before(bioButton);if(bioHelp)submitButton.before(bioHelp);}
   function polish(){
     if(modal?.dataset.authMode==='login'){
       set('modalTitle','Welcome to LonerPay');
@@ -80,15 +82,15 @@ document.addEventListener('DOMContentLoaded',function(){
       if(submit&&!submit.disabled&&submit.textContent==='Continue')submit.textContent='Log in';
     }
     const passkeyButton=document.getElementById('passkeyLoginButton');
-    if(passkeyButton&&!passkeyButton.disabled)set('passkeyLoginButton','Use biometric login');
+    if(passkeyButton&&!passkeyButton.disabled)set('passkeyLoginButton','Login with biometrics');
     // Do not replace the progress message while verification is running.
     const unlock=document.getElementById('lpWelcomeUnlock');
-    if(unlock&&!unlock.disabled)set('lpWelcomeUnlock','Use fingerprint or face');
-    set('passkeyHelp','Verify with your fingerprint, face, or device screen lock.');
+    if(unlock&&!unlock.disabled)set('lpWelcomeUnlock','Login with biometrics');
+    set('passkeyHelp','Your phone handles identity verification securely.');
     const help=document.getElementById('lpWelcomeHelp');
     if(help){
       if(help.textContent.includes('If you have not set up'))set('lpWelcomeHelp','New to biometric login? Sign in with email and password once to set it up.');
-      else if(help.textContent.includes('when your phone offers'))set('lpWelcomeHelp','Use your fingerprint, face, or device screen lock.');
+      else if(help.textContent.includes('when your phone offers'))set('lpWelcomeHelp','Your phone handles identity verification securely.');
     }
   }
   polish();
@@ -104,7 +106,16 @@ document.addEventListener('DOMContentLoaded',function(){
 .lp-public-auth{display:flex;gap:8px;align-items:center}.lp-company-strip{padding:18px 9%;background:#f3ecd9;border-bottom:1px solid #e1d0a7;color:#45371f;font-size:15px;line-height:1.6}.lp-company-strip strong,.lp-company-strip span{display:block}.lp-company-strip span{font-size:13px;color:#746c5c}.lp-public-contact p{max-width:780px;line-height:1.8;color:#746c5c}.lp-public-contact a{color:#936514;text-decoration:underline}.lp-public-contact h2{margin-bottom:22px}
 @media(max-width:600px){.nav{padding:0 5%;height:82px}.nav .brand img{width:95px!important}.lp-public-auth button{padding:10px 13px;font-size:13px}.lp-company-strip{padding:16px 7%;font-size:14px}.hero{min-height:0}.hero h1{font-size:clamp(42px,12vw,56px)}.lead{font-size:17px}.actions{gap:17px;flex-wrap:wrap}.section{padding:55px 7%}}
 </style>
-<link rel="stylesheet" href="site-gold.css?v=20261017-welcome"><link rel="manifest" href="/manifest.webmanifest"><meta name="theme-color" content="#936514"><script src="/app-install.js?v=20261020-android" defer></script></head>
+<link rel="stylesheet" href="site-gold.css?v=20261017-welcome"><link rel="manifest" href="/manifest.webmanifest"><meta name="theme-color" content="#936514"><script src="/app-install.js?v=20261020-android" defer></script><style id="lp-biometric-button-v3">
+#authForm #passkeyLoginButton,#lpWelcomeBack #lpWelcomeUnlock{background:transparent!important;color:#28251e!important;border:0!important;box-shadow:none!important;text-align:center!important;padding:18px 12px!important;margin:20px auto 6px!important;font-size:16px!important;font-weight:700!important;width:100%!important;border-radius:18px!important;letter-spacing:0!important;line-height:1.4!important}
+#passkeyLoginButton::before,#lpWelcomeUnlock::before{content:"";display:block;width:82px;height:82px;margin:0 auto 16px;border-radius:50%;background:#fff url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2048%2048%22%20fill%3D%22none%22%20stroke%3D%22%23936514%22%20stroke-width%3D%222.3%22%20stroke-linecap%3D%22round%22%3E%3Cpath%20d%3D%22M10%2021a14%2014%200%200%201%2028%200M6%2018a18%2018%200%200%201%2036%200M15%2023a9%209%200%200%201%2018%200v8M24%2020a3%203%200%200%201%203%203v7c0%206-2%2011-5%2015M21%2025v5c0%205-2%209-5%2012M15%2027v3c0%203-1%206-3%209M10%2026v5M33%2036l-2%207M38%2025v7%22%2F%3E%3C%2Fsvg%3E") center/46px 46px no-repeat;box-shadow:0 0 0 1px #eee8dc}
+#passkeyLoginButton:focus-visible,#lpWelcomeUnlock:focus-visible{outline:3px solid #936514!important;outline-offset:3px!important}
+#passkeyHelp,#lpWelcomeHelp{font-size:12px!important;line-height:1.6!important;color:#746c5c!important;text-align:center!important;margin:0 0 22px!important}
+#biometricModal{background:rgba(0,0,0,.42)!important;align-items:flex-end!important;padding:20px!important}
+#biometricModal>.modal-card{background:#fff!important;border-radius:30px!important;padding:30px 24px!important;margin:0 auto!important;box-shadow:0 12px 40px #0002!important}
+#biometricModal .lp-fingerprint{border-radius:50%!important;background:#faf8f2!important}
+@media(min-width:761px){#biometricModal{align-items:center!important}}
+</style></head>
 <body class="lp-gold-site lp-gold-public">
   <header class="nav">
     <a class="brand" href="#"><img src="/logo.svg?v=20261015-brand" alt="LonerPay" width="150" height="150" style="width:130px;height:auto;display:block"></a>
@@ -253,10 +264,10 @@ document.addEventListener('DOMContentLoaded',function(){
   
    </div>      
   <button type="button" id="passkeyLoginButton" class="outline full" style="margin-top:10px;display:none;">
-    🔐 Log in with fingerprint / face
+    Login with biometrics
   </button>
   <p id="passkeyHelp" style="display:none;font-size:12px;opacity:.75;margin-top:8px;">
-    Uses your phone's passkey security. LonerPay never receives your fingerprint or face data.
+    Your phone handles identity verification securely.
   </p>
   <p id="authModeSwitch">Already have an account? <button type="button" data-mode="login">Log in</button></p>
       </form> 
@@ -270,11 +281,11 @@ document.addEventListener('DOMContentLoaded',function(){
 
     <p style="text-align:center;">
       Log in to LonerPay faster and securely using your
-      fingerprint or face.
+      phone’s secure authentication prompt.
     </p>
 
     <button type="button" id="enableBiometricButton" class="primary full">
-      Use Fingerprint / Face
+      Enable biometric login
     </button>
 
     <button type="button" id="skipBiometricButton" class="outline full"
@@ -284,13 +295,14 @@ document.addEventListener('DOMContentLoaded',function(){
 
     <p style="font-size:12px;opacity:.75;text-align:center;margin-top:12px;">
       Your biometric information stays securely on your device.
-      LonerPay never receives your fingerprint or face data.
+      LonerPay never receives your biometric information.
     </p>
   </div>
 </div> 
-  <script src="script.js?v=20261021-welcome-full-name"></script>
+  <script src="script.js?v=20261025-biometric-login"></script>
 <footer style="text-align:center;padding:24px;font-size:13px"><a href="privacy.html">Privacy Policy</a> · <a href="terms.html">Terms of Service</a> · <a href="delete-account.html">Delete account</a> · <a href="contact.html">Support</a></footer></body>
 </html>
+
 
 
 

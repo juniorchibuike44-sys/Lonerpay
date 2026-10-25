@@ -732,7 +732,7 @@ window.lpKycForm=async function(){
   };
 };
 window.lpBio=async function(){
-  const o=S('Biometrics & Login',`<div class="lp-hero"><h3>Unlock with your phone</h3><p>Set up a passkey for faster sign-in. Your phone may use fingerprint, face recognition or its screen-lock PIN.</p></div><div class="lp-ch"><h3>Registered passkeys</h3><div id="lpPasskeys">Checking your account…</div></div><div class="lp-note">Your fingerprint and face data stay with your device. Your four-digit payment PIN is still required for payments.</div><div id="lpBioError" role="status" style="color:#b42318;font-size:13px;margin-top:15px"></div><button class="lp-primary" id="lpBioRegister" disabled>Add a passkey</button>`);
+  const o=S('Biometric login',`<div class="lp-hero"><h3>Unlock with your phone</h3><p>Enable biometric login for faster sign-in. Your phone chooses the secure verification method available on your device.</p></div><div class="lp-ch"><h3>Biometric sign-in methods</h3><div id="lpPasskeys">Checking your account…</div></div><div class="lp-note">Your biometric information stays with your device. Your four-digit payment PIN is still required for payments.</div><div id="lpBioError" role="status" style="color:#b42318;font-size:13px;margin-top:15px"></div><button class="lp-primary" id="lpBioRegister" disabled>Enable biometric login</button>`);
   const box=o.querySelector('#lpPasskeys'),err=o.querySelector('#lpBioError'),add=o.querySelector('#lpBioRegister');
   let client,user;
   function message(e){return /notallowed|cancel|abort/i.test(String(e?.name)+' '+e?.message)?'Setup was cancelled. You can try again.':String(e?.message||'Unable to complete passkey setup.');}
@@ -741,7 +741,7 @@ window.lpBio=async function(){
     const {data,error}=await client.auth.passkey.list();if(error)throw error;
     const rows=Array.isArray(data)?data:[];
     box.replaceChildren();
-    if(!rows.length)box.textContent='No passkeys registered. Add one to enable phone-security login.';
+    if(!rows.length)box.textContent='Biometric login is not set up yet. Enable it below.';
     for(const key of rows){
       const row=document.createElement('div');row.className='lp-row';
       const label=document.createElement('strong');label.textContent=key.friendly_name||'LonerPay passkey';
@@ -763,9 +763,9 @@ window.lpBio=async function(){
     const {data,error}=await client.auth.setSession({access_token:localStorage.getItem('lonerpay_access_token')||'',refresh_token:localStorage.getItem('lonerpay_refresh_token')||''});if(error||!data?.session)throw error||Error('Log in again before managing passkeys.');
     user=data.session.user;syncSession(data.session);await list();add.disabled=false;
     add.onclick=async()=>{add.disabled=true;add.textContent='Follow your phone’s security prompt…';err.textContent='';
-      try{const {error}=await client.auth.registerPasskey();if(error)throw error;const {data}=await client.auth.getSession();syncSession(data?.session);await list();err.style.color='#087745';err.textContent='Passkey registered. Use “Unlock with phone security” on the login page.';}
+      try{const {error}=await client.auth.registerPasskey();if(error)throw error;const {data}=await client.auth.getSession();syncSession(data?.session);await list();err.style.color='#087745';err.textContent='Biometric login is ready. Use “Login with biometrics” on the login page.';}
       catch(e){err.style.color='#b42318';err.textContent=message(e);}
-      finally{add.disabled=false;add.textContent='Add a passkey';}
+      finally{add.disabled=false;add.textContent='Enable biometric login';}
     };
   }catch(e){box.textContent='Passkey status unavailable';err.textContent=message(e);}
 };
@@ -822,6 +822,7 @@ verification();
 </script>
 <script>window.addEventListener('load',()=>{if(location.hash==='#verification'&&typeof window.lpKyc==='function')window.lpKyc()});</script></body>
 </html>
+
 
 
 

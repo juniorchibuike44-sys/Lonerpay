@@ -276,7 +276,7 @@ document.addEventListener("DOMContentLoaded", async function () {
           <p class="lp-welcome-eyebrow">YOUR EVERYDAY PAYMENTS</p>
           <h1 id="lpWelcomeTitle">Welcome back</h1>
           <p class="lp-welcome-intro">Your account. Your everyday possibilities.</p>
-          <button id="lpWelcomeUnlock" type="button">Use fingerprint or face</button>
+          <button id="lpWelcomeUnlock" type="button">Login with biometrics</button>
           <p id="lpWelcomeHelp"></p>
           <p id="lpWelcomeError" role="status" aria-live="polite"></p>
           <button id="lpWelcomeSetupPin" type="button" style="display:none">Set up your login PIN</button>
@@ -398,7 +398,7 @@ document.addEventListener("DOMContentLoaded", async function () {
       supportsPasskeys()
         ? (
             remembered?.passkeyEnabled
-              ? "Use fingerprint, face, or your device PIN when your phone offers it."
+              ? "Your phone will ask you to verify your identity securely."
               : "If you have not set up phone security for LonerPay, log in with email and password once to enable it."
           )
         : "Phone security is unavailable in this browser. Use email and password.";
@@ -775,7 +775,7 @@ document.addEventListener("DOMContentLoaded", async function () {
   });
 
   if (passkeyLoginButton) {
-    passkeyLoginButton.textContent = "Unlock with phone security";
+    passkeyLoginButton.textContent = "Login with biometrics";
 
     passkeyLoginButton.addEventListener("click", () => {
       loginWithPasskey(passkeyLoginButton);
@@ -784,7 +784,7 @@ document.addEventListener("DOMContentLoaded", async function () {
 
   if (passkeyHelp) {
     passkeyHelp.textContent =
-      "Use a registered passkey with fingerprint, face, or your device PIN when offered by your phone.";
+      "Your phone handles identity verification securely. You can also sign in with your password.";
   }
 
   async function completeEmailConfirmation(params) {
@@ -1052,6 +1052,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     }
   });
 }); 
+
 
 
 
