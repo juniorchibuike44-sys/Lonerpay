@@ -1,6 +1,6 @@
 import {electricityProviderId} from "./_electricity-providers.js";
 import {pairgateAccounting,savePairgateCost} from "./_provider-accounting.js";
-import { sharedCatalogueRequest, cataloguePlanTypes } from "./_catalogue.js";
+import { checkoutDataPlan } from "./_catalogue.js";
 import { pbkdf2Sync, timingSafeEqual, randomUUID } from "node:crypto";
 import { enforceRateLimit, hardenResponse } from "./_security.js";
 import {
@@ -527,30 +527,7 @@ export default async function handler(
     if (dataServices.has(serviceID)) {
       const network = serviceID === "etisalat-data" ? "9mobile" : serviceID.replace(/-data$/, "");
       pairgateDataProviderId = network;
-      const planTypes = await cataloguePlanTypes(network);
-      let selected = null;
-      let catalogueError = null;
-      for (const planType of planTypes) {
-        try {
-          const result = await sharedCatalogueRequest(
-            `/data-plans?provider_id=${encodeURIComponent(pairgateDataProviderId)}&plan_type=${encodeURIComponent(planType)}`
-          );
-          if (!result.response.ok || result.data?.status !== "success") {
-            catalogueError = Object.assign(new Error("The data provider could not verify this plan. Please try again shortly."), { statusCode: 503 });
-            console.warn("Payment catalogue validation failed", { serviceID, planType, status: result.response.status });
-            continue;
-          }
-          const payload = result.data?.data;
-          const plans = Array.isArray(payload)
-            ? payload
-            : Object.values(payload || {}).flatMap(value => Array.isArray(value) ? value : []);
-          selected = plans.find(item => String(item?.plan_id || item?.id || "") === String(variation_code || ""));
-          if (selected) break;
-        } catch (error) {
-          catalogueError = error;
-        }
-      }
-      if (!selected && catalogueError) throw catalogueError;
+      const selected=await checkoutDataPlan(network,String(variation_code||''));
       const expectedAmount = Number(selected?.price || selected?.amount);
       if (!selected || !Number.isFinite(expectedAmount) || expectedAmount <= 0) {
         const error = new Error("The selected data plan is no longer available. Refresh the plans and try again.");
@@ -1915,6 +1892,7 @@ export default async function handler(
       });
   }
   } 
+
 
 
 

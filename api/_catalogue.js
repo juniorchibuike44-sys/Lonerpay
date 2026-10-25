@@ -67,3 +67,46 @@ export async function cataloguePlanTypes(network) {
     ? ["GIFTING", "AWOOF", "CG", "CG_LITE", "SME"]
     : fallbackPlanTypes;
 }
+
+
+// Checkout reads only trusted server-side provider snapshots. A stale snapshot
+// may identify the family to refresh, but must never authorize a price.
+export async function checkoutDataPlan(network, code) {
+  if(!['mtn','airtel','glo','9mobile'].includes(network)||!String(code||'').trim())return null;
+  const url=new URL('/rest/v1/lp_catalogue_cache',process.env.SUPABASE_URL);
+  url.searchParams.set('select','path,payload,saved_at');
+  url.searchParams.set('path',`like./data-plans?provider_id=${network}&plan_type=*`);
+  url.searchParams.set('order','saved_at.desc');url.searchParams.set('limit','8');
+  const response=await fetch(url,{headers:{apikey:process.env.SUPABASE_SECRET_KEY,Authorization:`Bearer ${process.env.SUPABASE_SECRET_KEY}`},signal:AbortSignal.timeout(5000)});
+  if(!response.ok)throw Object.assign(new Error('Unable to verify the data plan. Please try again.'),{statusCode:503});
+  const rows=await response.json(),now=Date.now();
+  const plansIn=payload=>Array.isArray(payload)?payload:Object.values(payload||{}).flatMap(v=>Array.isArray(v)?v:[]);
+  let knownFamily=null;
+  for(const row of Array.isArray(rows)?rows:[]){
+    const family=fallbackPlanTypes.find(type=>row.path===`/data-plans?provider_id=${network}&plan_type=${type}`);
+    if(!family||row.payload?.status!=='success')continue;
+    const selected=plansIn(row.payload.data).find(p=>String(p?.plan_id||p?.id||'')===String(code));
+    if(!selected)continue;
+    const savedAt=Date.parse(row.saved_at);
+    if(Number.isFinite(savedAt)&&savedAt<=now+5000&&savedAt>now-10*60_000)return selected;
+    if(!knownFamily)knownFamily=family;
+  }
+  let error=null;
+  const checked=new Set();
+  async function check(family){
+    checked.add(family);
+    try{
+      const result=await sharedCatalogueRequest(`/data-plans?provider_id=${network}&plan_type=${family}`);
+      if(!result.response.ok||result.data?.status!=='success')throw Object.assign(new Error('The data provider could not verify this plan. Please try again shortly.'),{statusCode:503});
+      return plansIn(result.data.data).find(p=>String(p?.plan_id||p?.id||'')===String(code))||null;
+    }catch(e){error=e;return null;}
+  }
+  // Avoid unnecessary category/family requests before the customer's own family.
+  if(knownFamily){const selected=await check(knownFamily);if(selected)return selected;}
+  for(const family of await cataloguePlanTypes(network)){
+    if(checked.has(family))continue;
+    const selected=await check(family);if(selected)return selected;
+  }
+  if(error)throw error;
+  return null;
+}
