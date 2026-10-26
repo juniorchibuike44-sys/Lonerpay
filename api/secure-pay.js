@@ -482,7 +482,7 @@ export default async function handler(
       const providerCost=facts?.provider_cost??null;
       const grossProfit=facts?.gross_profit??null;
 
-      await fetch(
+      const accountingResponse = await fetch(
         `${supabaseUrl}/rest/v1/wallet_transactions?user_id=eq.${encodeURIComponent(user.id)}&request_id=eq.${encodeURIComponent(requestId)}&status=${status==='pending'?'eq.pending':status==='successful'?'in.(pending,successful)':'in.(pending,refunded)'}`,
         {
           method: "PATCH",
@@ -514,6 +514,10 @@ export default async function handler(
           })
         }
       );
+      if (!accountingResponse.ok) {
+        console.error('Transaction accounting update rejected', { request_id: requestId, http_status: accountingResponse.status });
+        return;
+      }
       if(providerName==='pairgate'&&facts){
         try{await savePairgateCost({base:supabaseUrl,key:secretKey,requestId,providerReference:String(providerData?.data?.reference_code||providerData?.reference_code||acceptedPairgateData?.data?.reference_code||''),facts});}catch{console.error('Provider cost reconciliation is required',{request_id:requestId});}
       }
