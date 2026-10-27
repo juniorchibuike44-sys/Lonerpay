@@ -2,7 +2,13 @@
   const form = document.getElementById('quoteForm'), status = document.getElementById('status'), result = document.getElementById('result');
   const money = n => new Intl.NumberFormat('en-NG', {style: 'currency', currency: 'NGN'}).format(n);
   let busy = false;
-  form.addEventListener('input', () => { result.hidden = true; status.textContent = ''; });
+  const saveOffer = document.getElementById('saveOffer');
+  let checked = null;
+  saveOffer.onclick = async () => {
+    if (!checked || busy) return; busy = true; saveOffer.disabled = true;
+    try { const r = await window.lpBusinessSession.request('/api/resellers', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...checked,action:'offer',active:document.getElementById('offerActive').checked})}); const d = await r.json(); if(!r.ok)throw Error(d.error||'Could not save offer'); status.textContent = 'Offer saved. '+(d.offer.active?'Approved resellers can prepare batches.':'Offer is inactive.'); } catch(e){status.textContent=e.message;} finally {busy=false;saveOffer.disabled=!checked;}
+  };
+  form.addEventListener('input', () => { result.hidden = true; status.textContent = ''; checked=null; saveOffer.disabled=true; });
   form.addEventListener('submit', async event => {
     event.preventDefault(); if (busy) return;
     busy = true; result.hidden = true; status.textContent = 'Checking the current plan price…';
@@ -21,7 +27,7 @@
       const figures = document.getElementById('figures'); figures.replaceChildren();
       const rows = [['Provider cost per purchase', d.unit_cost], ['Minimum buyer price per purchase', d.minimum_unit_price], ['Buyer pays in total', d.total_price], ['Provider cost in total', d.total_provider_cost], ['Fee reserve in total', d.total_fee_reserve], ['Margin after fee reserve, before cashback', d.margin_before_cashback], ['Estimated cashback · unconfirmed', d.estimated_cashback], ['Estimated margin including cashback', d.estimated_margin_with_cashback]];
       for (const [label, value] of rows) { const dt = document.createElement('dt'), dd = document.createElement('dd'); dt.textContent = label; dd.textContent = money(value); figures.append(dt, dd); }
-      status.textContent = 'Quote checked at ' + new Date(d.generated_at).toLocaleTimeString('en-NG') + '. Recheck before setting an offer.'; result.hidden = false;
+      status.textContent = 'Quote checked at ' + new Date(d.generated_at).toLocaleTimeString('en-NG') + '. Recheck before setting an offer.'; result.hidden = false; checked=d.covers_costs_and_minimum_margin?b:null; saveOffer.disabled=!checked;
     } catch (e) { status.textContent = e.message; }
     finally { busy = false; button.disabled = false; }
   });

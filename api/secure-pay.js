@@ -1,3 +1,4 @@
+import {loadBulkItem,resellerDb} from './_resellers.js';
 import {electricityProviderId} from "./_electricity-providers.js";
 import {pairgateAccounting,savePairgateCost} from "./_provider-accounting.js";
 import { checkoutDataPlan } from "./_catalogue.js";
@@ -415,6 +416,7 @@ export default async function handler(
 
   let pairgateDataProviderId = "";
   let acceptedPairgateData = null;
+  let bulkItem = null;
 
 
   /* =========================
@@ -496,6 +498,7 @@ export default async function handler(
             status,
             details: {
               provider: providerName,
+              ...(bulkItem ? {bulk_item_id:bulkItem.id,bulk_batch_id:bulkItem.batch_id} : {}),
               serviceID,
               billersCode,
               variation_code: variation_code || "",
@@ -537,7 +540,7 @@ export default async function handler(
         const error = new Error("The selected data plan is no longer available. Refresh the plans and try again.");
         error.statusCode = 409; throw error;
       }
-      if (Math.abs(expectedAmount - paymentAmount) > 0.01) {
+      if (bulkItem ? (Math.abs(expectedAmount - Number(bulkItem.provider_cost)) > 0.001 || paymentAmount < expectedAmount + Number(bulkItem.fee_reserve) + Number(bulkItem.minimum_margin)) : Math.abs(expectedAmount - paymentAmount) > 0.01) {
         const error = new Error("The data plan price has changed. Refresh the plans before payment.");
         error.statusCode = 409; throw error;
       }
@@ -592,7 +595,7 @@ export default async function handler(
     try {
       const refund =
         await callRpc(
-          "refund_wallet",
+          bulkItem ? "lp_bulk_refund" : "refund_wallet",
           {
             p_user_id:
               user.id,
@@ -896,6 +899,16 @@ export default async function handler(
     requestId =
       createRequestId();
 
+    if (req.body?.bulk_item_id !== undefined) {
+      const auth = {user, supabaseUrl, secretKey};
+      bulkItem = await loadBulkItem(auth, req.body.bulk_item_id);
+      const expectedService = bulkItem.network === '9mobile' ? 'etisalat-data' : bulkItem.network + '-data';
+      if (serviceID !== expectedService || String(billersCode) !== bulkItem.recipient || String(variation_code) !== bulkItem.plan_code || paymentAmount !== Number(bulkItem.price)) {
+        return res.status(409).json({error:'Bulk order details do not match the saved quote'});
+      }
+      requestId = bulkItem.request_id;
+      if (bulkItem.state !== 'queued') return res.status(202).json({pending:bulkItem.state==='started',request_id:requestId,message:'This bulk item was already attempted. Refresh batch history; do not submit a new purchase.'});
+    }
     await validateFixedVariation();
 
     // Airtime has no fixed plan price to validate. The documented purchase
@@ -960,7 +973,9 @@ export default async function handler(
        DEBIT WALLET
     ========================= */
 
-    const debit =
+    const bulkClaim = bulkItem ? await resellerDb({user,supabaseUrl,secretKey},'rpc/lp_bulk_claim',{method:'POST',body:JSON.stringify({p_user:user.id,p_item:bulkItem.id})}) : null;
+    if (bulkItem && !bulkClaim?.claimed) return res.status(bulkClaim?.state==='not_charged'?402:202).json({pending:bulkClaim?.state==='started',request_id:requestId,error:bulkClaim?.state==='not_charged'?bulkClaim.message:undefined,message:'Refresh batch history before continuing.'});
+    const debit = bulkClaim ||
       await callRpc(
         "debit_wallet",
         {
@@ -1896,6 +1911,7 @@ export default async function handler(
       });
   }
   } 
+
 
 
 
