@@ -207,7 +207,7 @@ export default async function handler(req, res) {
       }
 
       const refundResponse = await fetch(
-        `${supabaseUrl}/rest/v1/rpc/refund_wallet`,
+        `${supabaseUrl}/rest/v1/rpc/${String(event.reference).startsWith("bulk-") ? "lp_bulk_refund" : "refund_wallet"}`,
         {
           method: "POST",
           headers: {
@@ -263,4 +263,5 @@ export default async function handler(req, res) {
     });
   }
 } 
+
 

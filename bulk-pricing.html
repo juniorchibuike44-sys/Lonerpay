@@ -1,0 +1,14 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Bulk pricing · LonerPay</title><link rel="stylesheet" href="business.css"><script src="business-session.js" defer></script><script src="bulk-pricing.js" defer></script><style>select{width:100%;font:inherit;padding:12px;border:1px solid #e5dac4;border-radius:12px;background:#fff;color:#28251e}article{overflow-wrap:anywhere}dt{color:#746c5c;margin-top:14px}dd{margin:4px 0 0;font-weight:700}dialog{max-width:calc(100vw - 32px)}.panel{margin-bottom:16px}</style></head>
+<body><header class="top"><a href="ceo.html" class="brand">LONERPAY · BULK PRICING</a><a href="ceo.html">← CEO dashboard</a></header>
+<main><section class="hero"><div><p class="eyebrow">OWNER WORKSPACE</p><h1>Plan profitable bulk offers.</h1><p>Check current data costs before choosing a vendor price.</p></div></section>
+<section class="panel"><form id="quoteForm"><div class="two">
+<label>Network<select name="network"><option value="mtn">MTN</option><option value="airtel">Airtel</option><option value="glo">Glo</option><option value="9mobile">9mobile</option></select></label>
+<label>Data plan ID<input name="planCode" maxlength="150" required></label>
+<label>Number of purchases<input name="quantity" type="number" min="1" max="1000" step="1" value="10" required></label>
+<label>Buyer price per purchase (₦)<input name="price" type="number" min="0.01" max="1000000" step="0.01" required></label>
+<label>Fee reserve per purchase (₦)<input name="feeReserve" type="number" min="0" max="1000000" step="0.01" value="0" required></label>
+<label>Minimum margin per purchase (₦)<input name="minimumMargin" type="number" min="0" max="1000000" step="0.01" value="0" required></label>
+<label>Assumed provider cashback<select name="estimatedCashbackPercent"><option value="0">0% · no cashback assumed</option><option value="2">2% · shown on selected CG / Gifting plans</option><option value="3">3% · only if shown for this exact product</option><option value="5">5% · only if shown for this exact product</option></select></label>
+</div><p>Use the exact plan ID from the data catalogue. Cashback is an estimate: choosing a rate does not confirm eligibility. Enter your fee reserve; a zero reserve does not mean payments are free.</p><button type="submit">Check bulk price</button><label><input id="offerActive" type="checkbox"> Make this plan offer available to approved resellers</label><button id="saveOffer" type="button" disabled>Save plan offer</button><p id="status" role="status" aria-live="polite"></p></form></section>
+<section id="result" class="panel" hidden><h2 id="planName"></h2><p id="decision"></p><dl id="figures"></dl><p>These are planning figures, not confirmed earnings. This tool does not place bulk orders, activate vendor discounts or credit rewards.</p></section></main></body></html>
