@@ -1,9 +1,9 @@
-import {enforceRateLimit,hardenResponse,requireUser} from "./_security.js";
+import {enforceSharedRateLimit,hardenResponse,requireUser} from "./_security.js";
 const OWNER="juniorchibuike44@gmail.com";
 export default async function handler(req,res){
  hardenResponse(res);
  if(req.method!=="GET")return res.status(405).json({error:"Method not allowed"});
- if(!enforceRateLimit(req,res,{key:"admin-records",limit:30,windowMs:60000}))return;
+ if(!await enforceSharedRateLimit(req,res,{key:"admin-records",limit:30,windowMs:60000}))return;
  const auth=await requireUser(req,res);if(!auth)return;
  if(String(auth.user.email||"").toLowerCase().trim()!==OWNER)return res.status(403).json({error:"Owner access only"});
  const section=String(req.query?.section||"users"),page=Number(req.query?.page||1),days=Number(req.query?.days||30);

@@ -1,5 +1,5 @@
 import nodemailer from "nodemailer";
-import { cleanText, enforceRateLimit, hardenResponse, requireUser } from "./_security.js";
+import { cleanText, enforceSharedRateLimit, hardenResponse, requireUser } from "./_security.js";
 
 const CATEGORIES = new Set(["account", "payment", "transfer", "verification", "security", "other"]);
 const RECIPIENTS = ["support@lonerpay.com", "lonerhublimited@gmail.com"];
@@ -7,7 +7,7 @@ const RECIPIENTS = ["support@lonerpay.com", "lonerhublimited@gmail.com"];
 export default async function handler(req, res) {
   hardenResponse(res);
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
-  if (!enforceRateLimit(req, res, { key: "support", limit: 5, windowMs: 10 * 60_000 })) return;
+  if (!await enforceSharedRateLimit(req, res, { key: "support", limit: 5, windowMs: 10 * 60_000 })) return;
   const auth = await requireUser(req, res);
   if (!auth) return;
   const category = cleanText(req.body?.category, 30).toLowerCase();

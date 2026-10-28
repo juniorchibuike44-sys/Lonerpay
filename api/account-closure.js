@@ -1,10 +1,10 @@
 import {randomUUID} from 'node:crypto';
-import {cleanText,enforceRateLimit,hardenResponse,requireUser} from './_security.js';
+import {cleanText,enforceSharedRateLimit,hardenResponse,requireUser} from './_security.js';
 import {sendDeletionNotice} from './_deletion-mail.js';
 export default async function handler(req,res){
  hardenResponse(res);
  if(!['GET','POST'].includes(req.method))return res.status(405).json({error:'Method not allowed'});
- if(!enforceRateLimit(req,res,{key:'closure',limit:6,windowMs:15*60_000}))return;
+ if(!await enforceSharedRateLimit(req,res,{key:'closure',limit:6,windowMs:15*60_000}))return;
  try{
   const auth=await requireUser(req,res);if(!auth)return;
   const headers={apikey:auth.secretKey,Authorization:`Bearer ${auth.secretKey}`},previous=auth.user.app_metadata?.account_closure_request||null;

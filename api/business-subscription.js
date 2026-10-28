@@ -1,7 +1,7 @@
-import {requireUser,hardenResponse,enforceRateLimit} from './_security.js';
+import {requireUser,hardenResponse,enforceSharedRateLimit} from './_security.js';
 import {businessAccess,businessDb,businessReference,confirmBusinessPayment} from './_business-subscription.js';
 const ownerEmail='juniorchibuike44@gmail.com',uuid=x=>typeof x==='string'&&/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(x);
-export default async function handler(req,res){hardenResponse(res);if(!['GET','POST'].includes(req.method))return res.status(405).json({error:'Method not allowed'});if(!enforceRateLimit(req,res,{key:'business-subscription',limit:40,windowMs:60000}))return;
+export default async function handler(req,res){hardenResponse(res);if(!['GET','POST'].includes(req.method))return res.status(405).json({error:'Method not allowed'});if(!await enforceSharedRateLimit(req,res,{key:'business-subscription',limit:40,windowMs:60000}))return;
  try{const a=await requireUser(req,res);if(!a)return;
  if(req.method==='GET'){
   if(req.query?.view==='admin'){if(String(a.user.email||'').toLowerCase()!==ownerEmail)return res.status(403).json({error:'Admin access only'});const offset=Math.max(0,Math.min(100000,parseInt(req.query.offset,10)||0));const [totals,payments]=await Promise.all([businessDb(a,'rpc/lp_business_subscription_totals','POST',{}),businessDb(a,'lp_business_subscription_payments?select=id,email,reference,amount_kobo,received_kobo,actual_refunded_kobo,status,fees_kobo,channel,paid_at,period_end,refunded_kobo,created_at&order=created_at.desc,id.desc&limit=51&offset='+offset)]);return res.status(200).json({totals,payments:payments.slice(0,50),has_more:payments.length>50});}

@@ -1,4 +1,4 @@
-import { enforceRateLimit, hardenResponse } from "./_security.js";
+import { enforceSharedRateLimit, hardenResponse } from "./_security.js";
 
 export default async function handler(req, res) {
   hardenResponse(res);
@@ -9,7 +9,7 @@ export default async function handler(req, res) {
     });
   }
 
-  if (!enforceRateLimit(req, res, { key: "verify-bank", limit: 12, windowMs: 60_000 })) return;
+  if (!await enforceSharedRateLimit(req, res, { key: "verify-bank", limit: 12, windowMs: 60_000 })) return;
   try {
     const { account_number, bank_code } = req.body || {};
 

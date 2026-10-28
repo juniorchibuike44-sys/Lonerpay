@@ -1,4 +1,4 @@
-import { enforceRateLimit, hardenResponse } from "./_security.js";
+import { enforceSharedRateLimit, hardenResponse } from "./_security.js";
 import { pairgateRequest, pairgateEpinDenominations } from "./_pairgate.js";
 
 const NETWORKS = [
@@ -11,7 +11,7 @@ const NETWORKS = [
 export default async function handler(req, res) {
   hardenResponse(res);
   if (req.method !== "GET") return res.status(405).json({ error: "Method not allowed" });
-  if (!enforceRateLimit(req, res, { key: "epin-options", limit: 30, windowMs: 60_000 })) return;
+  if (!await enforceSharedRateLimit(req, res, { key: "epin-options", limit: 30, windowMs: 60_000 })) return;
   res.setHeader("Cache-Control", "no-store");
 
   const authorization = req.headers.authorization;

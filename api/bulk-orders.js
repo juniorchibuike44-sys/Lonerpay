@@ -1,9 +1,9 @@
-import {hardenResponse,enforceRateLimit,requireUser} from './_security.js';
+import {hardenResponse,enforceSharedRateLimit,requireUser} from './_security.js';
 import {checkoutDataPlan} from './_catalogue.js';
 import {uuid,resellerDb,recipients} from './_resellers.js';
 export default async function handler(req,res){
  hardenResponse(res);if(!['GET','POST'].includes(req.method))return res.status(405).json({error:'Method not allowed'});
- if(!enforceRateLimit(req,res,{key:'bulk-orders',limit:40}))return;
+ if(!await enforceSharedRateLimit(req,res,{key:'bulk-orders',limit:40}))return;
  const auth=await requireUser(req,res);if(!auth)return;
  try{
   if(req.method==='POST'){

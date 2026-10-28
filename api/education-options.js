@@ -1,4 +1,4 @@
-import { enforceRateLimit, hardenResponse } from "./_security.js";
+import { enforceSharedRateLimit, hardenResponse } from "./_security.js";
 import { pairgateMessage, pairgateRequest } from "./_pairgate.js";
 
 const retailPrices = {
@@ -16,7 +16,7 @@ const labels = {
 export default async function handler(req, res) {
   hardenResponse(res);
   if (req.method !== "GET") return res.status(405).json({ error: "Method not allowed" });
-  if (!enforceRateLimit(req, res, { key: "education-options", limit: 30, windowMs: 60_000 })) return;
+  if (!await enforceSharedRateLimit(req, res, { key: "education-options", limit: 30, windowMs: 60_000 })) return;
   res.setHeader("Cache-Control", "private, max-age=60, stale-while-revalidate=300");
 
   const authorization = req.headers.authorization;

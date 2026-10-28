@@ -1,9 +1,9 @@
-import {requireUser,hardenResponse,enforceRateLimit} from './_security.js';
+import {requireUser,hardenResponse,enforceSharedRateLimit} from './_security.js';
 import {pairgateRequest,isPairgateSuccessfulStatus,pairgateStatus} from './_pairgate.js';
 import {pairgateAccounting,savePairgateCost} from './_provider-accounting.js';
 export default async function handler(req,res){
  hardenResponse(res);if(!['GET','POST'].includes(req.method))return res.status(405).json({error:'Method not allowed'});
- if(!enforceRateLimit(req,res,{key:'profit-reconcile',limit:15,windowMs:60000}))return;
+ if(!await enforceSharedRateLimit(req,res,{key:'profit-reconcile',limit:15,windowMs:60000}))return;
  const auth=await requireUser(req,res);if(!auth)return;
  if(String(auth.user.email||'').trim().toLowerCase()!=='juniorchibuike44@gmail.com')return res.status(403).json({error:'Owner access only'});
  const cursor=req.method==='POST'?req.body?.after:null;

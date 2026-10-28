@@ -1,5 +1,5 @@
 import {refundEntries,earningsCoverage} from './_earnings-report.js';
-import { enforceRateLimit, hardenResponse, requireUser } from "./_security.js";
+import { enforceSharedRateLimit, hardenResponse, requireUser } from "./_security.js";
 import { pairgateRequest } from "./_pairgate.js";
 import { completeFinanceDetails } from "./_admin-finance-details.js";
 
@@ -47,7 +47,7 @@ async function companyFinances(auth) {
 }
 
 export default async function handler(req,res){
-  hardenResponse(res); if(req.method!=="GET")return res.status(405).json({error:"Method not allowed"}); if(!enforceRateLimit(req,res,{key:"ceo-profit",limit:30,windowMs:60_000}))return;
+  hardenResponse(res); if(req.method!=="GET")return res.status(405).json({error:"Method not allowed"}); if(!await enforceSharedRateLimit(req,res,{key:"ceo-profit",limit:30,windowMs:60_000}))return;
   const auth=await requireUser(req,res); if(!auth)return; if(String(auth.user.email||"").trim().toLowerCase()!==CEO_EMAIL)return res.status(403).json({error:"CEO access only"});
   const requestedDays=Number(req.query?.days||30);const days=Number.isFinite(requestedDays)?Math.min(90,Math.max(1,Math.floor(requestedDays))):30,since=Date.now()-days*86_400_000;
   try{

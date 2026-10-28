@@ -1,6 +1,6 @@
-import { requireUser,hardenResponse,enforceRateLimit } from './_security.js';
+import { requireUser,hardenResponse,enforceSharedRateLimit } from './_security.js';
 export async function access(req,res,owner=false){
- hardenResponse(res);if(!enforceRateLimit(req,res,{key:owner?'admin-notifications':'notifications',limit:120,windowMs:60000}))return null;
+ hardenResponse(res);if(!await enforceSharedRateLimit(req,res,{key:owner?'admin-notifications':'notifications',limit:120,windowMs:60000}))return null;
  const a=await requireUser(req,res);if(!a)return null;
  if(owner&&String(a.user.email||'').trim().toLowerCase()!=='juniorchibuike44@gmail.com'){res.status(403).json({error:'Owner access only'});return null;}return a;
 }
