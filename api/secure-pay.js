@@ -3,7 +3,7 @@ import {electricityProviderId} from "./_electricity-providers.js";
 import {pairgateAccounting,savePairgateCost} from "./_provider-accounting.js";
 import { checkoutDataPlan } from "./_catalogue.js";
 import { pbkdf2Sync, timingSafeEqual, randomUUID } from "node:crypto";
-import { enforceRateLimit, hardenResponse } from "./_security.js";
+import { enforceSharedRateLimit, hardenResponse } from "./_security.js";
 import {
   isPairgateAccepted,
   isPairgateFailedStatus,
@@ -175,7 +175,7 @@ export default async function handler(
       error: "Method not allowed"
     });
   }
-  if (!enforceRateLimit(req, res, { key: "secure-pay", limit: 20, windowMs: 60_000 })) return;
+  if (!await enforceSharedRateLimit(req, res, { key: "secure-pay", limit: 20, windowMs: 60_000 })) return;
 
   res.setHeader(
     "Cache-Control",
