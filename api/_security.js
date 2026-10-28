@@ -66,3 +66,36 @@ export async function requireUser(req, res) {
 export function cleanText(value, maxLength = 500) {
   return String(value || "").replace(/[\u0000-\u001f\u007f]/g, " ").trim().slice(0, maxLength);
 }
+
+export async function enforceSharedRateLimit(req, res, { key = "api", limit = 20, windowMs = 60_000 } = {}) {
+  const base = process.env.SUPABASE_URL;
+  const secret = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!base || !secret) {
+    res.status(503).json({ error: "Security check temporarily unavailable. Please try again." });
+    return false;
+  }
+  try {
+    const { createHash } = await import("node:crypto");
+    const bucket = createHash("sha256").update(key + ":" + clientAddress(req)).digest("hex");
+    const response = await fetch(base + "/rest/v1/rpc/lp_check_rate_limit", {
+      method: "POST",
+      headers: { apikey: secret, Authorization: "Bearer " + secret, "Content-Type": "application/json" },
+      body: JSON.stringify({ p_bucket: bucket, p_limit: limit, p_window_ms: windowMs }),
+      signal: AbortSignal.timeout(5000)
+    });
+    if (!response.ok) throw new Error("Rate limit service unavailable");
+    const result = await response.json();
+    if (!result || typeof result.allowed !== "boolean" || !Number.isFinite(result.remaining) || !Number.isFinite(result.retry_after)) throw new Error("Invalid rate limit response");
+    res.setHeader("RateLimit-Limit", String(limit));
+    res.setHeader("RateLimit-Remaining", String(result.remaining));
+    if (!result.allowed) {
+      res.setHeader("Retry-After", String(result.retry_after));
+      res.status(429).json({ error: "Too many requests. Please wait and try again." });
+      return false;
+    }
+    return true;
+  } catch {
+    res.status(503).json({ error: "Security check temporarily unavailable. Please try again." });
+    return false;
+  }
+}
