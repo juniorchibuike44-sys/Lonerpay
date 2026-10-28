@@ -1,5 +1,5 @@
 import {requireBusiness,businessAccess} from './_business-subscription.js';
-import {requireUser,hardenResponse,enforceRateLimit} from './_security.js';
+import {requireUser,hardenResponse,enforceSharedRateLimit} from './_security.js';
 const bucket='business-products',uuid=x=>typeof x==='string'&&/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(x);
 export const config={api:{bodyParser:{sizeLimit:'3mb'}}};
 export function decodePhoto(value){
@@ -11,7 +11,7 @@ export function decodePhoto(value){
 const validPath=(path,owner,id)=>typeof path==='string'&&new RegExp('^'+owner+'/'+id+'/[a-f0-9-]{36}\\.jpg$','i').test(path);
 export default async function handler(req,res){
  hardenResponse(res);if(!['GET','POST'].includes(req.method))return res.status(405).json({error:'Method not allowed'});
- if(!enforceRateLimit(req,res,{key:'business-product-photo',limit:req.method==='GET'?180:30,windowMs:60000}))return;
+ if(!await enforceSharedRateLimit(req,res,{key:'business-product-photo',limit:req.method==='GET'?180:30,windowMs:60000}))return;
  let a;
  try{
  if(req.method==='GET'){a={supabaseUrl:process.env.SUPABASE_URL,secretKey:process.env.SUPABASE_SECRET_KEY||process.env.SUPABASE_SERVICE_ROLE_KEY};if(!a.supabaseUrl||!a.secretKey)return res.status(503).json({error:'Photo unavailable'});}

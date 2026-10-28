@@ -1,5 +1,5 @@
 import {FAILED_STATUSES,verificationFailure} from "./_verification.js";
-import { enforceRateLimit, hardenResponse } from "./_security.js";
+import { enforceSharedRateLimit, hardenResponse } from "./_security.js";
 
 export default async function handler(req, res) {
   hardenResponse(res);
@@ -9,7 +9,7 @@ export default async function handler(req, res) {
       message: "Method not allowed"
     });
   }
-  if (!enforceRateLimit(req, res, { key: "virtual-account", limit: 12, windowMs: 10 * 60_000 })) return;
+  if (!await enforceSharedRateLimit(req, res, { key: "virtual-account", limit: 12, windowMs: 10 * 60_000 })) return;
 
   const supabaseUrl = process.env.SUPABASE_URL;
   const supabaseKey =

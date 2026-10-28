@@ -1,10 +1,10 @@
 import {randomUUID} from 'node:crypto';
-import {cleanText,enforceRateLimit,hardenResponse} from './_security.js';
+import {cleanText,enforceSharedRateLimit,hardenResponse} from './_security.js';
 import {sendDeletionNotice} from './_deletion-mail.js';
 export default async function handler(req,res){
  hardenResponse(res);
  if(req.method!=='POST')return res.status(405).json({error:'Method not allowed'});
- if(!enforceRateLimit(req,res,{key:'public-deletion',limit:3,windowMs:15*60_000}))return;
+ if(!await enforceSharedRateLimit(req,res,{key:'public-deletion',limit:3,windowMs:15*60_000}))return;
  const email=cleanText(req.body?.email,254).toLowerCase();
  if(!/^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/.test(email)||req.body?.confirmation!=='DELETE MY ACCOUNT')return res.status(400).json({error:'Enter your registered email and confirm the account deletion request.'});
  const reference='DEL-'+randomUUID();

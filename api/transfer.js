@@ -1,5 +1,5 @@
 import { createHmac, pbkdf2Sync, timingSafeEqual, randomUUID } from "node:crypto";
-import { enforceRateLimit, hardenResponse } from "./_security.js";
+import { enforceSharedRateLimit, hardenResponse } from "./_security.js";
 
 function verifyStoredPin(pin, storedHash) {
   try {
@@ -50,7 +50,7 @@ export default async function handler(req, res) {
       message: "Method not allowed"
     });
   }
-  if (!enforceRateLimit(req, res, { key: "transfer", limit: 10, windowMs: 60_000 })) return;
+  if (!await enforceSharedRateLimit(req, res, { key: "transfer", limit: 10, windowMs: 60_000 })) return;
 
   res.setHeader("Cache-Control", "no-store");
 

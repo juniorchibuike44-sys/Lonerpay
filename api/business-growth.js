@@ -1,5 +1,5 @@
 import {requireBusiness,businessAccess} from './_business-subscription.js';
-import {requireUser,hardenResponse,enforceRateLimit} from './_security.js';
+import {requireUser,hardenResponse,enforceSharedRateLimit} from './_security.js';
 export const validId=x=>typeof x==='string'&&/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(x);
 function field(x,max,required=false){if(typeof x!=='string'||x.length>max||/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(x)||(required&&!x.trim()))throw Error('Check the text fields.');return x.trim();}
 function integer(x,min,max){if(!Number.isSafeInteger(x)||x<min||x>max)throw Error('Check quantities and amounts.');return x;}
@@ -11,7 +11,7 @@ export function publicCatalogue(store,products){return {store:{name:store.name,d
 export default async function handler(req,res){
  hardenResponse(res);
  if(!['GET','POST'].includes(req.method))return res.status(405).json({error:'Method not allowed'});
- if(!enforceRateLimit(req,res,{key:'business-growth',limit:90,windowMs:60000}))return;
+ if(!await enforceSharedRateLimit(req,res,{key:'business-growth',limit:90,windowMs:60000}))return;
  let a;
  try{
  const publicRead=req.method==='GET'&&req.query?.view==='catalogue';

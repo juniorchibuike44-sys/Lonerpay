@@ -1,11 +1,11 @@
-import { enforceRateLimit, hardenResponse, requireUser } from './_security.js';
+import { enforceSharedRateLimit, hardenResponse, requireUser } from './_security.js';
 import { checkoutDataPlan } from './_catalogue.js';
 import { bulkQuote } from './_bulk-pricing.js';
 
 export default async function handler(req, res) {
   hardenResponse(res);
   if (req.method !== 'POST') return res.status(405).json({error: 'Method not allowed'});
-  if (!enforceRateLimit(req, res, {key: 'bulk-pricing', limit: 20})) return;
+  if (!await enforceSharedRateLimit(req, res, {key: 'bulk-pricing', limit: 20})) return;
   const auth = await requireUser(req, res);
   if (!auth) return;
   if (String(auth.user.email || '').toLowerCase() !== 'juniorchibuike44@gmail.com') return res.status(403).json({error: 'Owner access only'});

@@ -1,5 +1,5 @@
 import {createHmac,timingSafeEqual} from 'node:crypto';
-import {cleanText,enforceRateLimit,hardenResponse,requireUser} from './_security.js';
+import {cleanText,enforceSharedRateLimit,hardenResponse,requireUser} from './_security.js';
 const types={hotel:'hotel',restaurant:'restaurant',supermarket:'supermarket'};
 const names={hotel:'hotels',restaurant:'restaurants',supermarket:'supermarkets'};
 const fields='places.id,places.displayName,places.formattedAddress,places.location,places.googleMapsUri,places.rating,places.userRatingCount,places.currentOpeningHours,places.internationalPhoneNumber,places.websiteUri,places.photos,places.attributions,places.businessStatus';
@@ -22,7 +22,7 @@ function attributions(rows){return (Array.isArray(rows)?rows:[]).slice(0,10).map
 export default async function handler(req,res){
  hardenResponse(res);
  if(!['GET','POST'].includes(req.method))return res.status(405).json({error:'Method not allowed'});
- if(!enforceRateLimit(req,res,{key:'places-ip',limit:40,windowMs:10*60_000}))return;
+ if(!await enforceSharedRateLimit(req,res,{key:'places-ip',limit:40,windowMs:10*60_000}))return;
  try{
   const auth=await requireUser(req,res);if(!auth)return;
   const enabled=process.env.PLACES_ENABLED==='true'&&!!process.env.GOOGLE_PLACES_API_KEY;
@@ -30,7 +30,7 @@ export default async function handler(req,res){
   if(!enabled)return res.status(503).json({code:'PLACES_NOT_CONFIGURED',error:'In-app place search is not active yet. You can still search using Google Maps below.'});
   const action=req.body?.action||'search';
   if(!['search','photo'].includes(action))return res.status(400).json({error:'Invalid places action'});
-  if(!enforceRateLimit({headers:{'x-forwarded-for':auth.user.id}},res,{key:'places-user-'+action,limit:action==='photo'?24:10,windowMs:10*60_000}))return;
+  if(!await enforceSharedRateLimit({headers:{'x-forwarded-for':auth.user.id}},res,{key:'places-user-'+action,limit:action==='photo'?24:10,windowMs:10*60_000}))return;
   const key=process.env.GOOGLE_PLACES_API_KEY;
   if(action==='photo'){
    let name;try{name=readTicket(req.body?.ticket,auth.user.id,auth.secretKey);}catch{return res.status(400).json({error:'This photo link expired or is invalid. Search again to refresh it.'});}

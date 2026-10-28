@@ -1,10 +1,10 @@
-import {hardenResponse, enforceRateLimit, requireUser, cleanText} from './_security.js';
+import {hardenResponse, enforceSharedRateLimit, requireUser, cleanText} from './_security.js';
 import {checkoutDataPlan} from './_catalogue.js';
 import {bulkQuote} from './_bulk-pricing.js';
 import {OWNER_EMAIL, uuid, resellerDb} from './_resellers.js';
 export default async function handler(req,res) {
  hardenResponse(res); if(!['GET','POST'].includes(req.method))return res.status(405).json({error:'Method not allowed'});
- if(!enforceRateLimit(req,res,{key:'resellers',limit:30}))return;
+ if(!await enforceSharedRateLimit(req,res,{key:'resellers',limit:30}))return;
  const auth=await requireUser(req,res);if(!auth)return;
  const owner=String(auth.user.email||'').toLowerCase()===OWNER_EMAIL;
  try {
