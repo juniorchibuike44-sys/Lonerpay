@@ -104,12 +104,12 @@ document.addEventListener("DOMContentLoaded", async function () {
         #lpSigninWelcome{position:fixed;inset:0;z-index:2147483647;display:grid;place-items:center;overflow:auto;box-sizing:border-box;padding:32px 24px;background:#faf7ef;color:#29251d;text-align:center;font-family:Arial,sans-serif;isolation:isolate}
         #lpSigninWelcome:before{content:'';position:absolute;inset:0;z-index:-1;background:radial-gradient(ellipse at 50% 30%,#eed8a3aa,transparent 60%)}
         #lpSigninWelcome .lp-intro-content{width:100%;max-width:420px;animation:lpIntroAppear .65s ease-out both}
-        #lpSigninWelcome .lp-intro-mark{display:grid;place-items:center;width:86px;height:86px;margin:0 auto 32px;border:1px solid #bc964d;border-radius:26px;background:linear-gradient(140deg,#fff8e3,#e7c77f);box-shadow:0 16px 48px #b18b3b25;font:italic bold 58px Georgia,serif;color:#936514;animation:lpIntroMark 1.8s ease-in-out both}
+        #lpSigninWelcome .lp-intro-mark{display:grid;place-items:center;width:86px;height:86px;margin:0 auto 32px;border:1px solid #bc964d;border-radius:26px;background:linear-gradient(140deg,#fff8e3,#e7c77f);box-shadow:0 16px 48px #b18b3b25;font:italic bold 58px Georgia,serif;color:#936514;animation:lpIntroMark .6s ease-in-out both}
         #lpSigninWelcome .lp-intro-eyebrow{font-size:11px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:#8b713e;margin:0 0 14px}
         #lpSigninWelcome h1{font-size:clamp(27px,7vw,38px);line-height:1.2;letter-spacing:-1px;margin:0 0 16px}
         #lpSigninWelcome .lp-intro-tagline{font-size:17px;line-height:1.5;color:#74684f;margin:0}
         #lpSigninWelcome .lp-intro-progress{width:100px;height:3px;border-radius:4px;background:#e9dfca;overflow:hidden;margin:36px auto 18px}
-        #lpSigninWelcome .lp-intro-progress:after{content:'';display:block;width:100%;height:100%;background:#a77b29;transform-origin:left;animation:lpIntroProgress 5s linear both}
+        #lpSigninWelcome .lp-intro-progress:after{content:'';display:block;width:100%;height:100%;background:#a77b29;transform-origin:left;animation:lpIntroProgress 1s linear both}
         #lpSigninWelcome .lp-intro-status{font-size:12px;color:#8b806c;margin:0}
         @keyframes lpIntroAppear{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
         @keyframes lpIntroMark{from{transform:scale(.9)}to{transform:scale(1)}}
@@ -154,7 +154,7 @@ document.addEventListener("DOMContentLoaded", async function () {
         return;
       }
       window.location.replace("dashboard.html");
-    }, 5000);
+    }, 1000);
   }
 
   function saveSession(session) {
@@ -228,6 +228,9 @@ document.addEventListener("DOMContentLoaded", async function () {
 
     return configPromise;
   }
+
+  // Start loading public authentication configuration while the customer enters credentials.
+  getConfig().catch(() => {});
 
   async function getSupabaseClient() {
     if (!supabaseClientPromise) {
