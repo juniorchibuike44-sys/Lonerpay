@@ -27,9 +27,10 @@ self.addEventListener('push',event=>{
   let data;try{data=event.data.json();}catch{return;}
   if(!data||data.owner!==await binding()||!data.owner)return;
   const transaction=/^[0-9a-f-]{36}$/i.test(data.transaction||'')?data.transaction:null;
-  await self.registration.showNotification('Wallet funded',{
+  const title=data.title==='Bill reminder'?'Bill reminder':'Wallet funded';
+  await self.registration.showNotification(title,{
    body:String(data.body||'Your LonerPay wallet has been funded.').slice(0,240),
-   tag:'funding-'+String(data.id),renotify:false,
+   tag:'notice-'+String(data.id),renotify:false,
    data:{url:'/dashboard.html'+(transaction?'?funding='+encodeURIComponent(transaction):'')}
   });
  })());
@@ -59,4 +60,5 @@ self.addEventListener('fetch',event=>{
   return saved||new Response('LonerPay is offline. Reconnect before retrying payments.',{status:503,headers:{'Content-Type':'text/plain; charset=utf-8'}});
  }));
 });
+
 

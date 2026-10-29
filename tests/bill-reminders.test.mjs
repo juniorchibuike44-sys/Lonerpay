@@ -1,0 +1,15 @@
+import assert from 'node:assert/strict';
+import handler from '../api/bill-reminders.js';
+process.env.SUPABASE_URL='https://test.invalid';process.env.SUPABASE_SECRET_KEY='test';
+const response=()=>({headers:{},setHeader(k,v){this.headers[k]=v},status(n){this.code=n;return this},json(x){this.body=x;return this}});
+let requests=[];let allowed=true;
+globalThis.fetch=async(url,opts={})=>{requests.push({url,opts});if(url.includes('lp_check_rate_limit'))return new Response(JSON.stringify({allowed:true,remaining:10,retry_after:60}));
+ if(url.endsWith('/auth/v1/user'))return allowed?new Response(JSON.stringify({id:'user-1'})):new Response('{}',{status:401});
+ if(url.includes('lp_bill_reminders'))return new Response(JSON.stringify(opts.method==='POST'?[{id:'created'}]:[]));
+ throw Error('Unexpected request '+url);};
+const base={headers:{authorization:'Bearer test','x-forwarded-for':'192.0.2.1'}};
+let res=response();await handler({...base,method:'POST',body:{service:'tv',due_at:new Date(Date.now()+3600000).toISOString()}},res);assert.equal(res.code,201);
+let insert=requests.find(x=>x.url.includes('lp_bill_reminders'));assert.equal(JSON.parse(insert.opts.body).user_id,'user-1');assert(!requests.some(x=>/secure-pay|paystack|wallet/.test(x.url)));
+requests=[];res=response();await handler({...base,method:'POST',body:{service:'tv',due_at:'2000-01-01'}},res);assert.equal(res.code,400);assert(!requests.some(x=>x.url.includes('lp_bill_reminders')));
+requests=[];allowed=false;res=response();await handler({...base,method:'GET'},res);assert.equal(res.code,401);assert(!requests.some(x=>x.url.includes('lp_bill_reminders')));
+console.log('Reminder creation, past-date rejection, owner authentication and no-payment checks passed');
