@@ -23,6 +23,10 @@ document.addEventListener("DOMContentLoaded", async function () {
   const forgotPasswordButton = document.getElementById("forgotPasswordButton");
   const authModeSwitch = document.getElementById("authModeSwitch");
 
+  const inviteCode = new URLSearchParams(location.search).get("ref")?.trim().toUpperCase() || "";
+  const referralInput = form?.querySelector("input[name='referralCode']");
+  if (referralInput && /^[A-F0-9]{12}$/.test(inviteCode)) referralInput.value = inviteCode;
+
   const DEVICE_KEY = "lonerpay_returning_user_v1";
   let signupStep = 1;
   let welcomeScreen;
