@@ -161,7 +161,8 @@
     phone,
     variationCode,
     amount,
-    pin
+    pin,
+    onSubmitted
   }) {
     const serviceID = serviceIDs[network];
 
@@ -247,6 +248,8 @@
 
     let data =
       await response.json();
+
+    if (response.ok) onSubmitted?.();
 
     if (
       typeof window.refreshSecureWallet ===
@@ -422,8 +425,10 @@
         overlay.dataset.paymentBusy = "1";
         sheet.querySelectorAll(".ld-back,.ld-close").forEach(control => control.disabled = true);
         button.disabled = true; button.textContent = "Processing…";
+        const progress = document.createElement("div"); button.before(progress);
+        window.LonerPayPurchaseProgress?.render(progress, 0, "data");
         try {
-          const result = await purchaseData({network, phone, variationCode:selected.code, amount:selected.amount, pin:pin.value}); pin.value = "";
+          const result = await purchaseData({network, phone, variationCode:selected.code, amount:selected.amount, pin:pin.value, onSubmitted: () => window.LonerPayPurchaseProgress?.render(progress, 1, "data")}); pin.value = "";
           const status = String(result?.content?.transactions?.status || "").toLowerCase();
           if (result.pending || String(result.code) === "099" || status === "pending" || status === "initiated") {
             sheet.innerHTML = `<div class="ld-review" style="text-align:center;padding-top:38px"><h2>Awaiting Confirmation</h2><p style="color:#66768b">Your request was submitted. If the data has arrived, do not buy it again. We are waiting for the provider’s final status.</p><p style="color:#66768b">Reference: ${escapeText(result.request_id || "")}</p><button class="ld-primary ld-check" type="button">Check Status</button><button class="ld-secondary ld-done" type="button">Done</button><p class="ld-check-result" style="color:#66768b"></p></div>`;
@@ -434,6 +439,7 @@
               if (!sheet.isConnected) return;
               if (confirmation?.status === "successful") {
                 sheet.innerHTML = `<div class="ld-review" style="text-align:center;padding-top:38px"><h2>Data Purchase Successful</h2><p>${escapeText(selected.name)} was sent to ${phone}.</p><button class="ld-primary ld-done" type="button">Done</button></div>`;
+                const complete = document.createElement("div"); sheet.querySelector(".ld-done").before(complete); window.LonerPayPurchaseProgress?.render(complete, 2, "data");
                 sheet.querySelector(".ld-done").onclick = close;
               } else {
                 sheet.querySelector(".ld-check-result").textContent = confirmation?.status === "refunded" ? "Purchase failed. Your wallet was refunded." : confirmation?.status === "failed" ? "Purchase failed. Check Transactions for details." : "Still awaiting the provider’s confirmation. You can close this screen and check Transactions later.";
@@ -443,8 +449,8 @@
             return;
           }
           if (String(result.code) !== "000" || status !== "delivered") throw new Error("Data payment was not confirmed as delivered.");
-          sheet.innerHTML = `<div class="ld-review" style="text-align:center;padding-top:38px"><div style="width:68px;height:68px;border-radius:50%;background:#e8faf2;color:#07865a;display:grid;place-items:center;margin:auto;font-size:34px">✓</div><h2>Data Purchase Successful</h2><p style="color:#66768b">${escapeText(selected.name)} was sent to ${phone}.</p><button class="ld-primary ld-done" type="button">Done</button></div>`; sheet.querySelector(".ld-done").onclick=close;
-        } catch (purchaseError) { const refund = purchaseError.refunded ? " Your wallet was refunded." : purchaseError.refund_error ? ` Refund issue: ${purchaseError.refund_error}` : ""; fail((purchaseError.message || "Data payment failed.") + refund); button.disabled=false; button.textContent="Confirm Payment"; } finally { delete overlay.dataset.paymentBusy; sheet.querySelectorAll(".ld-back,.ld-close").forEach(control => control.disabled = false); }
+          sheet.innerHTML = `<div class="ld-review" style="text-align:center;padding-top:38px"><div style="width:68px;height:68px;border-radius:50%;background:#e8faf2;color:#07865a;display:grid;place-items:center;margin:auto;font-size:34px">✓</div><h2>Data Purchase Successful</h2><p style="color:#66768b">${escapeText(selected.name)} was sent to ${phone}.</p><button class="ld-primary ld-done" type="button">Done</button></div>`; const complete = document.createElement("div"); sheet.querySelector(".ld-done").before(complete); window.LonerPayPurchaseProgress?.render(complete, 2, "data"); sheet.querySelector(".ld-done").onclick=close;
+        } catch (purchaseError) { progress.remove(); const refund = purchaseError.refunded ? " Your wallet was refunded." : purchaseError.refund_error ? ` Refund issue: ${purchaseError.refund_error}` : ""; fail((purchaseError.message || "Data payment failed.") + refund); button.disabled=false; button.textContent="Confirm Payment"; } finally { delete overlay.dataset.paymentBusy; sheet.querySelectorAll(".ld-back,.ld-close").forEach(control => control.disabled = false); }
       };
     };
     load();

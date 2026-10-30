@@ -2707,7 +2707,8 @@ function openAITips() {
 <!-- Shared display-only bundles load before the data UI, including on a new device. -->
 <script src="recipient-phone.js?v=20261021-account-phone"></script>
 <script src="/api/data-catalogue"></script>
-<script src="data-client.js?v=20261021-account-phone"></script>
+<script src="purchase-progress.js?v=1"></script>
+<script src="data-client.js?v=20261030-progress"></script>
 <script src="electricity-client.js?v=20261017-gold-screens"></script>
 <script src="tv-client.js?v=20261017-gold-screens"></script>
 <script src="wallet-client.js?v=20261024-kyc-20261021-personal-greeting"></script>
@@ -3096,6 +3097,9 @@ function openAITips() {
         if (!/^\d{4}$/.test(pin.value)) return showInline(err,"Enter your 4-digit payment PIN.");
         if (!accessToken()) return showInline(err,"Please log in again before making a payment.");
         button.disabled = true; button.textContent = "Processing...";
+        const progress = document.createElement("div");
+        button.before(progress);
+        window.LonerPayPurchaseProgress?.render(progress, 0, "airtime");
         try {
           const response = await fetch("/api/secure-pay", {
             method:"POST",
@@ -3107,6 +3111,7 @@ function openAITips() {
           });
           pin.value = "";
           let data = await response.json().catch(()=>({}));
+          if (response.ok) window.LonerPayPurchaseProgress?.render(progress, 1, "airtime");
           await refreshSecureState();
           if (response.ok && (data.pending || String(data.code)==="099") && window.waitForSecurePayment) {
             const confirmation = await window.waitForSecurePayment(data.request_id);
@@ -3135,6 +3140,7 @@ function openAITips() {
               if (!sheet.isConnected) return;
               if (confirmation?.status === "successful") {
                 successScreen(overlay,"Airtime Successful",a,[["Network",network],["Phone",p],["Status","Successful"]]);
+                const complete = document.createElement("div"); overlay.querySelector(".lp-done").before(complete); window.LonerPayPurchaseProgress?.render(complete, 2, "airtime");
               } else {
                 showInline(err, confirmation?.status === "refunded" ? "Purchase failed. Your wallet was refunded." : confirmation?.status === "failed" ? "Purchase failed. Check Transactions for details." : "Still awaiting provider confirmation. You can check Transactions later.","info");
                 button.disabled = false; button.textContent = "Check Status";
@@ -3145,7 +3151,9 @@ function openAITips() {
           if (String(data.code)!=="000" || (status && status!=="delivered")) throw new Error("Airtime payment failed.");
           if (typeof recordTransaction === "function") recordTransaction("Airtime",a,`Network: ${network} | Phone: ${p}`);
           successScreen(overlay,"Airtime Successful",a,[["Network",network],["Phone",p],["Status","Successful"]]);
+                const complete = document.createElement("div"); overlay.querySelector(".lp-done").before(complete); window.LonerPayPurchaseProgress?.render(complete, 2, "airtime");
         } catch(e) {
+          progress.remove();
           showInline(err,e.message || "Could not connect to payment provider.");
           button.disabled=false; button.textContent="Confirm Payment";
         }
