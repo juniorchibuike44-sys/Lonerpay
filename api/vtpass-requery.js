@@ -55,8 +55,18 @@ export default async function handler(req, res) {
     const rows = await transactionResponse.json().catch(() => []);
     const transaction = Array.isArray(rows) ? rows[0] : null;
     if (!transactionResponse.ok || !transaction) return res.status(404).json({ error: "Transaction not found" });
-    if (String(transaction.status).toLowerCase() !== "pending") {
+    const transactionStatus = String(transaction.status || "").toLowerCase();
+    const dataPairgate = String(transaction.details?.provider || "").toLowerCase() === "pairgate" &&
+      String(transaction.service || "").toLowerCase().endsWith("-data");
+    // A successful wallet debit is not proof that the data was delivered.
+    // Legacy rows without explicit provider confirmation remain unresolved.
+    const unconfirmedDebit = dataPairgate && transactionStatus === "successful" &&
+      !isPairgateSuccessfulStatus(transaction.details?.provider_status);
+    if (transactionStatus !== "pending" && !unconfirmedDebit) {
       return res.status(200).json({ resolved: true, status: transaction.status });
+    }
+    if (unconfirmedDebit) {
+      return res.status(202).json({ resolved: false, status: "pending", message: "The data purchase needs provider confirmation. Check transaction history or contact support." });
     }
 
     if (transaction.details?.provider === "vtu-ng") {
