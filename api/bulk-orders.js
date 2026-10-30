@@ -7,6 +7,7 @@ export default async function handler(req,res){
  const auth=await requireUser(req,res);if(!auth)return;
  try{
   if(req.method==='POST'){
+   return res.status(503).json({error:'Bulk data purchases are temporarily unavailable. Your wallet has not been charged.'});
    const b=req.body||{};if(!uuid(b.offer_id)||!uuid(b.client_key))return res.status(400).json({error:'Invalid order'});
    recipients(b.recipients);
    // Return an already-created batch even if the offer has since changed.

@@ -260,6 +260,9 @@ export default async function handler(
 
   const serviceID=electricityProviderId(requestedServiceID)||requestedServiceID;
 
+  // Temporarily prevent new data debits while provider reconciliation is repaired.
+  if (dataServices.has(serviceID)) return res.status(503).json({error: "Data purchases are temporarily unavailable. Please try again later. Your wallet has not been charged."});
+
   const paymentAmount =
     Number(amount);
 
