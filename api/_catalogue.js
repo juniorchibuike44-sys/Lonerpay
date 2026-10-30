@@ -13,11 +13,11 @@ async function control(action, path, owner, payload = null, delay = 60) {
   if (!response.ok) throw Object.assign(new Error("Data catalogue setup is unavailable."), { statusCode: 503 });
   return response.json();
 }
-export async function sharedCatalogueRequest(path) {
+export async function sharedCatalogueRequest(path, { maxAgeSeconds = 600 } = {}) {
   const owner = randomUUID();
   const deadline = Date.now() + 10000;
   while (true) {
-    const lock = await control("claim", path, owner);
+    const lock = await control("claim", path, owner, null, maxAgeSeconds);
     if (lock.state === "cached") return { response: { ok: true, status: 200 }, data: lock.payload };
     if (lock.state === "cooldown") throw busy(Number(lock.retryAfter) || 60);
     if (lock.state === "acquired") break;
@@ -88,7 +88,7 @@ export async function checkoutDataPlan(network, code) {
     const selected=plansIn(row.payload.data).find(p=>String(p?.plan_id||p?.id||'')===String(code));
     if(!selected)continue;
     const savedAt=Date.parse(row.saved_at);
-    if(Number.isFinite(savedAt)&&savedAt<=now+5000&&savedAt>now-10*60_000)return selected;
+    if(Number.isFinite(savedAt)&&savedAt<=now+5000&&savedAt>now-60_000)return selected;
     if(!knownFamily)knownFamily=family;
   }
   let error=null;
@@ -96,7 +96,7 @@ export async function checkoutDataPlan(network, code) {
   async function check(family){
     checked.add(family);
     try{
-      const result=await sharedCatalogueRequest(`/data-plans?provider_id=${network}&plan_type=${family}`);
+      const result=await sharedCatalogueRequest(`/data-plans?provider_id=${network}&plan_type=${family}`, { maxAgeSeconds: 60 });
       if(!result.response.ok||result.data?.status!=='success')throw Object.assign(new Error('The data provider could not verify this plan. Please try again shortly.'),{statusCode:503});
       return plansIn(result.data.data).find(p=>String(p?.plan_id||p?.id||'')===String(code))||null;
     }catch(e){error=e;return null;}

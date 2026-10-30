@@ -260,8 +260,6 @@ export default async function handler(
 
   const serviceID=electricityProviderId(requestedServiceID)||requestedServiceID;
 
-  // Temporarily prevent new data debits while provider reconciliation is repaired.
-  if (dataServices.has(serviceID)) return res.status(503).json({error: "Data purchases are temporarily unavailable. Please try again later. Your wallet has not been charged."});
 
   const paymentAmount =
     Number(amount);
@@ -501,12 +499,14 @@ export default async function handler(
             status,
             details: {
               provider: providerName,
+              ...(dataServices.has(serviceID) ? {wallet_debited:true} : {}),
               ...(bulkItem ? {bulk_item_id:bulkItem.id,bulk_batch_id:bulkItem.batch_id} : {}),
               serviceID,
               billersCode,
               variation_code: variation_code || "",
               phone: phone || "",
               provider_code: String(providerData?.code || ""),
+              provider_message: pairgateMessage(providerData, "").slice(0,500),
               provider_status: String(providerData?.content?.transactions?.status || providerData?.data?.status || ""),
               provider_reference: String(providerData?.requestId || providerData?.request_id || providerData?.data?.reference_code || providerData?.reference_code || recordedPairgateReference || ""),
               ...(facts||{}),

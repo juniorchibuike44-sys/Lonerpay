@@ -65,7 +65,7 @@ export default async function handler(req, res) {
     if (transactionStatus !== "pending" && !unconfirmedDebit) {
       return res.status(200).json({ resolved: true, status: transaction.status });
     }
-    if (unconfirmedDebit) {
+    if (unconfirmedDebit && !transaction.details?.provider_reference) {
       return res.status(202).json({ resolved: false, status: "pending", message: "The data purchase needs provider confirmation. Check transaction history or contact support." });
     }
 
@@ -88,7 +88,7 @@ export default async function handler(req, res) {
 
       if (providerResult.response.ok && isPairgateSuccessfulStatus(providerStatus)) {
         const savedResponse = await fetch(
-          `${supabaseUrl}/rest/v1/wallet_transactions?user_id=eq.${encodeURIComponent(user.id)}&request_id=eq.${encodeURIComponent(requestId)}`,
+          `${supabaseUrl}/rest/v1/wallet_transactions?user_id=eq.${encodeURIComponent(user.id)}&request_id=eq.${encodeURIComponent(requestId)}&status=in.(pending,successful)`,
           {
             method: "PATCH",
             headers: { ...serviceHeaders, Prefer: "return=minimal" },
@@ -149,7 +149,7 @@ export default async function handler(req, res) {
 
     if (providerResponse.ok && code === "000" && providerStatus === "delivered") {
       const savedResponse=await fetch(
-        `${supabaseUrl}/rest/v1/wallet_transactions?user_id=eq.${encodeURIComponent(user.id)}&request_id=eq.${encodeURIComponent(requestId)}`,
+        `${supabaseUrl}/rest/v1/wallet_transactions?user_id=eq.${encodeURIComponent(user.id)}&request_id=eq.${encodeURIComponent(requestId)}&status=in.(pending,successful)`,
         {
           method: "PATCH",
           headers: { ...serviceHeaders, Prefer: "return=minimal" },
