@@ -7,6 +7,7 @@ test('a successful wallet debit without provider confirmation is not reported as
   const previous = globalThis.fetch;
   globalThis.fetch = async url => {
     if (String(url).endsWith('/auth/v1/user')) return Response.json({id:'u'});
+    if (String(url).includes('/rpc/lp_pairgate_settle')) return Response.json({resolved:false,status:'pending'});
     if (String(url).includes('/wallet_transactions')) return Response.json([{status:'successful', service:'mtn-data', details:{provider:'pairgate'}}]);
     throw Error('Unexpected request');
   };

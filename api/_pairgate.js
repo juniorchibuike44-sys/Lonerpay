@@ -20,6 +20,7 @@ export async function pairgateRequest(path, options = {}) {
   const isFormData = typeof FormData !== "undefined" && options.body instanceof FormData;
   const response = await fetch(`${baseUrl}${path}`, {
     ...options,
+    signal: options.signal || AbortSignal.timeout(12000),
     headers: {
       Authorization: `Bearer ${apiKey}`,
       Accept: "application/json",

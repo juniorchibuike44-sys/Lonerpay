@@ -1,3 +1,4 @@
+import {saveSettlement} from './_payment-reconciliation.js';
 import {pairgateAccounting,savePairgateCost} from "./_provider-accounting.js";
 import crypto from "crypto";
 
@@ -142,6 +143,11 @@ export default async function handler(req, res) {
       if(matchedTransaction.details?.provider!=='pairgate')return res.status(200).json({success:true,message:'Provider does not match'});
       if(event.reference_code&&matchedTransaction.details?.provider_reference&&event.reference_code!==matchedTransaction.details.provider_reference)return res.status(200).json({success:true,message:'Provider reference does not match'});
       event.reference=matchedTransaction.request_id;
+    }
+
+    if (matchedTransaction && !String(event.reference).startsWith('bulk-') && ['successful','failed'].includes(status)) {
+      const result=await saveSettlement(matchedTransaction,status,{provider_status:status,provider_reference:String(event.reference_code||matchedTransaction.details?.provider_reference||''),reconciliation_state:'resolved',...(pairgateAccounting(event,matchedTransaction.amount)||{}),...(event.pin?{purchased_code:String(event.pin)}:{})});
+      return res.status(200).json({success:true,...result});
     }
 
     if (status === "successful" && event.reference) {

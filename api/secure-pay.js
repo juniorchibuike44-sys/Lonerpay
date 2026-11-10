@@ -486,7 +486,7 @@ export default async function handler(
       const grossProfit=facts?.gross_profit??null;
 
       const accountingResponse = await fetch(
-        `${supabaseUrl}/rest/v1/wallet_transactions?user_id=eq.${encodeURIComponent(user.id)}&request_id=eq.${encodeURIComponent(requestId)}&status=${status==='pending'?'eq.pending':status==='successful'?'in.(pending,successful)':'in.(pending,refunded)'}`,
+        `${supabaseUrl}/rest/v1/wallet_transactions?user_id=eq.${encodeURIComponent(user.id)}&request_id=eq.${encodeURIComponent(requestId)}&status=${status==='pending'?'eq.pending':status==='successful'?'eq.pending':'in.(pending,refunded)'}`,
         {
           method: "PATCH",
           headers: {
@@ -499,7 +499,8 @@ export default async function handler(
             status,
             details: {
               provider: providerName,
-              ...(dataServices.has(serviceID) ? {wallet_debited:true} : {}),
+              wallet_debited: true,
+              client_reference: requestId,
               ...(bulkItem ? {bulk_item_id:bulkItem.id,bulk_batch_id:bulkItem.batch_id} : {}),
               serviceID,
               billersCode,
@@ -507,7 +508,7 @@ export default async function handler(
               phone: phone || "",
               provider_code: String(providerData?.code || ""),
               provider_message: pairgateMessage(providerData, "").slice(0,500),
-              provider_status: String(providerData?.content?.transactions?.status || providerData?.data?.status || ""),
+              provider_status: status === "successful" && providerName === "pairgate" ? "successful" : String(providerData?.content?.transactions?.status || providerData?.data?.status || ""),
               provider_reference: String(providerData?.requestId || providerData?.request_id || providerData?.data?.reference_code || providerData?.reference_code || recordedPairgateReference || ""),
               ...(facts||{}),
               provider_cost: providerCost,
@@ -995,7 +996,7 @@ export default async function handler(
             serviceID,
 
           p_details: {
-            ...((airtimeServices.has(serviceID) || dataServices.has(serviceID)) ? { provider: "pairgate", serviceID } : {}),
+            ...(usesPairgate ? { provider: "pairgate", serviceID } : {}),
             billersCode,
 
             variation_code:
@@ -1077,6 +1078,13 @@ export default async function handler(
       const pins = Array.isArray(purchase.data?.data?.pins) ? purchase.data.data.pins : [];
       const delivered = purchase.response.ok && purchase.data?.status === "success" && pins.length === orderQuantity;
       if (!delivered) {
+        acceptedPairgateData = purchase.data;
+        const rejected = [401,403,422,429].includes(purchase.response.status) && !pairgateReference(purchase.data) && !/duplicate/i.test(pairgateMessage(purchase.data));
+        if (!rejected) {
+          await updateTransaction("pending", purchase.data, "pairgate");
+          return res.status(202).json({code:"099",pending:true,refunded:false,request_id:requestId,message:"Provider response needs confirmation. Check history before retrying.",wallet:{balance:Number(debit.new_balance)}});
+        }
+
         const refund = await refundWallet(pairgateMessage(purchase.data, "Pairgate rejected the recharge-card purchase"));
         await updateTransaction(refund.success ? "refunded" : "pending", purchase.data, "pairgate");
         return res.status(502).json({
@@ -1304,6 +1312,13 @@ export default async function handler(
       providerResponseReceived = true;
 
       if (!isPairgateAccepted(purchase.response, purchase.data)) {
+        acceptedPairgateData = purchase.data;
+        const rejected = [401,403,422,429].includes(purchase.response.status) && !pairgateReference(purchase.data) && !/duplicate/i.test(pairgateMessage(purchase.data));
+        if (!rejected) {
+          await updateTransaction("pending", purchase.data, "pairgate");
+          return res.status(202).json({code:"099",pending:true,refunded:false,request_id:requestId,message:"Provider response needs confirmation. Check history before retrying.",wallet:{balance:Number(debit.new_balance)}});
+        }
+
         const refund = await refundWallet(pairgateMessage(purchase.data, "Pairgate rejected the electricity payment"));
         await updateTransaction(refund.success ? "refunded" : "pending", purchase.data, "pairgate");
         return res.status(purchase.response.status >= 400 ? 502 : 400).json({
@@ -1320,6 +1335,7 @@ export default async function handler(
         ...purchase.data,
         data: { ...(purchase.data?.data || {}), reference_code: providerReference }
       };
+      acceptedPairgateData = acceptedData;
       await updateTransaction("pending", acceptedData, "pairgate");
 
       if (!providerReference) {
@@ -1333,7 +1349,7 @@ export default async function handler(
 
       let query;
       let finalStatus = "";
-      for (let attempt = 0; attempt < 8; attempt += 1) {
+      for (let attempt = 0; attempt < 2; attempt += 1) {
         if (attempt > 0) await new Promise(resolve => setTimeout(resolve, 500));
         query = await pairgateRequest(
           `/transaction/status?reference_code=${encodeURIComponent(providerReference)}`,
@@ -1416,6 +1432,13 @@ export default async function handler(
       providerResponseReceived = true;
 
       if (!isPairgateAccepted(purchase.response, purchase.data)) {
+        acceptedPairgateData = purchase.data;
+        const rejected = [401,403,422,429].includes(purchase.response.status) && !pairgateReference(purchase.data) && !/duplicate/i.test(pairgateMessage(purchase.data));
+        if (!rejected) {
+          await updateTransaction("pending", purchase.data, "pairgate");
+          return res.status(202).json({code:"099",pending:true,refunded:false,request_id:requestId,message:"Provider response needs confirmation. Check history before retrying.",wallet:{balance:Number(debit.new_balance)}});
+        }
+
         const refund = await refundWallet(pairgateMessage(purchase.data, "Pairgate rejected the TV subscription"));
         await updateTransaction(refund.success ? "refunded" : "pending", purchase.data, "pairgate");
         return res.status(purchase.response.status >= 400 ? 502 : 400).json({
@@ -1432,6 +1455,7 @@ export default async function handler(
         ...purchase.data,
         data: { ...(purchase.data?.data || {}), reference_code: providerReference }
       };
+      acceptedPairgateData = acceptedData;
       await updateTransaction("pending", acceptedData, "pairgate");
 
       if (!providerReference) {
@@ -1445,7 +1469,7 @@ export default async function handler(
 
       let query;
       let finalStatus = "";
-      for (let attempt = 0; attempt < 8; attempt += 1) {
+      for (let attempt = 0; attempt < 2; attempt += 1) {
         if (attempt > 0) await new Promise(resolve => setTimeout(resolve, 500));
         query = await pairgateRequest(
           `/transaction/status?reference_code=${encodeURIComponent(providerReference)}`,
@@ -1521,6 +1545,13 @@ export default async function handler(
       providerResponseReceived = true;
 
       if (!isPairgateAccepted(purchase.response, purchase.data)) {
+        acceptedPairgateData = purchase.data;
+        const rejected = [401,403,422,429].includes(purchase.response.status) && !pairgateReference(purchase.data) && !/duplicate/i.test(pairgateMessage(purchase.data));
+        if (!rejected) {
+          await updateTransaction("pending", purchase.data, "pairgate");
+          return res.status(202).json({code:"099",pending:true,refunded:false,request_id:requestId,message:"Provider response needs confirmation. Check history before retrying.",wallet:{balance:Number(debit.new_balance)}});
+        }
+
         const refund = await refundWallet(pairgateMessage(purchase.data, "Pairgate rejected the education PIN purchase"));
         await updateTransaction(refund.success ? "refunded" : "pending", purchase.data, "pairgate");
         return res.status(purchase.response.status >= 400 ? 502 : 400).json({
@@ -1542,6 +1573,7 @@ export default async function handler(
           status: "processing"
         }
       };
+      acceptedPairgateData = acceptedData;
       await updateTransaction("pending", acceptedData, "pairgate");
 
       if (!providerReference) {
@@ -1555,7 +1587,7 @@ export default async function handler(
 
       let query;
       let finalStatus = "";
-      for (let attempt = 0; attempt < 8; attempt += 1) {
+      for (let attempt = 0; attempt < 2; attempt += 1) {
         if (attempt > 0) await new Promise(resolve => setTimeout(resolve, 500));
         query = await pairgateRequest(
           `/transaction/status?reference_code=${encodeURIComponent(providerReference)}`,
@@ -1856,10 +1888,10 @@ export default async function handler(
     );
 
 
-    if (debitCompleted && providerRequestStarted && (!providerResponseReceived || airtimeServices.has(serviceID) || dataServices.has(serviceID))) {
+    if (debitCompleted && providerRequestStarted && (!providerResponseReceived || usesPairgate)) {
       await updateTransaction("pending", acceptedPairgateData || {
         code: "099", response_description: error.message
-      }, (airtimeServices.has(serviceID) || dataServices.has(serviceID)) ? "pairgate" : "vtpass");
+      }, usesPairgate ? "pairgate" : "vtpass");
       return res.status(202).json({
         error: "Provider response is pending confirmation",
         message: "The request may still be processing. Check transaction history before trying again.",

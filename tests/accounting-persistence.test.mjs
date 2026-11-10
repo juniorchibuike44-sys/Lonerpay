@@ -8,7 +8,7 @@ process.env.PAIRGATE_API_KEY='provider-test';
 const pin_hash='pbkdf2_sha256$100000$salt$'+pbkdf2Sync('1234','salt',100000,32,'sha256').toString('hex');
 async function purchase(patchStatus){
  const previous=fetch,previousError=console.error,patches=[],costs=[],errors=[];
- global.fetch=async(url,options={})=>{
+ global.fetch=async(url,options={})=>{if(String(url).includes('/rpc/lp_check_rate_limit'))return Response.json({allowed:true,remaining:20,retry_after:0});
   const u=String(url),body=options.body?JSON.parse(options.body):null;
   if(u.includes('/auth/v1/user'))return Response.json({id:'customer'});
   if(u.includes('/payment_pins'))return Response.json([{pin_hash,failed_attempts:0,locked_until:null}]);

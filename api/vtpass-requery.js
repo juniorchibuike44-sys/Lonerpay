@@ -1,12 +1,6 @@
-import {pairgateAccounting,savePairgateCost} from "./_provider-accounting.js";
+import {reconcilePurchase} from "./_payment-reconciliation.js";
 import { settleVtu } from "./_vtu-settle.js";
-import {
-  isPairgateFailedStatus,
-  isPairgateSuccessfulStatus,
-  pairgateMessage,
-  pairgateRequest,
-  pairgateStatus
-} from "./_pairgate.js";
+import {isPairgateSuccessfulStatus} from "./_pairgate.js";
 
 const definitiveFailureCodes = new Set([
   "010", "011", "012", "013", "015", "016", "017", "018",
@@ -49,7 +43,7 @@ export default async function handler(req, res) {
     };
 
     const transactionResponse = await fetch(
-      `${supabaseUrl}/rest/v1/wallet_transactions?user_id=eq.${encodeURIComponent(user.id)}&request_id=eq.${encodeURIComponent(requestId)}&select=user_id,request_id,status,service,details,amount&limit=1`,
+      `${supabaseUrl}/rest/v1/wallet_transactions?user_id=eq.${encodeURIComponent(user.id)}&request_id=eq.${encodeURIComponent(requestId)}&select=user_id,request_id,status,service,details,amount,created_at&limit=1`,
       { headers: serviceHeaders, cache: "no-store" }
     );
     const rows = await transactionResponse.json().catch(() => []);
@@ -65,69 +59,14 @@ export default async function handler(req, res) {
     if (transactionStatus !== "pending" && !unconfirmedDebit) {
       return res.status(200).json({ resolved: true, status: transaction.status });
     }
-    if (unconfirmedDebit && !transaction.details?.provider_reference) {
-      return res.status(202).json({ resolved: false, status: "pending", message: "The data purchase needs provider confirmation. Check transaction history or contact support." });
-    }
-
     if (transaction.details?.provider === "vtu-ng") {
       const result = await settleVtu(transaction);
       return res.status(result.resolved ? 200 : 202).json(result);
     }
 
     if (String(transaction.details?.provider || "").toLowerCase() === "pairgate") {
-      const providerReference = String(transaction.details?.provider_reference || "").trim();
-      if (!providerReference) {
-        return res.status(202).json({ resolved: false, status: "pending" });
-      }
-
-      const providerResult = await pairgateRequest(
-        `/transaction/status?reference_code=${encodeURIComponent(providerReference)}`,
-        { method: "GET" }
-      );
-      const providerStatus = pairgateStatus(providerResult.data);
-
-      if (providerResult.response.ok && isPairgateSuccessfulStatus(providerStatus)) {
-        const savedResponse = await fetch(
-          `${supabaseUrl}/rest/v1/wallet_transactions?user_id=eq.${encodeURIComponent(user.id)}&request_id=eq.${encodeURIComponent(requestId)}&status=in.(pending,successful)`,
-          {
-            method: "PATCH",
-            headers: { ...serviceHeaders, Prefer: "return=minimal" },
-            body: JSON.stringify({
-              status: "successful",
-              details: {
-                ...(transaction.details || {}),
-                ...(pairgateAccounting(providerResult.data,transaction.amount)||{}),
-                provider: "pairgate",
-                provider_status: providerStatus,
-                provider_reference: providerReference
-              },
-              updated_at: new Date().toISOString()
-            })
-          }
-        );
-        if (!savedResponse.ok) throw new Error("Could not save confirmed Pairgate status");
-        try{await savePairgateCost({base:supabaseUrl,key:secretKey,requestId,providerReference,facts:pairgateAccounting(providerResult.data,transaction.amount)});}catch{console.error('Provider cost reconciliation is required',{request_id:requestId});}
-        return res.status(200).json({ resolved: true, status: "successful" });
-      }
-
-      if (providerResult.response.ok && isPairgateFailedStatus(providerStatus)) {
-        const refundResponse = await fetch(`${supabaseUrl}/rest/v1/rpc/refund_wallet`, {
-          method: "POST",
-          headers: serviceHeaders,
-          body: JSON.stringify({
-            p_user_id: user.id,
-            p_request_id: requestId,
-            p_reason: pairgateMessage(providerResult.data, "Pairgate transaction failed")
-          })
-        });
-        const refund = await refundResponse.json().catch(() => null);
-        if (!refundResponse.ok || (Array.isArray(refund)?refund[0]:refund)?.success===false) {
-          return res.status(500).json({ error: "Transaction failed but refund confirmation is pending" });
-        }
-        return res.status(200).json({ resolved: true, status: "refunded", refund });
-      }
-
-      return res.status(202).json({ resolved: false, status: "pending" });
+      const result=await reconcilePurchase(transaction);
+      return res.status(result.resolved?200:202).json(result);
     }
 
     if (!apiKey || !vtpassSecretKey) {
