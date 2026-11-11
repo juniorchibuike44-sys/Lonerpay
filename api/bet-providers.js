@@ -1,53 +1,6 @@
-export default async function handler(req, res) {
-  if (req.method !== "GET") {
-    return res.status(405).json({
-      success: false,
-      message: "Method not allowed"
-    });
-  }
-
-  try {
-    const apiKey = process.env.PAIRGATE_API_KEY;
-
-    if (!apiKey) {
-      return res.status(500).json({
-        success: false,
-        message: "Pairgate API key is missing"
-      });
-    }
-
-    const response = await fetch(
-     "https://pairgate.com/api/v1/providers/bet",
-      {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          Accept: "application/json"
-        }
-      }
-    );
-
-    const data = await response.json();
-console.log("Pairgate status:", response.status);
-console.log("Pairgate response:", JSON.stringify(data)); 
-    if (!response.ok || data?.status !== "success") {
-      return res.status(response.status || 400).json({
-        success: false,
-        message: data?.message || "Unable to load betting providers"
-      });
-    }
-
-    return res.status(200).json({
-      success: true,
-      providers: Array.isArray(data.data) ? data.data : []
-    });
-
-  } catch (error) {
-    console.error("Bet providers error:", error);
-
-    return res.status(500).json({
-      success: false,
-      message: "Unable to load betting providers"
-    });
-  }
-} 
+import {hardenResponse} from './_security.js';
+export default function handler(req,res){
+ hardenResponse(res);
+ if(req.method!=="GET")return res.status(405).json({success:false,message:'Method not allowed'});
+ return res.status(503).json({success:false,code:'betting_unavailable',message:'Betting services are currently unavailable. No payment has been taken.'});
+}

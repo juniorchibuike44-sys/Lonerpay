@@ -345,7 +345,7 @@ button:active {
 </style>
 <link rel="stylesheet" href="dashboard-gold.css?v=20261017-alignment">
 <script src="dashboard-gold.js?v=20261019-places" defer></script>
-<script src="notifications-client.js?v=20261021-inbox-flow" defer></script><script src="bill-reminders-client.js?v=20261029" defer></script><script src="referrals-client.js?v=20261029" defer></script><script src="business-session.js?v=20261017-session" defer></script><script src="business-launcher.js?v=20261027-reseller" defer></script><script src="business-hub.js?v=20261018-paid" defer></script><script src="voice-control.js?v=20261019-navigation" defer></script><script src="discovery-client.js?v=20261021-services" defer></script><link rel="manifest" href="/manifest.webmanifest"><meta name="theme-color" content="#936514"><script src="/app-install.js?v=20261020-android" defer></script></head>
+<script src="notifications-client.js?v=20261021-inbox-flow" defer></script><script src="bill-reminders-client.js?v=20261029" defer></script><script src="referrals-client.js?v=20261029" defer></script><script src="business-session.js?v=20261017-session" defer></script><script src="business-launcher.js?v=20261027-reseller" defer></script><script src="business-hub.js?v=20261111-paused" defer></script><script src="voice-control.js?v=20261019-navigation" defer></script><script src="discovery-client.js?v=20261021-services" defer></script><link rel="manifest" href="/manifest.webmanifest"><meta name="theme-color" content="#936514"><script src="/app-install.js?v=20261020-android" defer></script></head>
 
 <body class="lp-gold-dashboard">
 
@@ -471,11 +471,6 @@ button:active {
         <h3>Education</h3>
         <p>WAEC & JAMB</p>
       </div>
-      <div class="service" onclick="openBetFunding()">
-  <div>🎯</div>
-  <h3>Bet Funding</h3>
-  <p>Fund betting account</p>
-      </div> 
       <div class="service" onclick="openRechargeCards()">
   <div>🧾</div>
   <h3>Recharge Cards</h3>
@@ -2104,245 +2099,7 @@ function showPaymentSuccess(service, amount, details) {
         overlay.remove();
     };
 } 
-function openBetFunding() {
-  const overlay = document.createElement("div");
-
-  overlay.style.cssText = `
-    position:fixed;
-    inset:0;
-    background:rgba(0,0,0,.55);
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    z-index:9999;
-    padding:20px;
-  `;
-
-  overlay.innerHTML = `
-    <div style="
-      background:white;
-      width:100%;
-      max-width:420px;
-      border-radius:20px;
-      padding:24px;
-    ">
-      <h2 style="margin-top:0;">Bet Funding</h2>
-      <p>Fund your betting account</p>
-
-      <label>Betting Platform</label>
-      <select id="betPlatform" style="
-        width:100%;
-        padding:14px;
-        margin:8px 0 16px;
-        border-radius:10px;
-      ">
-        <option value="">Select platform</option>
-        <option value="1xbet">1xBet</option>
-        <option value="bet9ja">Bet9ja</option>
-        <option value="sportybet">SportyBet</option>
-        <option value="accessbet">Accessbet</option>
-        <option value="betking">Betking</option> 
-        <option value="betway">Betway</option> 
-        <option value="nairabet">Nairabet</option> 
-      </select>
-
-      <label>User / Betting ID</label>
-      <input
-        id="betUserId"
-        type="text"
-        placeholder="Enter betting ID"
-        style="
-          width:100%;
-          box-sizing:border-box;
-          padding:14px;
-          margin:8px 0 16px;
-          border:1px solid #ccc;
-          border-radius:10px;
-        "
-      >
-
-      <label>Amount (₦)</label>
-      <input
-        id="betAmount"
-        type="number"
-        min="100"
-        placeholder="Enter amount"
-        style="
-          width:100%;
-          box-sizing:border-box;
-          padding:14px;
-          margin:8px 0 20px;
-          border:1px solid #ccc;
-          border-radius:10px;
-        "
-      >
-<label>Payment PIN</label>
-<input
-  id="betPin"
-  type="password"
-  inputmode="numeric"
-  maxlength="4"
-  placeholder="Enter 4-digit PIN"
-  style="
-    width:100%;
-    box-sizing:border-box;
-    padding:14px;
-    margin:8px 0 20px;
-    border:1px solid #ccc;
-    border-radius:10px;
-  "
-> 
-      <button id="betContinue" style="
-        width:100%;
-        padding:15px;
-        border:0;
-        border-radius:10px;
-        background:#00c853;
-        color:white;
-        font-weight:bold;
-        font-size:16px;
-      ">Continue</button>
-
-      <button id="betCancel" style="
-        width:100%;
-        padding:14px;
-        margin-top:8px;
-        border:0;
-        background:transparent;
-        font-size:16px;
-      ">Cancel</button>
-    </div>
-  `;
-
-  document.body.appendChild(overlay);
-
-  overlay.querySelector("#betCancel").onclick = function () {
-    overlay.remove();
-  };
-
-  overlay.querySelector("#betContinue").onclick = async function () { 
-    const betButton = overlay.querySelector("#betContinue");
-
-if (betButton.disabled) return;
-
-    const platform = overlay.querySelector("#betPlatform").value;
-    const userId = overlay.querySelector("#betUserId").value.trim();
-    const amount = Number(overlay.querySelector("#betAmount").value);
-const pin = overlay.querySelector("#betPin").value.trim();
-
-if (!/^\d{4}$/.test(pin)) {
-  alert("Please enter your 4-digit payment PIN.");
-  return;
-} 
-    if (!platform) {
-      alert("Please select a betting platform.");
-      return;
-    }
-
-    if (!userId) {
-      alert("Please enter your betting ID.");
-      return;
-    }
-
-    if (!amount || amount < 100) {
-      alert("Please enter an amount of at least ₦100.");
-      return;
-    }
-betButton.disabled = true;
-betButton.textContent = "Processing...";
-betButton.style.opacity = "0.65"; 
-    try {
-  // Step 1: Verify the betting account
-  const verifyResponse = await fetch("/api/verify-bet-account", { 
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      provider_id: platform,
-      customer_id: userId
-    })
-  });
-
-  const verifyData = await verifyResponse.json();
-
-  if (!verifyResponse.ok || !verifyData.success) {
-    alert(verifyData.message || "Betting account verification failed.");
-    return;
-  }
-
-  const customerName =
-    verifyData.customer_name || "Verified Customer";
-
-  const confirmed = await showBetConfirmation({
-  platform: platform,
-  customerName: customerName,
-  userId: userId,
-  amount: amount
-}); 
-
-  if (!confirmed) return;
-
-  // Step 2: Fund after verification
-      const requestId =
-  "lonerbet-" + Date.now() + "-" +
-  Math.random().toString(36).slice(2, 8); 
-  const response = await fetch("/api/bet-funding", {
-    method: "POST",
-    headers: {
-  "Content-Type": "application/json",
-  "Authorization": `Bearer ${localStorage.getItem("lonerpay_access_token")}`
-}, 
-    body: JSON.stringify({
-      provider_id: platform,
-      customer_id: userId,
-      amount: amount,
-      recipient_name: customerName,
-pin: pin,
-request_id: requestId 
-    })
-  });
-
-  const data = await response.json();
-
- if (response.status === 202 || data.pending) {
-  alert(data.message || "Bet funding is still processing. We will confirm it shortly.");
-  return;
-}
-
-if (!response.ok || !data.success) {
-  alert(data.message || "Bet funding failed.");
-  return;
-}
-
-const betTransaction = {
-  type: "Bet Funding",
-  provider: platform,
-  recipient: userId,
-  customerName: customerName,
-  amount: amount,
-  reference: data.reference || requestId,
-  providerReference: data.pairgate_reference || "",
-  status: "successful",
-  date: new Date().toISOString()
-};
-
-lonerPayWriteLastReceipt(betTransaction);
-
-showBetReceipt(betTransaction); 
-overlay.remove();  
-
-} catch (error) {
-  console.error("Bet funding error:", error);
-  alert("Unable to process bet funding. Please try again.");
-    } finally {
-  betButton.disabled = false;
-  betButton.textContent = "Continue";
-  betButton.style.opacity = "1";
-}
-}; 
-  
-} 
+function openBetFunding() { alert("This service is currently unavailable."); }
 document.addEventListener("DOMContentLoaded", function () {
   updateWalletDisplay();
 
@@ -3790,9 +3547,7 @@ window.showDigitalReceipt=function(raw){
 function historyRow(t,i){const sm=statusMeta(t.status),sign=/fund|credit|refund/i.test(t.type)?'+':'−';return `<button class="lpTxRow" data-i="${i}" type="button" style="width:100%;border:0;background:#fff;padding:15px 14px;border-radius:16px;margin:0 0 10px;display:grid;grid-template-columns:46px 1fr auto;gap:12px;align-items:center;text-align:left;box-shadow:0 3px 14px rgba(15,35,65,.05)"><span style="width:46px;height:46px;border-radius:14px;background:#f1f6fd;display:grid;place-items:center;font-size:21px">${iconFor(t.type)}</span><span><strong style="display:block;color:${LP.ink};font-size:14px">${esc(t.type)}</strong><small style="display:block;color:${LP.muted};margin-top:4px">${esc(dateText(t.date))}</small><small style="display:inline-block;color:${sm.fg};background:${sm.bg};padding:4px 7px;border-radius:999px;margin-top:6px;font-weight:800">${sm.label}</small></span><strong style="color:${/fund|credit|refund/i.test(t.type)?LP.green:LP.ink};font-size:14px">${sign}${money(t.amount)}</strong></button>`;}
 window.openTransactionHistory=async function(){close('lpProHistory');let all=allTransactions();const o=document.createElement('div');o.id='lpProHistory';o.style.cssText=`position:fixed;inset:0;background:${LP.bg};z-index:29000;overflow:auto;font-family:Arial,sans-serif`;o.innerHTML=`<style>#lpProHistory input,#lpProHistory select,#lpProHistory button{font:inherit}.lpHistChip{border:1px solid #e3dac8;background:#fff;color:#536277;border-radius:999px;padding:8px 12px;font-size:12px;font-weight:800;white-space:nowrap}.lpHistChip.on{background:${LP.navy};color:#fff;border-color:${LP.navy}}</style><div style="max-width:700px;margin:auto;padding:18px 14px 90px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px"><div><div style="font-size:11px;color:${LP.blue};font-weight:900;letter-spacing:.8px">LONERPAY</div><h2 style="margin:4px 0 0;color:${LP.ink}">Transaction History</h2><div style="font-size:12px;color:${LP.muted};margin-top:4px">All your wallet activity in one place</div></div><button id="lpHistClose" style="width:40px;height:40px;border:0;border-radius:50%;background:#e8dfcf;font-size:22px">×</button></div><div style="background:#fff;border-radius:16px;padding:11px 13px;display:flex;gap:9px;align-items:center;box-shadow:0 3px 14px rgba(15,35,65,.05)"><span>⌕</span><input id="lpHistSearch" placeholder="Search service, reference or details" style="width:100%;border:0;outline:0;font-size:14px"></div><div id="lpHistChips" style="display:flex;gap:8px;overflow:auto;padding:13px 0"><button class="lpHistChip on" data-f="all">All</button><button class="lpHistChip" data-f="successful">Successful</button><button class="lpHistChip" data-f="pending">Pending</button><button class="lpHistChip" data-f="refunded">Refunded</button><button class="lpHistChip" data-f="failed">Failed</button></div><div id="lpHistCount" style="font-size:12px;color:${LP.muted};margin:0 2px 10px"></div><div id="lpHistRows"></div></div>`;document.body.appendChild(o);let filter='all';const render=()=>{const q=o.querySelector('#lpHistSearch').value.toLowerCase().trim();const list=all.filter(t=>{const sm=statusMeta(t.status).label.toLowerCase();return(filter==='all'||sm===filter)&&(!q||JSON.stringify(t).toLowerCase().includes(q));});o.querySelector('#lpHistCount').textContent=`${list.length} transaction${list.length===1?'':'s'}`;o.querySelector('#lpHistRows').innerHTML=list.length?list.map(historyRow).join(''):`<div style="background:#fff;border-radius:18px;padding:36px 18px;text-align:center;color:${LP.muted}"><div style="font-size:34px;margin-bottom:10px">🧾</div><strong style="color:${LP.ink}">No transactions found</strong><div style="font-size:13px;margin-top:5px">Try another filter or search.</div></div>`;o.querySelectorAll('.lpTxRow').forEach((b,i)=>b.onclick=()=>showDigitalReceipt(list[Number(b.dataset.i)]));};o.querySelector('#lpHistClose').onclick=()=>o.remove();o.querySelector('#lpHistSearch').oninput=render;o.querySelectorAll('.lpHistChip').forEach(b=>b.onclick=()=>{o.querySelectorAll('.lpHistChip').forEach(x=>x.classList.remove('on'));b.classList.add('on');filter=b.dataset.f;render();});render();Promise.resolve().then(()=>window.refreshSecureTransactions?.()).then(()=>{if(o.isConnected){all=allTransactions();render();}}).catch(()=>{});};
 window.openRefund=function(){close('lpRefundCenter');const tx=allTransactions().filter(t=>/refund|fail/i.test(statusMeta(t.status).label));const o=document.createElement('div');o.id='lpRefundCenter';o.style.cssText='position:fixed;inset:0;background:rgba(4,18,38,.64);z-index:29500;display:flex;align-items:flex-end;justify-content:center;font-family:Arial,sans-serif';o.innerHTML=`<div style="width:100%;max-width:520px;max-height:92vh;overflow:auto;background:#fff;border-radius:26px 26px 0 0;padding:12px 18px 28px"><div style="width:46px;height:5px;border-radius:8px;background:#e1d7c2;margin:0 auto 18px"></div><div style="display:flex;justify-content:space-between"><div><div style="font-size:12px;color:${LP.blue};font-weight:900">LONERPAY</div><h2 style="margin:4px 0;color:${LP.ink}">Refund Center</h2><p style="margin:5px 0 16px;color:${LP.muted};font-size:13px">Track failed and refunded payments securely.</p></div><button id="lpRefundClose" style="width:40px;height:40px;border:0;border-radius:50%;background:#eef3f8;font-size:22px">×</button></div><div style="background:#f3ecd9;border:1px solid #e3d4b1;border-radius:15px;padding:13px;color:#796138;font-size:12px;line-height:1.55;margin-bottom:14px"><strong style="color:${LP.navy}">Automatic refund protection</strong><br>When a supported payment fails after your wallet was debited, LonerPay's secure backend handles the refund. This screen does not manually credit money.</div><div>${tx.length?tx.map((t,i)=>historyRow(t,i)).join(''):`<div style="padding:30px 15px;text-align:center;background:#f8fafc;border-radius:16px"><div style="font-size:34px">✓</div><strong style="display:block;color:${LP.ink};margin-top:8px">No refund issues</strong><span style="font-size:12px;color:${LP.muted}">Failed or refunded transactions will appear here.</span></div>`}</div></div>`;document.body.appendChild(o);o.querySelector('#lpRefundClose').onclick=()=>o.remove();o.querySelectorAll('.lpTxRow').forEach(b=>b.onclick=()=>showDigitalReceipt(tx[Number(b.dataset.i)]));};
-function betName(id){return({'1xbet':'1xBet','bet9ja':'Bet9ja','sportybet':'SportyBet','accessbet':'AccessBET','betking':'BetKing','betway':'Betway','nairabet':'NairaBET'})[id]||id;}
-window.openBetFunding=function(){close('lpBetPro');const o=document.createElement('div');o.id='lpBetPro';o.style.cssText='position:fixed;inset:0;background:rgba(4,18,38,.64);z-index:29600;display:flex;align-items:flex-end;justify-content:center;font-family:Arial,sans-serif';o.innerHTML=`<style>#lpBetPro *{box-sizing:border-box}#lpBetPro .sheet{width:100%;max-width:520px;background:#fff;border-radius:26px 26px 0 0;padding:10px 18px 28px;max-height:94vh;overflow:auto}#lpBetPro .inp{width:100%;padding:14px;border:1px solid #dce3ed;border-radius:13px;background:#fff;font-size:15px;outline:0}#lpBetPro .lbl{display:block;font-size:12px;font-weight:800;color:#43536a;margin:15px 0 7px}#lpBetPro .primary{width:100%;padding:15px;border:0;border-radius:13px;background:${LP.blue};color:#fff;font-weight:900;margin-top:18px}#lpBetPro .secondary{width:100%;padding:13px;border:0;background:transparent;font-weight:800;color:#526176}</style><div class="sheet"><div style="width:46px;height:5px;border-radius:8px;background:#e1d7c2;margin:2px auto 18px"></div><div style="display:flex;justify-content:space-between;align-items:start"><div><div style="font-size:12px;color:${LP.blue};font-weight:900">LONERPAY</div><h2 style="margin:4px 0;color:${LP.ink}">Bet Funding</h2><p style="margin:4px 0;color:${LP.muted};font-size:13px">Verify the betting account before payment.</p></div><button id="lpBetClose" style="width:40px;height:40px;border:0;border-radius:50%;background:#eef3f8;font-size:22px">×</button></div><label class="lbl">Betting platform</label><select id="lpBetPlatform" class="inp"><option value="">Select platform</option><option value="1xbet">1xBet</option><option value="bet9ja">Bet9ja</option><option value="sportybet">SportyBet</option><option value="accessbet">AccessBET</option><option value="betking">BetKing</option><option value="betway">Betway</option><option value="nairabet">NairaBET</option></select><label class="lbl">Betting ID</label><input id="lpBetId" class="inp" autocomplete="off" placeholder="Enter betting account ID"><label class="lbl">Amount</label><input id="lpBetAmount" class="inp" type="number" inputmode="decimal" min="100" placeholder="Minimum ₦100"><div id="lpBetError" style="min-height:18px;color:${LP.red};font-size:12px;margin-top:10px"></div><button id="lpBetVerify" class="primary">Verify Account</button><button id="lpBetCancel" class="secondary">Cancel</button></div>`;document.body.appendChild(o);const end=()=>o.remove();o.querySelector('#lpBetClose').onclick=o.querySelector('#lpBetCancel').onclick=end;o.querySelector('#lpBetVerify').onclick=async()=>{const b=o.querySelector('#lpBetVerify'),err=o.querySelector('#lpBetError'),platform=o.querySelector('#lpBetPlatform').value,id=o.querySelector('#lpBetId').value.trim(),amount=Number(o.querySelector('#lpBetAmount').value);err.textContent='';if(!platform)return err.textContent='Select a betting platform.';if(!id)return err.textContent='Enter your betting ID.';if(!amount||amount<100)return err.textContent='Enter an amount of at least ₦100.';b.disabled=true;b.textContent='Verifying...';try{const r=await fetch('/api/verify-bet-account',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({provider_id:platform,customer_id:id})});const d=await r.json().catch(()=>({}));if(!r.ok||!d.success)throw new Error(d.message||'Betting account verification failed.');betReview(o,{platform,id,amount,name:d.customer_name||'Verified Customer'});}catch(e){err.textContent=e.message||'Unable to verify betting account.';b.disabled=false;b.textContent='Verify Account';}};};
-function betReview(o,x){const sheet=o.querySelector('.sheet');sheet.innerHTML=`<div style="width:46px;height:5px;border-radius:8px;background:#e1d7c2;margin:2px auto 18px"></div><div style="text-align:center"><div style="width:58px;height:58px;border-radius:18px;background:#f3ecd9;margin:auto;display:grid;place-items:center;font-size:27px">🎯</div><h2 style="margin:12px 0 3px;color:${LP.ink}">Review Bet Funding</h2><p style="margin:0;color:${LP.muted};font-size:13px">Confirm the verified account details</p></div><div style="background:#f8fafc;border-radius:16px;padding:5px 14px;margin-top:18px">${[['Platform',betName(x.platform)],['Account Name',x.name],['Betting ID',x.id],['Amount',money(x.amount)]].map(([a,b])=>`<div style="display:flex;justify-content:space-between;gap:18px;padding:12px 0;border-bottom:1px solid #e9eef5;font-size:13px"><span style="color:${LP.muted}">${esc(a)}</span><strong style="color:${LP.ink};text-align:right">${esc(b)}</strong></div>`).join('')}</div><label class="lbl">Payment PIN</label><input id="lpBetPin" class="inp" type="password" inputmode="numeric" maxlength="4" autocomplete="new-password" placeholder="••••" style="text-align:center;letter-spacing:8px"><div id="lpBetError" style="min-height:18px;color:${LP.red};font-size:12px;margin-top:10px"></div><button id="lpBetPay" class="primary">Confirm Payment</button><button id="lpBetBack" class="secondary">Back</button>`;sheet.querySelector('#lpBetBack').onclick=()=>{o.remove();openBetFunding();};sheet.querySelector('#lpBetPin').oninput=e=>e.target.value=e.target.value.replace(/\D/g,'').slice(0,4);sheet.querySelector('#lpBetPay').onclick=async()=>{const btn=sheet.querySelector('#lpBetPay'),pin=sheet.querySelector('#lpBetPin'),err=sheet.querySelector('#lpBetError');if(!/^\d{4}$/.test(pin.value))return err.textContent='Enter your 4-digit payment PIN.';if(!token())return err.textContent='Please log in again before making a payment.';const requestId='lonerbet-'+Date.now()+'-'+Math.random().toString(36).slice(2,8);btn.disabled=true;btn.textContent='Processing...';try{const r=await fetch('/api/bet-funding',{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${token()}`},body:JSON.stringify({provider_id:x.platform,customer_id:x.id,amount:x.amount,recipient_name:x.name,pin:pin.value,request_id:requestId})});pin.value='';const d=await r.json().catch(()=>({}));if(r.status===202||d.pending){const t=normalize({type:'Bet Funding',amount:x.amount,details:`Platform: ${betName(x.platform)} | Betting ID: ${x.id} | Customer: ${x.name}`,status:'Pending',reference:d.reference||requestId,providerReference:d.pairgate_reference||'',date:new Date().toISOString()});saveLocal(t);o.remove();showDigitalReceipt(t);return;}if(!r.ok||!d.success)throw new Error(d.message||'Bet funding failed.');const t=normalize({type:'Bet Funding',amount:x.amount,details:`Platform: ${betName(x.platform)} | Betting ID: ${x.id} | Customer: ${x.name}`,status:d.refunded?'Refunded':'Successful',reference:d.reference||requestId,providerReference:d.pairgate_reference||'',date:new Date().toISOString()});saveLocal(t);lonerPayWriteLastReceipt(t);o.remove();showDigitalReceipt(t);if(typeof window.refreshSecureWallet==='function')await window.refreshSecureWallet();if(typeof window.refreshSecureTransactions==='function')await window.refreshSecureTransactions();}catch(e){err.textContent=e.message||'Unable to process bet funding.';btn.disabled=false;btn.textContent='Confirm Payment';}};}
+window.openBetFunding=function(){alert("This service is currently unavailable.");};
 function saveLocal(t){try{const a=lonerPayReadLocalTransactions();a.unshift(t);lonerPayWriteLocalTransactions(a.slice(0,100));}catch{}}
 function installRefundCard(){const services=document.querySelector('.services');if(!services||[...services.querySelectorAll('.service h3')].some(h=>/refund/i.test(h.textContent)))return;const card=document.createElement('div');card.className='service';card.onclick=()=>openRefund();card.innerHTML='<div>↩️</div><h3>Refunds</h3><p>Track refunds</p>';services.appendChild(card);}
 function polishRecent(){const box=document.querySelector('.transactions');if(!box)return;box.querySelectorAll('.transaction').forEach(r=>{if(/no transactions yet/i.test(r.textContent||''))return;r.style.cssText+=';border:1px solid #edf1f6;border-radius:14px;padding:13px;margin-bottom:9px;background:#fff;box-shadow:0 2px 10px rgba(15,35,65,.04)';});}

@@ -2,6 +2,14 @@
 
 Prepared 20 October 2026. A test build is not Play approval or a production launch.
 
+## 11 November 2026 feature pause
+
+Betting funding, provider listing and betting-account verification endpoints now reject requests before any wallet or provider operation. The dashboard betting tile and funding forms are removed. Historical receipts and provider callbacks remain available for previous transactions.
+
+New Business Tools subscriptions and renewals are disabled server-side. The subscription page displays access/payment status only, without checkout links. Existing paid access, records and payment verification/webhooks remain in place. Previously issued external Paystack checkout sessions have not been revoked; any late payment must still be reconciled and supported.
+
+These changes do not resolve the outstanding licensed wallet partnership or prove full Play policy compliance. Do not submit a release until the regulated wallet arrangement, Data safety, reviewer access, real-device testing and signing requirements are resolved.
+
 ## Package and architecture
 
 - Proposed release application ID: `com.lonerpay.app`, version 1 / 1.0.0. Confirm before the first Play upload; package identity becomes fixed after publication.
