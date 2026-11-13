@@ -36,7 +36,7 @@ body.lp-gold-dashboard.lp-app-screen .lp-va-number{font-size:21px!important;font
 body.lp-gold-dashboard.lp-app-screen .lp-va-name{font-size:9px!important;color:#8a959e!important;letter-spacing:.3px;margin-top:4px!important}
 body.lp-gold-dashboard.lp-app-screen .lp-va-copy{padding:10px 12px!important;border:0!important;background:#f5eedc!important;color:#906c2b!important;border-radius:9px!important;font-size:10px!important;min-height:38px}
 body.lp-gold-dashboard.lp-app-screen .lp-va-message{border-radius:10px!important;padding:11px!important;background:#f6f8fa!important;color:#7a8792!important;font-size:12px!important;line-height:1.5!important}
-body.lp-gold-dashboard.lp-app-screen .lp-carousel-wrap,body.lp-gold-dashboard.lp-app-screen .lp-tools,body.lp-gold-dashboard.lp-app-screen .lp-services-title,body.lp-gold-dashboard.lp-app-screen .lp-value,body.lp-gold-dashboard.lp-app-screen .lp-security{display:none!important}
+body.lp-gold-dashboard.lp-app-screen .lp-tools,body.lp-gold-dashboard.lp-app-screen .lp-services-title,body.lp-gold-dashboard.lp-app-screen .lp-value,body.lp-gold-dashboard.lp-app-screen .lp-security{display:none!important}
 body.lp-gold-dashboard.lp-app-screen #lpHomeServicesHead{order:3;margin:3px 0 -7px!important;display:flex!important;align-items:center;justify-content:space-between}
 body.lp-gold-dashboard.lp-app-screen #lpHomeServicesHead h2{font-size:17px!important;font-weight:750!important;letter-spacing:-.4px!important;margin:0!important;color:#193243!important}
 body.lp-gold-dashboard.lp-app-screen #lpHomeServicesHead button{font:inherit;font-size:11px!important;font-weight:650!important;color:#98752e!important;background:transparent!important;padding:8px 0 8px 12px!important;min-height:36px}
@@ -97,3 +97,6 @@ body.lp-gold-dashboard.lp-app-screen .balance .lp-balance-line{display:block!imp
 body.lp-gold-dashboard.lp-app-screen .balance #lpBalancePrivacyBtn{position:absolute!important;top:57px!important;right:24px!important;margin:0!important;z-index:3!important}
 body.lp-gold-dashboard.lp-app-screen #lpVoiceLauncher>span:last-child{font-size:0!important}
 body.lp-gold-dashboard.lp-app-screen #lpVoiceLauncher>span:last-child:after{content:'›';font-size:22px;font-family:Arial,sans-serif}
+
+/* Restore the swipeable LonerPay highlights below the bill shortcuts. */
+body.lp-gold-dashboard.lp-app-screen .lp-carousel-wrap{display:block!important;order:5;min-width:0;width:100%;margin:0!important}
