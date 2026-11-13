@@ -43,3 +43,13 @@ test('dashboard inline scripts still parse and presentation assets occur only in
  const html=await readFile(new URL('../dashboard.html',import.meta.url),'utf8');const dom=new JSDOM(html);
  try{for(const script of dom.window.document.scripts)if(!script.src&&(!script.type||script.type==='text/javascript'))new vm.Script(script.textContent);assert.equal(dom.window.document.querySelectorAll('script[src^="dashboard-app.js"]').length,1);assert.equal(dom.window.document.querySelectorAll('link[href^="dashboard-app.css"]').length,1);}finally{dom.window.close();}
 });
+
+test('rebuilt shell controls dispatch once to current funding and history handlers',()=>fixture(async w=>{
+ let funded=0,history=0;w.openFundWallet=()=>funded++;w.openTransactionHistory=()=>history++;
+ const row=w.document.getElementById('lpHomeQuickActions');row.innerHTML='<button><svg><path/></svg>Fund Wallet</button><button>Transactions</button><button>Services</button>';
+ row.firstChild.onclick=()=>{throw Error('stale handler should not run');};
+ row.querySelector('path').dispatchEvent(new w.MouseEvent('click',{bubbles:true}));assert.equal(funded,1);
+ row.children[1].click();assert.equal(history,1);
+ const nav=w.document.querySelector('.lp-bottom-nav');nav.children[1].replaceWith(nav.children[1].cloneNode(true));nav.children[1].click();assert.equal(history,2);
+ row.children[2].click();assert.ok(w.document.getElementById('lpAppServices'));
+}));

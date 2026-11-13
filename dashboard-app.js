@@ -15,6 +15,17 @@
  }
  function open(){close();listSignature=null;listNodes=[];focusBefore=document.activeElement;overflowBefore=document.body.style.overflow;document.body.style.overflow='hidden';sheet=document.createElement('section');sheet.id='lpAppServices';sheet.className='lp-app-services';sheet.setAttribute('role','dialog');sheet.setAttribute('aria-modal','true');sheet.setAttribute('aria-labelledby','lpAppServicesTitle');sheet.innerHTML='<div class="lp-app-services-inner"><header><button type="button" aria-label="Back to dashboard">‹</button><h2 id="lpAppServicesTitle">All services</h2></header><input type="search" placeholder="Search services" aria-label="Search services" autocomplete="off"><div class="lp-app-services-grid"></div><p role="status" aria-live="polite"></p></div>';document.body.append(sheet);sheet.querySelector('header button').onclick=close;sheet.querySelector('input').oninput=list;document.addEventListener('keydown',keys);list();sheet.querySelector('header button').focus();}
  window.openLonerPayServices=open;
+ // Delegate shell actions so late-created/replaced controls never lose navigation.
+ document.addEventListener('click',e=>{
+  const b=e.target.closest?.('button');if(!b)return;
+  const quick=b.closest('#lpHomeQuickActions'),nav=b.closest('.lp-bottom-nav');
+  const label=b.textContent.trim();let action;
+  if(b.id==='lpProfile'||(nav&&/Profile/i.test(label)))action=()=>{window.location.href='profile.html';};
+  else if(quick&&/Fund Wallet/i.test(label)&&typeof window.openFundWallet==='function')action=()=>window.openFundWallet();
+  else if((quick||nav)&&/Transactions/i.test(label)&&typeof window.openTransactionHistory==='function')action=()=>window.openTransactionHistory();
+  else if((quick||nav)&&/^Services$/i.test(label))action=open;
+  if(!action)return;e.preventDefault();e.stopImmediatePropagation();action();
+ },true);
  function paint(){
   document.body.classList.add('lp-app-screen');
   document.querySelectorAll('.services .service').forEach(card=>{const name=card.querySelector('h3')?.textContent.trim()||'';const kind=name==='Airtime'?'airtime':name==='Data'?'data':name==='Electricity'?'electricity':name==='TV'?'tv':null;if(kind){card.dataset.appKind=kind;card.classList.remove('lp-home-extra');}else card.classList.add('lp-home-extra');});
