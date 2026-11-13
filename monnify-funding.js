@@ -36,25 +36,13 @@
   }
   const terms = '<p class="lp-mnf-muted">Your balance is a non-interest-bearing advance payment for airtime, data, electricity and TV purchases only. It cannot be withdrawn or transferred. Betting, third-party payouts and other services are excluded from this test.</p>';
   function showAccount(account, session) {
-    render(`<p>Your Monnify account is ready. This is a different account from your previous funding account.</p>${account.accounts.map(a => `<div class="lp-mnf-bank"><small>${escape(a.bank_name)}</small><strong>${escape(a.account_number)}</strong><span>${escape(a.account_name)}</span><button type="button" data-copy="${escape(a.account_number)}">Copy account number</button></div>`).join('')}${terms}<p class="lp-mnf-muted">Confirm the account name in your banking app. Use a small test amount first. A bank debit alone does not confirm a LonerPay credit.</p><button type="button" id="lpMnfRefresh">Check wallet balance</button><p id="lpMnfStatus" role="status" aria-live="polite"></p>`);
+    render(`<p>Transfer to this account to fund your LonerPay wallet.</p>${account.accounts.map(a => `<div class="lp-mnf-bank"><small>${escape(a.bank_name)}</small><strong>${escape(a.account_number)}</strong><span>${escape(a.account_name)}</span><button type="button" data-copy="${escape(a.account_number)}">Copy account number</button></div>`).join('')}`);
     overlay.querySelectorAll('[data-copy]').forEach(button => button.onclick = async () => {
       try { await navigator.clipboard.writeText(button.dataset.copy); button.textContent = 'Copied'; }
       catch { button.textContent = 'Select and copy the account number above'; }
     });
-    overlay.querySelector('#lpMnfRefresh').onclick = async () => {
-      const button = overlay.querySelector('#lpMnfRefresh'), status = overlay.querySelector('#lpMnfStatus');
-      button.disabled = true; status.textContent = 'Checking your confirmed wallet balance…';
-      try {
-        const result = await request('/api/wallet', session, undefined, controller.signal);
-        if (!overlay) return;
-        const value = Number(result.balance ?? result.wallet?.balance);
-        if (!Number.isFinite(value)) throw Error('Balance could not be loaded. Check your transaction history.');
-        status.textContent = `Confirmed wallet balance: ₦${value.toLocaleString('en-NG', {minimumFractionDigits:2,maximumFractionDigits:2})}. Check Transaction History for the matching funding reference.`;
-        window.loadSecureWallet?.();
-      } catch (e) { if (overlay) status.textContent = e.message; }
-      finally { if (overlay) button.disabled = false; }
-    };
   }
+
   function showForm(session) {
     render(`<p>Connect your verified identity to create your dedicated funding account.</p><form id="lpMnfForm"><label>Full legal name<input name="full_name" required minlength="3" maxlength="100" autocomplete="name"></label><label>Identity document<select name="identity_type"><option value="bvn">BVN</option><option value="nin">NIN</option></select></label><label>BVN or NIN<input name="identity_number" type="password" inputmode="numeric" autocomplete="off" required pattern="[0-9]{11}" minlength="11" maxlength="11"></label><label class="lp-mnf-consent"><input name="consent" type="checkbox" required><span>I consent to LonerPay securely sending my name, email and BVN or NIN to Monnify for identity verification and account creation.</span></label>${terms}<p class="lp-mnf-muted">Your BVN or NIN is not saved by this form. Never send it to support in a message.</p><p id="lpMnfStatus" role="status" aria-live="polite"></p><button type="submit">Create funding account</button></form>`);
     const form = overlay.querySelector('form');

@@ -66,7 +66,7 @@ test('all funding entry points select Monnify while the old provider is never op
  w.eval(source);await until(()=>w.document.querySelector('.lp-primary-restricted'));
  assert.equal(w.document.getElementById('lpMonnifyPilot'),null);
  for(const name of ['openFundWallet','addDemoFunds','openVirtualAccount']){
-  await w[name]();await until(()=>w.document.getElementById('lpMnfRefresh'));
+  await w[name]();await until(()=>w.document.querySelector('#lpMonnifyOverlay [data-copy]'));
   assert.equal(w.document.getElementById('lpMnfTitle').textContent,'Fund Wallet');
   assert.ok(w.document.getElementById('lpMonnifyOverlay').textContent.includes('Moniepoint Microfinance Bank'));
   w.document.getElementById('lpMnfClose').click();

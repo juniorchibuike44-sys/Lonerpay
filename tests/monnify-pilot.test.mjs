@@ -59,7 +59,7 @@ test('ordinary customers retain their funding button and see no pilot',async()=>
  }finally{dom.window.close();}
 });
 
-test('pilot form creates an account without persisting identity and displays verified balance',async()=>{
+test('pilot form creates an account without persisting identity and displays concise escaped bank details',async()=>{
  const dom=new JSDOM('<div class="balance"><button id="existing">Fund Wallet</button></div>',{url:'https://lonerpay.com',runScripts:'outside-only'});
  try{
   const w=dom.window,calls=[];w.localStorage.setItem('lonerpay_access_token','session');
@@ -74,11 +74,12 @@ test('pilot form creates an account without persisting identity and displays ver
   w.document.getElementById('lpMonnifyPilot').click();await until(()=>w.document.getElementById('lpMnfForm'));
   const form=w.document.getElementById('lpMnfForm');form.elements.full_name.value='Test User';form.elements.identity_number.value='12345678901';form.elements.consent.checked=true;
   form.dispatchEvent(new w.Event('submit',{bubbles:true,cancelable:true}));
-  await until(()=>w.document.getElementById('lpMnfRefresh'));
+  await until(()=>w.document.querySelector('#lpMonnifyOverlay [data-copy]'));
   const created=calls.find(x=>x.options.method==='POST');assert.equal(JSON.parse(created.options.body).bvn,'12345678901');
   assert.equal(w.localStorage.length,1);assert.equal(w.localStorage.getItem('lonerpay_access_token'),'session');assert.equal(w.document.querySelector('#lpMonnifyOverlay img'),null);
   assert.match(w.document.getElementById('lpMonnifyOverlay').textContent,/<img/);
-  w.document.getElementById('lpMnfRefresh').click();await until(()=>w.document.getElementById('lpMnfStatus').textContent.includes('5,100.00'));
+  assert.doesNotMatch(w.document.getElementById('lpMonnifyOverlay').textContent,/previous funding|excluded from this test|bank debit alone/i);
+  assert.match(w.document.getElementById('lpMonnifyOverlay').textContent,/Transfer to this account/);
   assert.equal(w.document.getElementById('existing').textContent,'Fund Wallet');
   w.document.dispatchEvent(new w.KeyboardEvent('keydown',{key:'Escape',bubbles:true}));assert.equal(w.document.getElementById('lpMonnifyOverlay'),null);
  }finally{dom.window.close();}
