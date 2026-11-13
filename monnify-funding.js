@@ -122,7 +122,7 @@
       if (access.primary) {
         primaryView = true;
         const hint = document.querySelector('.lp-virtual-account-hint');
-        if (hint) hint.textContent = 'Use your Monnify bank transfer account below to fund your wallet. Your previous account number has changed.';
+        if (hint) hint.textContent = 'Your funding provider is now Monnify. Use Fund Wallet to view or create your new account. Your existing balance is unchanged.';
         document.querySelectorAll('.service').forEach(card => {
           if (/^(Education|Recharge Cards)$/i.test(card.querySelector('h3')?.textContent.trim() || '')) card.classList.add('lp-primary-restricted');
         });

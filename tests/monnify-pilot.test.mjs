@@ -32,12 +32,14 @@ test('pilot fails closed unless a server-configured user is authenticated',()=>f
 
 test('a signed payment for a non-pilot user cannot reach verification or credit',()=>fixture(async()=>{
  let provider=0;globalThis.fetch=async(url)=>{
+  if(url.endsWith('/rpc/lp_monnify_enqueue'))return Response.json('pending');
+  if(url.includes('/lp_monnify_inbox?'))return Response.json([]);
   if(url.includes('/lp_monnify_accounts?'))return Response.json([{user_id:'other',mode:'live',status:'ACTIVE',account_reference:'other-account'}]);
   provider++;throw Error('Must not credit');
  };
  const raw=Buffer.from(JSON.stringify({eventType:'SUCCESSFUL_TRANSACTION',eventData:{transactionReference:'MNFY|1',product:{type:'RESERVED_ACCOUNT',reference:'other-account'}}}));
  const req=Readable.from([raw]);req.method='POST';req.headers={'monnify-signature':createHmac('sha512','secret').update(raw).digest('hex')};
- const r=res();await webhook(req,r);assert.equal(r.code,409);assert.equal(provider,0);
+ const r=res();await webhook(req,r);assert.equal(r.code,200);assert.equal(r.data.pending,true);assert.equal(provider,0);
 }));
 
 test('dashboard scripts parse and the new assets belong to the main document',async()=>{

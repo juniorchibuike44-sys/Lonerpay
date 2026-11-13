@@ -40,7 +40,7 @@ export default async function handler(req, res) {
     const walletResponse = await fetch(
       `${supabaseUrl}/rest/v1/wallets?user_id=eq.${encodeURIComponent(
         user.id
-      )}&select=balance&limit=1`,
+      )}&select=balance,funding_hold&limit=1`,
       {
         headers: {
           apikey: secretKey,
@@ -68,7 +68,8 @@ export default async function handler(req, res) {
     }
 
     return res.status(200).json({
-      balance: Number(wallets[0].balance)
+      balance: Number(wallets[0].balance),
+      funding_hold: wallets[0].funding_hold === true
     });
   } catch (error) {
     return res.status(500).json({

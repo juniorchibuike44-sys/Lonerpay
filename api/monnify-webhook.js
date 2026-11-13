@@ -1,5 +1,6 @@
 import { hardenResponse } from './_security.js';
-import { monnifyConfig, validMonnifySignature, monnifyRequest, monnifyDb, validateReservedPayment, monnifyAccessAllowed } from './_monnify.js';
+import { monnifyConfig, validMonnifySignature, monnifyRequest, monnifyDb, validateReservedPayment } from './_monnify.js';
+import {fundingNotification,processFunding} from './_monnify-reconciliation.js';
 
 export const config = { api: { bodyParser: false } };
 
@@ -22,22 +23,23 @@ export default async function handler(req, res) {
     if (!validMonnifySignature(raw, req.headers['monnify-signature'], c.secret)) return res.status(401).json({ error: 'Invalid signature' });
     let notification;
     try { notification = JSON.parse(raw.toString('utf8')); } catch { return res.status(400).json({ error: 'Invalid JSON' }); }
-    if (notification?.eventType !== 'SUCCESSFUL_TRANSACTION') return res.status(200).json({ received: true, ignored: true });
-    const event = notification.eventData;
-    if (!event || typeof event.transactionReference !== 'string' || event.transactionReference.length > 200 || !event.transactionReference) return res.status(400).json({ error: 'Invalid transaction reference' });
-    if (event.product?.type !== 'RESERVED_ACCOUNT') return res.status(200).json({ received: true, ignored: true });
-    if (typeof event.product.reference !== 'string' || event.product.reference.length > 100) return res.status(400).json({ error: 'Invalid account reference' });
-    const accounts = await monnifyDb('lp_monnify_accounts?account_reference=eq.' + encodeURIComponent(event.product.reference) + '&mode=eq.' + c.mode + '&select=user_id,account_reference,status,mode&limit=1');
-    if (!accounts[0]) return res.status(409).json({ error: 'Account mapping needs review' });
-    if (!monnifyAccessAllowed(c, accounts[0].user_id)) return res.status(409).json({ error: 'Account is outside the current funding rollout' });
-    const verified = await monnifyRequest(c, '/api/v2/merchant/transactions/query?transactionReference=' + encodeURIComponent(event.transactionReference));
-    const payment = validateReservedPayment(verified, event, accounts[0], c);
-    // Sandbox is deliberately verification-only, even with a correctly signed synthetic event.
-    if (c.mode !== 'live') return res.status(200).json({ received: true, sandbox: true, credited: false });
-    const result = await monnifyDb('rpc/lp_credit_monnify', 'POST', payment);
-    return res.status(200).json({ received: true, credited: result?.credited === true });
+    let row;
+    try { row = fundingNotification(notification); } catch { return res.status(400).json({error:'Invalid funding notification'}); }
+    if (!row) return res.status(200).json({received:true,ignored:true});
+    if (c.mode !== 'live') {
+      if (row.event_type !== 'SUCCESSFUL_TRANSACTION') return res.status(200).json({received:true,sandbox:true,credited:false});
+      const accounts = await monnifyDb('lp_monnify_accounts?account_reference=eq.'+encodeURIComponent(row.payload.product?.reference||'')+'&mode=eq.sandbox&select=user_id,account_reference,status,mode&limit=1');
+      const verified = await monnifyRequest(c,'/api/v2/merchant/transactions/query?transactionReference='+encodeURIComponent(row.reference));
+      validateReservedPayment(verified,row.payload,accounts[0],c);
+      return res.status(200).json({received:true,sandbox:true,credited:false});
+    }
+    // Acknowledge only after durable storage. The cron can finish after a timeout or API outage.
+    const state = await monnifyDb('rpc/lp_monnify_enqueue','POST',{p_id:row.id,p_reference:row.reference,p_type:row.event_type,p_payload:row.payload});
+    if (state !== 'pending') return res.status(200).json({received:true,credited:false,state});
+    const result = await processFunding({...row,state},c);
+    return res.status(200).json({received:true,credited:result.credited===true,pending:result.pending===true,state:result.state});
   } catch {
-    // Non-2xx preserves provider retries. Never acknowledge before the atomic database commit.
+    // Storage failures preserve provider retries. Stored notifications are retried by the cron.
     console.error('Monnify notification requires retry or reconciliation');
     return res.status(503).json({ error: 'Payment confirmation pending; retry notification' });
   }

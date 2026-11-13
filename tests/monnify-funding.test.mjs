@@ -5,6 +5,7 @@ import {Readable} from 'node:stream';
 import {PGlite} from '@electric-sql/pglite';
 import {readFile} from 'node:fs/promises';
 import handler from '../api/monnify-webhook.js';
+import {processFunding} from '../api/_monnify-reconciliation.js';
 import accountHandler,{accountView} from '../api/monnify-account.js';
 import {moneyKobo,validMonnifySignature,validateReservedPayment,monnifyConfig} from '../api/_monnify.js';
 
@@ -37,7 +38,7 @@ test('webhook is disabled by default and invalid signatures never reach the API 
  res=response();await handler(webhook({eventType:'SETTLEMENT_COMPLETED'}),res);assert.equal(res.code,200);assert.equal(calls,0);
 }));
 
-test('verified webhook and SQL credit once; conflicts, DB failures, and API outages cannot double credit',()=>fixture(async()=>{
+test('verified worker and SQL credit once; conflicts, DB failures, and API outages cannot double credit',()=>fixture(async()=>{
  const db=new PGlite();
  try{
  await db.exec(`create role anon;create role authenticated;create role service_role bypassrls;create schema auth;create table auth.users(id uuid primary key);insert into auth.users values('${uid}');
@@ -58,10 +59,11 @@ test('verified webhook and SQL credit once; conflicts, DB failures, and API outa
    if(url.endsWith('/api/v1/auth/login'))return Response.json({requestSuccessful:true,responseBody:{accessToken:'token'}});
    if(url.includes('/merchant/transactions/query?')){assert.ok(url.includes(encodeURIComponent(payment.transactionReference)));if(apiFail)throw Error('timeout');return Response.json({requestSuccessful:true,responseBody:apiPayment});}
    if(url.includes('/lp_monnify_accounts?'))return Response.json([account]);
+   if(url.includes('/lp_monnify_inbox?'))return Response.json([]);
    if(url.endsWith('/rpc/lp_credit_monnify')){creditCalls++;if(dbFail)return Response.json({}, {status:503});const p=JSON.parse(options.body);const result=await db.query('select lp_credit_monnify($1,$2,$3,$4) as result',[p.p_account,p.p_mode,p.p_reference,p.p_amount]);return Response.json(result.rows[0].result);}
    throw Error('Unexpected URL');
  };
- const call=async()=>{const res=response();await handler(webhook({eventType:'SUCCESSFUL_TRANSACTION',eventData:payment}),res);return res;};
+ const call=async()=>{const result=await processFunding({id:'test',reference:payment.transactionReference,event_type:'SUCCESSFUL_TRANSACTION',payload:payment,state:'pending'},{mode:'live',rollout:'all',contract:'contract',apiKey:'key',secret:'secret',base:'https://api.monnify.com'});return {code:result.pending?503:200,data:result};};
  await db.exec('set role service_role');
  assert.equal((await call()).data.credited,true);assert.equal((await call()).data.credited,false);
  assert.equal(Number((await db.query('select balance from wallets')).rows[0].balance),5100);

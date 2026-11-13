@@ -90,6 +90,14 @@ const refreshToken = localStorage.getItem("lonerpay_refresh_token");
       throw new Error(data.error || "Could not load wallet");
     }
 
+    const holdId = 'lpFundingHoldNotice';
+    let holdNotice = document.getElementById(holdId);
+    if (data.funding_hold === true) {
+      if (!holdNotice) { holdNotice = document.createElement('p'); holdNotice.id = holdId; holdNotice.setAttribute('role','status'); document.querySelector('.balance')?.appendChild(holdNotice); }
+      holdNotice.textContent = 'A funding payment is under review. Purchases are temporarily paused. Contact support; your balance and history are preserved.';
+      const label = document.querySelector('.balance small'); if (label) label.textContent = 'Balance under review';
+    } else { holdNotice?.remove(); const label = document.querySelector('.balance small'); if (label) label.textContent = 'Available Balance'; }
+
     const secureBalance = Number(data.balance);
 
     if (!Number.isFinite(secureBalance)) {

@@ -1,6 +1,6 @@
 # Monnify funding migration
 
-Status: Monnify funding and an airtime purchase have been confirmed in the founder pilot. Primary dashboard funding can now be switched for that user with MONNIFY_PRIMARY=true. Customer-wide migration remains pending settlement, reversal/dispute handling and transition checks. No existing Paystack account, balance, checkout or webhook has been removed. The live funding test credited once and generated one funding notification; actual bank settlement and fees still need confirmation.
+Status: Monnify funding and an airtime purchase have been confirmed in the founder pilot. Primary dashboard funding can now be switched for that user with MONNIFY_PRIMARY=true. Customer-wide migration remains pending refund-webhook configuration, settlement and transition checks. No existing Paystack account, balance, checkout or webhook has been removed. The live funding test credited once and generated one funding notification; actual bank settlement and fees still need confirmation.
 
 ## Server configuration
 
@@ -34,7 +34,7 @@ Existing SUPABASE_URL and server-only SUPABASE_SECRET_KEY are reused. No new dep
 3. Complete customer cutover routing: replace Paystack account/checkout entry points only after a deliberate provider switch. The primary Monnify flow is currently restricted to the founder. Paystack receipts, historical accounts and webhook processing remain for late payments; account history is not deleted.
 4. Add required advance-payment terms (VTU/utilities only, no interest, no transfers/withdrawals); review education, subscriptions and other paid features against the approved scope. Do not enable them on Monnify by assumption.
 5. Verify the newly extended funding-notification trigger and actual push delivery on the founder's test device.
-6. Implement and test reversal/dispute reconciliation and operator alerts before general launch. This stage ignores non-success events, and never credits them; it does not automatically reverse previously spent funds.
+6. Implement and test reversal/dispute reconciliation and operator alerts before general launch. Durable notifications, background retries and refund/reversal reviews are implemented in supabase/monnify-reconciliation.sql and /api/monnify-reconcile. Successful refunds or a confirmed reversal of an already credited payment pause spending without changing or making the wallet balance negative. An owner-only funding review panel is available under CEO Finance; resolving a hold requires a reconciliation note and affirmative confirmation, and never adjusts balances. Actual bank settlement remains a separate check.
 7. Make a small authorised real transfer and verify one matching credit, correct fees, actual settlement, duplicate/replayed delivery, API/DB outage recovery, provider balance sufficient for immediate bill fulfilment, and account ownership isolation.
 8. Reconcile old wallet liabilities, Paystack pending collections and settlement cash. Customer account numbers will change. Retain legacy references/webhooks and a late-transfer support procedure until old accounts are formally retired. Never delete history or credit migrated balances a second time.
 9. Only then retire Paystack funding/checkout, update customer messaging and monitor both providers through the transition.
@@ -42,3 +42,12 @@ Existing SUPABASE_URL and server-only SUPABASE_SECRET_KEY are reused. No new dep
 Intended Transaction completion URL after deployment/configuration: `https://lonerpay.com/api/monnify-webhook`. Do not save it in Monnify until deployment is verified; it returns 503 until configured.
 
 References: https://developers.monnify.com/docs/webhooks ; https://developers.monnify.com/docs/collections/manage-payments/verify-transactions ; https://developers.monnify.com/docs/collections/recurring-payments/reserved-accounts
+
+## Durable funding and review operations
+
+- Apply `supabase/monnify-reconciliation.sql` before deploying the new webhook. It adds the durable inbox, review/audit records and a wallet hold flag. It does not change existing balances. Historical Monnify credits are seeded as audit-only records.
+- Configure both Transaction completion and Refund completion to `https://lonerpay.com/api/monnify-webhook`. The latter is still required on the merchant dashboard before general rollout. Never use the webhook as a customer payment link.
+- A signed notification is acknowledged only after durable storage. The protected cron retries one pending event per minute, or audits an old credited transaction when no events are pending. API outages do not create refunds or credits.
+- Refund/reversal holds are enforced at the database balance-update boundary, including bulk purchases. Users see a review notice. Holds do not themselves settle refunds, recover spent money or alter historical balances. The owner must reconcile actual funds before releasing a hold. Resolution notes are retained in an append-only action table.
+- New bank transfers and transfer OTP submissions are paused at the backend. Old payment verification, transaction history and Paystack webhooks remain for legacy receipts and late payments.
+- Provider net amounts in the Finance panel are API observations, not proof that settlement has arrived at the corporate bank. Confirm the receiving bank statement before treating collections as settled cash.
