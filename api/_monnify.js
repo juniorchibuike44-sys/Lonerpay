@@ -20,6 +20,13 @@ export function monnifyAccessAllowed(c, userId) {
   return c.rollout === 'all' || (c.rollout === 'pilot' && userId === c.pilotUserId);
 }
 
+// Selection is independent of credentials: a configuration outage must not silently
+// send a migrated customer back to their old funding provider.
+export function monnifyIsPrimary(userId) {
+  return process.env.MONNIFY_PRIMARY === 'true' &&
+    (process.env.MONNIFY_ROLLOUT === 'all' || userId === process.env.MONNIFY_PILOT_USER_ID);
+}
+
 export function validMonnifySignature(raw, signature, secret) {
   if (typeof signature !== 'string' || !/^[a-f0-9]{128}$/i.test(signature)) return false;
   const expected = createHmac('sha512', secret).update(raw).digest();

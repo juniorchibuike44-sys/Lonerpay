@@ -1,5 +1,6 @@
 import {FAILED_STATUSES,verificationFailure} from "./_verification.js";
 import { enforceSharedRateLimit, hardenResponse } from "./_security.js";
+import { monnifyIsPrimary, monnifyConfig, monnifyDb } from './_monnify.js';
 
 export default async function handler(req, res) {
   hardenResponse(res);
@@ -50,6 +51,15 @@ export default async function handler(req, res) {
     }
 
     const user = await userResponse.json();
+
+    if (monnifyIsPrimary(user.id)) {
+      if (req.method !== 'GET') return res.status(409).json({ success: false, code: 'funding_provider_changed', message: 'Refresh LonerPay and use Fund Wallet to create your Monnify account.' });
+      const c = monnifyConfig();
+      const rows = await monnifyDb('lp_monnify_accounts?user_id=eq.' + encodeURIComponent(user.id) + '&mode=eq.' + c.mode + '&select=accounts,status&limit=1');
+      const bank = rows[0]?.status === 'ACTIVE' ? rows[0]?.accounts?.[0] : null;
+      const account = bank ? { ...bank, provider: 'monnify', status: 'active', assignment_status: 'assigned' } : null;
+      return res.status(200).json({ success: true, provider: 'monnify', data: account, virtual_account: account, assignment_status: account ? 'assigned' : 'not_requested', message: account ? 'Your bank transfer funding account is ready.' : 'Use Fund Wallet to create your dedicated account.' });
+    }
 
     {
       const accountResponse = await fetch(

@@ -1,4 +1,5 @@
 import { enforceSharedRateLimit, hardenResponse } from "../_security.js";
+import { monnifyIsPrimary } from '../_monnify.js';
 
 export default async function handler(req, res) {
   hardenResponse(res);
@@ -53,6 +54,8 @@ if (!paystackSecretKey.startsWith("sk_live_")) {
     }
 
     const user = await userResponse.json();
+
+    if (monnifyIsPrimary(user.id)) return res.status(409).json({ code: 'funding_provider_changed', error: 'Your funding provider has changed. Refresh LonerPay and use your displayed Monnify bank transfer account.' });
 
     if (!user?.email) {
       return res.status(400).json({

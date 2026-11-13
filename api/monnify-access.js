@@ -1,5 +1,5 @@
 import { hardenResponse, requireUser, enforceSharedRateLimit } from './_security.js';
-import { monnifyConfig, monnifyAccessAllowed } from './_monnify.js';
+import { monnifyConfig, monnifyAccessAllowed, monnifyIsPrimary } from './_monnify.js';
 
 export default async function handler(req, res) {
   hardenResponse(res);
@@ -9,7 +9,8 @@ export default async function handler(req, res) {
     const auth = await requireUser(req, res);
     if (!auth) return;
     let c;
-    try { c = monnifyConfig(); } catch { return res.status(200).json({ available: false }); }
-    return res.status(200).json({ available: monnifyAccessAllowed(c, auth.user.id), pilot: c.rollout === 'pilot' });
+    const primary = monnifyIsPrimary(auth.user.id);
+    try { c = monnifyConfig(); } catch { return res.status(200).json({ available: false, primary }); }
+    return res.status(200).json({ available: monnifyAccessAllowed(c, auth.user.id), pilot: c.rollout === 'pilot', primary });
   } catch { return res.status(503).json({ error: 'Funding availability could not be checked' }); }
 }

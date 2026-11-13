@@ -264,6 +264,7 @@ function upgradeDashboardExperience() {
     const token = localStorage.getItem("lonerpay_access_token");
     if (token) fetch("/api/virtual-account", {headers:{Authorization:`Bearer ${token}`},cache:"no-store"}).then(async response => {
         const data = await response.json().catch(() => ({}));
+        if (token !== localStorage.getItem("lonerpay_access_token")) return;
         if (!response.ok || !data.success) throw new Error(data.message || "Unable to load virtual account");
         const account = data.virtual_account;
         const badge = virtualAccount.querySelector(".lp-va-badge");
@@ -285,7 +286,7 @@ function upgradeDashboardExperience() {
             message.append(title,reason,retry);
         } else if (account) {
             badge.textContent = "Pending";
-            virtualAccount.querySelector(".lp-va-message").innerHTML = "<strong>Virtual account pending</strong>Your bank account details will appear here automatically after Paystack completes the assignment.";
+            virtualAccount.querySelector(".lp-va-message").innerHTML = "<strong>Virtual account pending</strong>Your bank account details will appear here automatically after the payment provider completes the assignment.";
         } else {
             badge.textContent = "Not created";
             virtualAccount.querySelector(".lp-va-message").innerHTML = "<strong>No virtual account yet</strong>Create your dedicated account from your profile to receive wallet transfers.";

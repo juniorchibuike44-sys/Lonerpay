@@ -4,6 +4,7 @@ import {pairgateAccounting,savePairgateCost} from "./_provider-accounting.js";
 import { checkoutDataPlan } from "./_catalogue.js";
 import { pbkdf2Sync, timingSafeEqual, randomUUID } from "node:crypto";
 import { enforceSharedRateLimit, hardenResponse } from "./_security.js";
+import { monnifyIsPrimary } from './_monnify.js';
 import {
   isPairgateAccepted,
   isPairgateFailedStatus,
@@ -691,6 +692,10 @@ export default async function handler(
 
     user =
       await userResponse.json();
+
+    if (monnifyIsPrimary(user.id) && !(airtimeServices.has(serviceID) || dataServices.has(serviceID) || electricityServices.has(serviceID) || tvServices.has(serviceID))) {
+      return res.status(403).json({ code: 'service_unavailable', error: 'This funding arrangement supports airtime, data, electricity and TV purchases only.' });
+    }
 
 
     /* =========================

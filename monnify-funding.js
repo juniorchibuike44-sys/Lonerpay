@@ -3,7 +3,7 @@
   'use strict';
   const token = () => localStorage.getItem('lonerpay_access_token');
   const escape = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  let overlay, timer, originalFocus, controller;
+  let overlay, timer, originalFocus, controller, primaryView = false, accessCache;
   function close() {
     controller?.abort(); clearInterval(timer); overlay?.remove(); overlay = null;
     document.removeEventListener('keydown', keydown); originalFocus?.focus();
@@ -17,11 +17,11 @@
     if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
     else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
   }
-  async function request(path, session, body) {
+  async function request(path, session, body, signal) {
     if (!session || token() !== session) throw Error('Please log in again.');
     const response = await fetch(path, {
       method: body ? 'POST' : 'GET', headers: { Authorization: 'Bearer ' + session, 'Content-Type': 'application/json' },
-      body: body ? JSON.stringify(body) : undefined, cache: 'no-store', signal: controller?.signal || AbortSignal.timeout(45000)
+      body: body ? JSON.stringify(body) : undefined, cache: 'no-store', signal: signal || AbortSignal.timeout(45000)
     });
     const data = await response.json();
     if (token() !== session) throw Error('Your session changed. Please log in again.');
@@ -30,7 +30,7 @@
   }
   function render(content) {
     if (!overlay) return;
-    overlay.innerHTML = `<section class="lp-mnf-card" role="dialog" aria-modal="true" aria-labelledby="lpMnfTitle"><header><h2 id="lpMnfTitle">Monnify funding test</h2><button type="button" id="lpMnfClose" aria-label="Close funding test">✕</button></header>${content}</section>`;
+    overlay.innerHTML = `<section class="lp-mnf-card" role="dialog" aria-modal="true" aria-labelledby="lpMnfTitle"><header><h2 id="lpMnfTitle">${primaryView ? 'Fund Wallet' : 'Monnify funding test'}</h2><button type="button" id="lpMnfClose" aria-label="Close funding">✕</button></header>${content}</section>`;
     overlay.querySelector('#lpMnfClose').onclick = close;
     overlay.querySelector('#lpMnfClose').focus();
   }
@@ -45,7 +45,7 @@
       const button = overlay.querySelector('#lpMnfRefresh'), status = overlay.querySelector('#lpMnfStatus');
       button.disabled = true; status.textContent = 'Checking your confirmed wallet balance…';
       try {
-        const result = await request('/api/wallet', session);
+        const result = await request('/api/wallet', session, undefined, controller.signal);
         if (!overlay) return;
         const value = Number(result.balance ?? result.wallet?.balance);
         if (!Number.isFinite(value)) throw Error('Balance could not be loaded. Check your transaction history.');
@@ -65,7 +65,7 @@
       const number = form.elements.identity_number.value;
       form.elements.identity_number.value = '';
       try {
-        const result = await request('/api/monnify-account', session, { full_name: form.elements.full_name.value.trim(), [form.elements.identity_type.value]: number, consent: form.elements.consent.checked });
+        const result = await request('/api/monnify-account', session, { full_name: form.elements.full_name.value.trim(), [form.elements.identity_type.value]: number, consent: form.elements.consent.checked }, controller.signal);
         if (form.isConnected) showAccount(result.account, session);
       } catch (error) { if (form.isConnected) { status.textContent = error.message; button.disabled = false; } }
     };
@@ -81,19 +81,53 @@
     timer = setInterval(() => { if (token() !== session) close(); }, 500);
     render('<p role="status">Checking your Monnify connection…</p>');
     try {
-      const result = await request('/api/monnify-account', session);
+      const result = await request('/api/monnify-account', session, undefined, controller.signal);
       if (overlay !== view) return;
       if (result.account?.accounts?.length) showAccount(result.account, session); else showForm(session);
     } catch (error) {
       if (overlay === view) render(`<p role="alert">${escape(error.message)}</p><p>No payment has been requested. Close this screen and try again later.</p>`);
     }
   }
+  function fundingAccess(session) {
+    if (!accessCache || accessCache.session !== session || Date.now() - accessCache.time > 30000) {
+      const record = { session, time: Date.now() };
+      record.promise = request('/api/monnify-access', session).catch(error => { if (accessCache === record) accessCache = null; throw error; });
+      accessCache = record;
+    }
+    return accessCache.promise;
+  }
+  // Every entry point chooses its provider on the server, including voice actions.
+  for (const name of ['openFundWallet', 'addDemoFunds', 'openVirtualAccount']) {
+    const legacy = window[name];
+    window[name] = async function (...args) {
+      const session = token();
+      if (!session) return;
+      try {
+        const access = await fundingAccess(session);
+        if (token() !== session) return;
+        if (access.primary) {
+          if (!access.available) throw Error('Bank transfer funding is temporarily unavailable. Please try again shortly.');
+          primaryView = true; return open();
+        }
+        return legacy?.apply(this, args);
+      } catch { window.alert('Unable to check your funding provider. Please try again shortly.'); }
+    };
+  }
   async function install() {
     const session = token(); if (!session) return;
     try {
-      const access = await request('/api/monnify-access', session);
+      const access = await fundingAccess(session);
       if (!access.available || token() !== session || document.getElementById('lpMonnifyPilot')) return;
       const balance = document.querySelector('.balance'); if (!balance) return;
+      if (access.primary) {
+        primaryView = true;
+        const hint = document.querySelector('.lp-virtual-account-hint');
+        if (hint) hint.textContent = 'Use your Monnify bank transfer account below to fund your wallet. Your previous account number has changed.';
+        document.querySelectorAll('.service').forEach(card => {
+          if (/^(Education|Recharge Cards)$/i.test(card.querySelector('h3')?.textContent.trim() || '')) card.classList.add('lp-primary-restricted');
+        });
+        return;
+      }
       const button = document.createElement('button'); button.id = 'lpMonnifyPilot'; button.type = 'button'; button.className = 'lp-mnf-pilot';
       button.textContent = access.pilot ? 'Test Monnify funding' : 'Fund by bank transfer'; button.onclick = open;
       balance.appendChild(button);
