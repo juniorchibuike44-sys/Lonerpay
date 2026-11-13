@@ -37,6 +37,12 @@
     }
   ],
   "functions": {
+    "api/monnify-webhook.js": {
+      "maxDuration": 60
+    },
+    "api/monnify-account.js": {
+      "maxDuration": 60
+    },
     "api/push-dispatch.js": {
       "maxDuration": 60
     },
