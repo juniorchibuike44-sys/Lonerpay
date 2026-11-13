@@ -39,3 +39,4 @@ grant select,insert on public.wallet_transactions to service_role;
 grant select,insert on public.wallets to service_role;
 grant update(balance,updated_at) on public.wallets to service_role;
 commit;
+notify pgrst,'reload schema';

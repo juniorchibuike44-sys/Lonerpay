@@ -5,9 +5,9 @@ export function monnifyConfig() {
   if (process.env.MONNIFY_ENABLED !== 'true' || !['live', 'sandbox'].includes(mode)) {
     throw Error('Monnify funding is not enabled');
   }
-  const apiKey = process.env.MONNIFY_API_KEY;
-  const secret = process.env.MONNIFY_SECRET_KEY;
-  const contract = process.env.MONNIFY_CONTRACT_CODE;
+  const apiKey = process.env.MONNIFY_API_KEY?.trim();
+  const secret = process.env.MONNIFY_SECRET_KEY?.trim();
+  const contract = process.env.MONNIFY_CONTRACT_CODE?.trim();
   if (!apiKey || !secret || !contract) throw Error('Monnify configuration is incomplete');
   const rollout = process.env.MONNIFY_ROLLOUT || 'pilot';
   const pilotUserId = process.env.MONNIFY_PILOT_USER_ID;
@@ -37,26 +37,37 @@ export function moneyKobo(value) {
 }
 
 export async function monnifyAuthenticate(c) {
-  const login = await fetch(c.base + '/api/v1/auth/login', {
-    method: 'POST', headers: { Authorization: 'Basic ' + Buffer.from(c.apiKey + ':' + c.secret).toString('base64') },
-    signal: AbortSignal.timeout(8000)
-  });
-  const auth = await login.json();
-  if (!login.ok || auth.requestSuccessful !== true || !auth.responseBody?.accessToken) throw Error('Monnify authentication unavailable');
+  let login;
+  try {
+    login = await fetch(c.base + '/api/v1/auth/login', {
+      method: 'POST', headers: { Authorization: 'Basic ' + Buffer.from(c.apiKey + ':' + c.secret).toString('base64'), 'Content-Type': 'application/json', Accept: 'application/json' },
+      signal: AbortSignal.timeout(12000)
+    });
+  } catch { throw monnifyError('monnify_auth_unreachable'); }
+  let auth;
+  try { auth = await login.json(); } catch { throw monnifyError('monnify_auth_invalid_response', login.status); }
+  if (!login.ok || auth.requestSuccessful !== true || !auth.responseBody?.accessToken) throw monnifyError(login.status >= 500 ? 'monnify_auth_unreachable' : 'monnify_auth_rejected', login.status);
   return auth.responseBody.accessToken;
+}
+
+function monnifyError(code, httpStatus) {
+  const error = Error('Funding provider request failed');
+  error.code = code;
+  if (Number.isInteger(httpStatus)) error.httpStatus = httpStatus;
+  return error;
 }
 
 export async function monnifyRequest(c, path, method = 'GET', body) {
   const accessToken = await monnifyAuthenticate(c);
-  const response = await fetch(c.base + path, {
+  let response;
+  try { response = await fetch(c.base + path, {
     method, headers: { Authorization: 'Bearer ' + accessToken, 'Content-Type': 'application/json' },
     body: body === undefined ? undefined : JSON.stringify(body), signal: AbortSignal.timeout(10000), cache: 'no-store'
-  });
-  const result = await response.json();
+  }); } catch { throw monnifyError('monnify_request_unreachable'); }
+  let result;
+  try { result = await response.json(); } catch { throw monnifyError('monnify_request_invalid_response', response.status); }
   if (!response.ok || result.requestSuccessful !== true || !result.responseBody) {
-    const error = Error('Monnify request could not be completed');
-    error.providerCode = String(result.responseCode || '');
-    throw error;
+    throw monnifyError('monnify_request_rejected', response.status);
   }
   return result.responseBody;
 }
@@ -69,7 +80,7 @@ export async function monnifyDb(path, method = 'GET', body) {
     method, headers: { apikey: secret, Authorization: 'Bearer ' + secret, 'Content-Type': 'application/json', Prefer: 'return=representation,resolution=merge-duplicates' },
     body: body === undefined ? undefined : JSON.stringify(body), signal: AbortSignal.timeout(10000), cache: 'no-store'
   });
-  if (!response.ok) throw Error('Funding records unavailable');
+  if (!response.ok) throw monnifyError('funding_records_unavailable', response.status);
   return response.status === 204 ? null : response.json();
 }
 

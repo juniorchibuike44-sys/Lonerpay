@@ -13,14 +13,17 @@ export default async function handler(req, res) {
   if (!['GET', 'POST'].includes(req.method)) return res.status(405).json({ error: 'Method not allowed' });
   let c;
   try { c = monnifyConfig(); } catch { return res.status(503).json({ error: 'Monnify funding is not configured' }); }
+  let stage = 'session';
   try {
     if (!await enforceSharedRateLimit(req, res, { key: 'monnify-account', limit: 8, windowMs: 600000 })) return;
     const auth = await requireUser(req, res);
     if (!auth) return;
     if (!monnifyAccessAllowed(c, auth.user.id)) return res.status(403).json({ error: 'Monnify testing is not available for this account' });
     const reference = 'LP-' + c.mode + '-' + auth.user.id;
+    stage = 'load_account';
     const saved = await monnifyDb('lp_monnify_accounts?user_id=eq.' + encodeURIComponent(auth.user.id) + '&mode=eq.' + c.mode + '&select=account_reference,mode,status,accounts&limit=1');
     if (req.method === 'GET') {
+      stage = 'authentication';
       await monnifyAuthenticate(c);
       return res.status(200).json({ success: true, connection_verified: true, account: saved[0] || null });
     }
@@ -33,22 +36,37 @@ export default async function handler(req, res) {
     if (name.length < 3) return res.status(400).json({ error: 'Enter your full legal name' });
     // Reuse one deterministic reference. Recover an earlier completed creation after a network/DB failure.
     let account;
+    stage = 'create_account';
     try {
       account = await monnifyRequest(c, '/api/v2/bank-transfer/reserved-accounts', 'POST', {
         accountReference: reference, accountName: name, currencyCode: 'NGN', contractCode: c.contract,
         customerEmail: auth.user.email, customerName: name, getAllAvailableBanks: true,
         ...(bvn ? { bvn } : {}), ...(nin ? { nin } : {})
       });
-    } catch {
+    } catch (error) {
+      if (String(error.code || '').startsWith('monnify_auth_')) throw error;
       // A duplicate reference or ambiguous response may mean the original creation succeeded.
       // Recover that exact account; never generate a replacement reference on retry.
       account = await monnifyRequest(c, '/api/v2/bank-transfer/reserved-accounts/' + encodeURIComponent(reference));
     }
     const view = accountView(account, reference, c);
+    stage = 'save_account';
     await monnifyDb('lp_monnify_accounts?on_conflict=user_id,mode', 'POST', { user_id: auth.user.id, ...view });
     // Never persist or return raw provider responses: they can contain BVN/NIN.
     return res.status(200).json({ success: true, account: view });
-  } catch {
-    return res.status(503).json({ error: 'Account setup is pending. Retry later; do not transfer until an account is displayed.' });
+  } catch (error) {
+    const known = {
+      monnify_auth_rejected: 'Monnify refused API authentication. Check that the saved API Key and Secret Key are both from Live mode.',
+      monnify_auth_unreachable: 'The server could not reach Monnify authentication. Please try again shortly.',
+      monnify_auth_invalid_response: 'Monnify authentication returned an unexpected response. Please try again shortly.',
+      funding_records_unavailable: 'LonerPay could not load or save the funding account records. Support needs to check the database setup.'
+    };
+    const code = Object.hasOwn(known, error.code) ? error.code : 'monnify_account_' + stage;
+    // Never log raw provider messages, credentials, identity data, or auth tokens.
+    console.error('Monnify account check failed', { stage, code, http_status: Number.isInteger(error.httpStatus) ? error.httpStatus : null });
+    const message = known[code] || (stage === 'load_account' || stage === 'save_account'
+      ? 'LonerPay funding account records are temporarily unavailable. Please try again shortly.'
+      : 'Monnify account setup could not be confirmed. Please retry later.');
+    return res.status(503).json({ error: message + ' Do not transfer until an account is displayed.', code });
   }
 }
