@@ -72,6 +72,8 @@ test('pilot form creates an account without persisting identity and displays con
   };
   w.eval(source);await until(()=>w.document.getElementById('lpMonnifyPilot'));
   w.document.getElementById('lpMonnifyPilot').click();await until(()=>w.document.getElementById('lpMnfForm'));
+  assert.doesNotMatch(w.document.getElementById('lpMonnifyOverlay').textContent,/\b(test|pilot|sandbox)\b/i);
+  assert.match(w.document.getElementById('lpMonnifyOverlay').textContent,/cannot be withdrawn or transferred/);
   const form=w.document.getElementById('lpMnfForm');form.elements.full_name.value='Test User';form.elements.identity_number.value='12345678901';form.elements.consent.checked=true;
   form.dispatchEvent(new w.Event('submit',{bubbles:true,cancelable:true}));
   await until(()=>w.document.querySelector('#lpMonnifyOverlay [data-copy]'));

@@ -30,11 +30,11 @@
   }
   function render(content) {
     if (!overlay) return;
-    overlay.innerHTML = `<section class="lp-mnf-card" role="dialog" aria-modal="true" aria-labelledby="lpMnfTitle"><header><h2 id="lpMnfTitle">${primaryView ? 'Fund Wallet' : 'Monnify funding test'}</h2><button type="button" id="lpMnfClose" aria-label="Close funding">✕</button></header>${content}</section>`;
+    overlay.innerHTML = `<section class="lp-mnf-card" role="dialog" aria-modal="true" aria-labelledby="lpMnfTitle"><header><h2 id="lpMnfTitle">Fund Wallet</h2><button type="button" id="lpMnfClose" aria-label="Close funding">✕</button></header>${content}</section>`;
     overlay.querySelector('#lpMnfClose').onclick = close;
     overlay.querySelector('#lpMnfClose').focus();
   }
-  const terms = '<p class="lp-mnf-muted">Your balance is a non-interest-bearing advance payment for airtime, data, electricity and TV purchases only. It cannot be withdrawn or transferred. Betting, third-party payouts and other services are excluded from this test.</p>';
+  const terms = '<p class="lp-mnf-muted">Your balance is prepaid credit for airtime, data, electricity and TV purchases only. It earns no interest and cannot be withdrawn or transferred.</p>';
   function showAccount(account, session) {
     render(`<p>Transfer to this account to fund your LonerPay wallet.</p>${account.accounts.map(a => `<div class="lp-mnf-bank"><small>${escape(a.bank_name)}</small><strong>${escape(a.account_number)}</strong><span>${escape(a.account_name)}</span><button type="button" data-copy="${escape(a.account_number)}">Copy account number</button></div>`).join('')}`);
     overlay.querySelectorAll('[data-copy]').forEach(button => button.onclick = async () => {
@@ -44,7 +44,7 @@
   }
 
   function showForm(session) {
-    render(`<p>Connect your verified identity to create your dedicated funding account.</p><form id="lpMnfForm"><label>Full legal name<input name="full_name" required minlength="3" maxlength="100" autocomplete="name"></label><label>Identity document<select name="identity_type"><option value="bvn">BVN</option><option value="nin">NIN</option></select></label><label>BVN or NIN<input name="identity_number" type="password" inputmode="numeric" autocomplete="off" required pattern="[0-9]{11}" minlength="11" maxlength="11"></label><label class="lp-mnf-consent"><input name="consent" type="checkbox" required><span>I consent to LonerPay securely sending my name, email and BVN or NIN to Monnify for identity verification and account creation.</span></label>${terms}<p class="lp-mnf-muted">Your BVN or NIN is not saved by this form. Never send it to support in a message.</p><p id="lpMnfStatus" role="status" aria-live="polite"></p><button type="submit">Create funding account</button></form>`);
+    render(`<p>Create your personal funding account using your BVN or NIN.</p><form id="lpMnfForm"><label>Full legal name<input name="full_name" required minlength="3" maxlength="100" autocomplete="name"></label><label>Identity document<select name="identity_type"><option value="bvn">BVN</option><option value="nin">NIN</option></select></label><label>BVN or NIN<input name="identity_number" type="password" inputmode="numeric" autocomplete="off" required pattern="[0-9]{11}" minlength="11" maxlength="11"></label><label class="lp-mnf-consent"><input name="consent" type="checkbox" required><span>I consent to LonerPay securely sending my name, email and BVN or NIN to Monnify for identity verification and account creation.</span></label>${terms}<p class="lp-mnf-muted">Your BVN or NIN is not saved by this form. Never send it to support in a message.</p><p id="lpMnfStatus" role="status" aria-live="polite"></p><button type="submit">Create funding account</button></form>`);
     const form = overlay.querySelector('form');
     form.onsubmit = async e => {
       e.preventDefault(); if (!form.reportValidity()) return;
@@ -118,7 +118,7 @@
         return;
       }
       const button = document.createElement('button'); button.id = 'lpMonnifyPilot'; button.type = 'button'; button.className = 'lp-mnf-pilot';
-      button.textContent = access.pilot ? 'Test Monnify funding' : 'Fund by bank transfer'; button.onclick = open;
+      button.textContent = 'Fund by bank transfer'; button.onclick = open;
       balance.appendChild(button);
     } catch { /* Existing funding remains usable if pilot discovery is unavailable. */ }
   }
