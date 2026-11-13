@@ -111,7 +111,7 @@ const serviceLower = service.toLowerCase();
 const serviceName =
   serviceLower === "mtn"
     ? "MTN Airtime"
-    : serviceLower === "paystack_wallet_funding"
+    : ["paystack_wallet_funding", "monnify_wallet_funding"].includes(serviceLower)
     ? "Wallet Funding"
     : service; 
       const detailText = phone ? `Phone: ${phone}` : "Secure wallet payment";

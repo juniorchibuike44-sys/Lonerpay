@@ -9,8 +9,15 @@ export function monnifyConfig() {
   const secret = process.env.MONNIFY_SECRET_KEY;
   const contract = process.env.MONNIFY_CONTRACT_CODE;
   if (!apiKey || !secret || !contract) throw Error('Monnify configuration is incomplete');
+  const rollout = process.env.MONNIFY_ROLLOUT || 'pilot';
+  const pilotUserId = process.env.MONNIFY_PILOT_USER_ID;
+  if (!['pilot', 'all'].includes(rollout) || (rollout === 'pilot' && !/^[a-f0-9-]{36}$/i.test(pilotUserId || ''))) throw Error('Monnify pilot account is not configured');
   // Never allow caller-controlled URLs or an implicit production/sandbox fallback.
-  return { apiKey, secret, contract, mode, base: mode === 'live' ? 'https://api.monnify.com' : 'https://sandbox.monnify.com' };
+  return { apiKey, secret, contract, mode, rollout, pilotUserId, base: mode === 'live' ? 'https://api.monnify.com' : 'https://sandbox.monnify.com' };
+}
+
+export function monnifyAccessAllowed(c, userId) {
+  return c.rollout === 'all' || (c.rollout === 'pilot' && userId === c.pilotUserId);
 }
 
 export function validMonnifySignature(raw, signature, secret) {
@@ -29,15 +36,20 @@ export function moneyKobo(value) {
   return kobo;
 }
 
-export async function monnifyRequest(c, path, method = 'GET', body) {
+export async function monnifyAuthenticate(c) {
   const login = await fetch(c.base + '/api/v1/auth/login', {
     method: 'POST', headers: { Authorization: 'Basic ' + Buffer.from(c.apiKey + ':' + c.secret).toString('base64') },
     signal: AbortSignal.timeout(8000)
   });
   const auth = await login.json();
   if (!login.ok || auth.requestSuccessful !== true || !auth.responseBody?.accessToken) throw Error('Monnify authentication unavailable');
+  return auth.responseBody.accessToken;
+}
+
+export async function monnifyRequest(c, path, method = 'GET', body) {
+  const accessToken = await monnifyAuthenticate(c);
   const response = await fetch(c.base + path, {
-    method, headers: { Authorization: 'Bearer ' + auth.responseBody.accessToken, 'Content-Type': 'application/json' },
+    method, headers: { Authorization: 'Bearer ' + accessToken, 'Content-Type': 'application/json' },
     body: body === undefined ? undefined : JSON.stringify(body), signal: AbortSignal.timeout(10000), cache: 'no-store'
   });
   const result = await response.json();

@@ -11,7 +11,7 @@ import {moneyKobo,validMonnifySignature,validateReservedPayment,monnifyConfig} f
 const uid='11111111-1111-1111-1111-111111111111';
 const account={user_id:uid,account_reference:'LP-live-'+uid,status:'ACTIVE',mode:'live'};
 const payment={transactionReference:'MNFY|test|1',paymentStatus:'PAID',currency:'NGN',paymentMethod:'ACCOUNT_TRANSFER',product:{type:'RESERVED_ACCOUNT',reference:account.account_reference},amountPaid:'5000.00',settlementAmount:'4950.00'};
-const env={MONNIFY_ENABLED:'true',MONNIFY_MODE:'live',MONNIFY_API_KEY:'test-key',MONNIFY_SECRET_KEY:'test-secret',MONNIFY_CONTRACT_CODE:'contract',SUPABASE_URL:'https://db.example',SUPABASE_SECRET_KEY:'db-test'};
+const env={MONNIFY_ENABLED:'true',MONNIFY_ROLLOUT:'all',MONNIFY_MODE:'live',MONNIFY_API_KEY:'test-key',MONNIFY_SECRET_KEY:'test-secret',MONNIFY_CONTRACT_CODE:'contract',SUPABASE_URL:'https://db.example',SUPABASE_SECRET_KEY:'db-test'};
 function response(){return {code:200,headers:{},setHeader(k,v){this.headers[k]=v;},status(c){this.code=c;return this;},json(d){this.data=d;return this;}};}
 function webhook(data,signature){const raw=Buffer.from(JSON.stringify(data));const req=Readable.from([raw]);req.method='POST';req.headers={'monnify-signature':signature??createHmac('sha512',env.MONNIFY_SECRET_KEY).update(raw).digest('hex')};return req;}
 async function fixture(fn){const before={...process.env};const fetch=globalThis.fetch;Object.assign(process.env,env);try{await fn();}finally{globalThis.fetch=fetch;for(const k of Object.keys(process.env))if(!(k in before))delete process.env[k];Object.assign(process.env,before);}}
@@ -45,6 +45,13 @@ test('verified webhook and SQL credit once; conflicts, DB failures, and API outa
  create table wallet_transactions(id uuid primary key default gen_random_uuid(),user_id uuid,request_id text unique,transaction_type text,service text,amount numeric,status text,details jsonb);
  insert into wallets values('${uid}',100,'NGN',now());`);
  await db.exec(await readFile(new URL('../supabase/monnify-funding.sql',import.meta.url),'utf8'));
+ await db.exec(`create table lp_notifications(id uuid primary key default gen_random_uuid(),user_id uuid,title text,body text,funding_transaction_id uuid unique);
+ create table lp_push_subscriptions(id uuid primary key default gen_random_uuid(),user_id uuid);
+ create table lp_push_jobs(notification_id uuid,subscription_id uuid,user_id uuid);
+ grant all on lp_notifications,lp_push_subscriptions,lp_push_jobs to service_role;
+ insert into lp_push_subscriptions(user_id) values('${uid}');`);
+ await db.exec(await readFile(new URL('../supabase/monnify-funding-alerts.sql',import.meta.url),'utf8'));
+ await db.exec('create trigger lp_funding_notice after insert or update of status on wallet_transactions for each row execute function lp_funding_notice()');
  await db.query('insert into lp_monnify_accounts(user_id,mode,account_reference,status,accounts) values($1,$2,$3,$4,$5)',[uid,'live',account.account_reference,'ACTIVE','[]']);
  let apiPayment=payment,dbFail=false,apiFail=false,creditCalls=0;
  globalThis.fetch=async(url,options={})=>{
@@ -55,9 +62,13 @@ test('verified webhook and SQL credit once; conflicts, DB failures, and API outa
    throw Error('Unexpected URL');
  };
  const call=async()=>{const res=response();await handler(webhook({eventType:'SUCCESSFUL_TRANSACTION',eventData:payment}),res);return res;};
+ await db.exec('set role service_role');
  assert.equal((await call()).data.credited,true);assert.equal((await call()).data.credited,false);
  assert.equal(Number((await db.query('select balance from wallets')).rows[0].balance),5100);
  assert.equal(Number((await db.query('select count(*) as n from wallet_transactions')).rows[0].n),1);
+ assert.equal(Number((await db.query('select count(*) as n from lp_notifications')).rows[0].n),1);
+ assert.equal(Number((await db.query('select count(*) as n from lp_push_jobs')).rows[0].n),1);
+ await db.exec('reset role');
  apiPayment={...payment,currency:'USD'};assert.equal((await call()).code,503);assert.equal(creditCalls,2);
  apiPayment=payment;apiFail=true;assert.equal((await call()).code,503);assert.equal(creditCalls,2);apiFail=false;
  dbFail=true;assert.equal((await call()).code,503);dbFail=false;

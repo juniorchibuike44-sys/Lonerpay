@@ -1,5 +1,5 @@
 import { hardenResponse, enforceSharedRateLimit, requireUser, cleanText } from './_security.js';
-import { monnifyConfig, monnifyRequest, monnifyDb } from './_monnify.js';
+import { monnifyConfig, monnifyRequest, monnifyDb, monnifyAccessAllowed, monnifyAuthenticate } from './_monnify.js';
 
 export function accountView(account, reference, c) {
   if (account.accountReference !== reference || String(account.contractCode) !== c.contract || account.currencyCode !== 'NGN' || account.status !== 'ACTIVE') throw Error('Account is not ready');
@@ -17,9 +17,14 @@ export default async function handler(req, res) {
     if (!await enforceSharedRateLimit(req, res, { key: 'monnify-account', limit: 8, windowMs: 600000 })) return;
     const auth = await requireUser(req, res);
     if (!auth) return;
+    if (!monnifyAccessAllowed(c, auth.user.id)) return res.status(403).json({ error: 'Monnify testing is not available for this account' });
     const reference = 'LP-' + c.mode + '-' + auth.user.id;
     const saved = await monnifyDb('lp_monnify_accounts?user_id=eq.' + encodeURIComponent(auth.user.id) + '&mode=eq.' + c.mode + '&select=account_reference,mode,status,accounts&limit=1');
-    if (saved[0]?.status === 'ACTIVE' || req.method === 'GET') return res.status(200).json({ success: true, account: saved[0] || null });
+    if (req.method === 'GET') {
+      await monnifyAuthenticate(c);
+      return res.status(200).json({ success: true, connection_verified: true, account: saved[0] || null });
+    }
+    if (saved[0]?.status === 'ACTIVE') return res.status(200).json({ success: true, account: saved[0] });
     const bvn = typeof req.body?.bvn === 'string' ? req.body.bvn.trim() : '';
     const nin = typeof req.body?.nin === 'string' ? req.body.nin.trim() : '';
     if ((!/^\d{11}$/.test(bvn) && !/^\d{11}$/.test(nin)) || (bvn && !/^\d{11}$/.test(bvn)) || (nin && !/^\d{11}$/.test(nin))) return res.status(400).json({ error: 'A valid 11-digit BVN or NIN is required' });

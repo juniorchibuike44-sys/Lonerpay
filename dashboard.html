@@ -345,7 +345,8 @@ button:active {
 </style>
 <link rel="stylesheet" href="dashboard-gold.css?v=20261017-alignment">
 <script src="dashboard-gold.js?v=20261019-places" defer></script>
-<script src="notifications-client.js?v=20261021-inbox-flow" defer></script><script src="bill-reminders-client.js?v=20261029" defer></script><script src="referrals-client.js?v=20261029" defer></script><script src="business-session.js?v=20261017-session" defer></script><script src="business-launcher.js?v=20261027-reseller" defer></script><script src="business-hub.js?v=20261111-paused" defer></script><script src="voice-control.js?v=20261019-navigation" defer></script><script src="discovery-client.js?v=20261021-services" defer></script><link rel="manifest" href="/manifest.webmanifest"><meta name="theme-color" content="#936514"><script src="/app-install.js?v=20261020-android" defer></script></head>
+<script src="notifications-client.js?v=20261021-inbox-flow" defer></script><script src="bill-reminders-client.js?v=20261029" defer></script><script src="referrals-client.js?v=20261029" defer></script><script src="business-session.js?v=20261017-session" defer></script><script src="business-launcher.js?v=20261027-reseller" defer></script><script src="business-hub.js?v=20261111-paused" defer></script><script src="voice-control.js?v=20261019-navigation" defer></script><script src="discovery-client.js?v=20261021-services" defer></script><link rel="manifest" href="/manifest.webmanifest"><meta name="theme-color" content="#936514"><script src="/app-install.js?v=20261020-android" defer></script><link rel="stylesheet" href="monnify-funding.css?v=20261113-pilot">
+</head>
 
 <body class="lp-gold-dashboard">
 
@@ -2469,7 +2470,7 @@ function openAITips() {
 <script src="electricity-client.js?v=20261017-gold-screens"></script>
 <script src="tv-client.js?v=20261017-gold-screens"></script>
 <script src="wallet-client.js?v=20261024-kyc-20261021-personal-greeting"></script>
-<script src="transactions-client.js?v=20261017-payment-confirmation"></script>  
+<script src="transactions-client.js?v=20261113-funding"></script>
 
 <nav class="lp-bottom-nav" aria-label="Main navigation">
   <button class="lp-nav-item active" type="button" onclick="window.scrollTo({top:0,behavior:'smooth'})"><span>⌂</span>Home</button>
@@ -3488,7 +3489,7 @@ const LP={blue:'#936514',navy:'#45371f',bg:'#faf8f2',ink:'#28251e',muted:'#6b7a9
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
 const money=v=>'₦'+Number(v||0).toLocaleString('en-NG',{minimumFractionDigits:2,maximumFractionDigits:2});
 const token=()=>localStorage.getItem('lonerpay_access_token')||'';
-const prettyService=v=>{const x=String(v||'Transaction').toLowerCase().trim(); const m={waec:'WAEC Result Checker',neco:'NECO Result Checker',nabt:'NABTEB Result Checker','epin-mtn':'MTN Recharge Cards','epin-airtel':'Airtel Recharge Cards','epin-glo':'Glo Recharge Cards','epin-9mobile':'9mobile Recharge Cards',credit:'Wallet Funding',debit:'Wallet Payment',refund:'Wallet Refund','paystack_wallet_funding':'Wallet Funding',dstv:'DStv Subscription',gotv:'GOtv Subscription',startimes:'StarTimes Subscription','bet funding':'Bet Funding'};return m[x]||String(v||'Transaction').replace(/[-_]/g,' ').replace(/\b\w/g,c=>c.toUpperCase());};
+const prettyService=v=>{const x=String(v||'Transaction').toLowerCase().trim(); const m={waec:'WAEC Result Checker',neco:'NECO Result Checker',nabt:'NABTEB Result Checker','epin-mtn':'MTN Recharge Cards','epin-airtel':'Airtel Recharge Cards','epin-glo':'Glo Recharge Cards','epin-9mobile':'9mobile Recharge Cards',credit:'Wallet Funding',debit:'Wallet Payment',refund:'Wallet Refund','paystack_wallet_funding':'Wallet Funding','monnify_wallet_funding':'Wallet Funding',dstv:'DStv Subscription',gotv:'GOtv Subscription',startimes:'StarTimes Subscription','bet funding':'Bet Funding'};return m[x]||String(v||'Transaction').replace(/[-_]/g,' ').replace(/\b\w/g,c=>c.toUpperCase());};
 const statusMeta=v=>{const s=String(v||'successful').toLowerCase();if(s.includes('refund'))return{label:'Refunded',fg:'#7c3aed',bg:'#f2eaff',icon:'↩'};if(s.includes('fail'))return{label:'Failed',fg:LP.red,bg:'#fff0f0',icon:'×'};if(s.includes('pend')||s.includes('process')||s.includes('initiat'))return{label:'Pending',fg:LP.amber,bg:'#fff7e3',icon:'…'};return{label:'Successful',fg:LP.green,bg:'#eafaf2',icon:'✓'};};
 const iconFor=v=>{const s=String(v||'').toLowerCase();if(s.includes('recharge card')||s.includes('epin'))return'🧾';if(s.includes('airtime'))return'📱';if(s.includes('data'))return'📶';if(s.includes('electric'))return'⚡';if(s.includes('dstv')||s.includes('gotv')||s.includes('tv')||s.includes('startime'))return'📺';if(s.includes('waec')||s.includes('neco')||s.includes('nabt')||s.includes('education'))return'🎓';if(s.includes('bet'))return'🎯';if(s.includes('transfer'))return'↗';if(s.includes('fund')||s.includes('credit'))return'＋';if(s.includes('refund'))return'↩';return'💳';};
 function parseDetails(raw){const out={};String(raw||'').split(/\s*\|\s*/).forEach(p=>{const i=p.indexOf(':');if(i>0)out[p.slice(0,i).trim()]=p.slice(i+1).trim();});return out;}
@@ -4371,6 +4372,7 @@ async function openVirtualAccount() {
   else removeUnexpectedText();
 })();
 </script>
+<script src="monnify-funding.js?v=20261113-pilot"></script>
 </body>
 </html> 
 
