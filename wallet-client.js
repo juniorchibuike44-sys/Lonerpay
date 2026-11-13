@@ -297,7 +297,7 @@ function upgradeDashboardExperience() {
             virtualAccount.querySelector(".lp-va-message").innerHTML = "<strong>Virtual account pending</strong>Your bank account details will appear here automatically after the payment provider completes the assignment.";
         } else {
             badge.textContent = "Not created";
-            virtualAccount.querySelector(".lp-va-message").innerHTML = "<strong>No virtual account yet</strong>Create your dedicated account from your profile to receive wallet transfers.";
+            virtualAccount.querySelector(".lp-va-message").innerHTML = "<strong>No virtual account yet</strong>Use Fund Wallet to create your dedicated account for bank transfer funding.";
         }
     }).catch(() => {
         virtualAccount.querySelector(".lp-va-badge").textContent = "Unavailable";

@@ -1,4 +1,5 @@
 import {FAILED_STATUSES,verificationFailure} from "../_verification.js";
+import {monnifyIsPrimary,monnifyConfig,monnifyDb} from '../_monnify.js';
 export default async function handler(req, res) {
   if (req.method !== "GET") {
     return res.status(405).json({
@@ -61,7 +62,14 @@ export default async function handler(req, res) {
       });
     }
 
-    // Read only this customer's virtual-account/KYC record.
+    if(monnifyIsPrimary(user.id)){
+      const c=monnifyConfig();
+      const rows=await monnifyDb('lp_monnify_accounts?user_id=eq.'+encodeURIComponent(user.id)+'&mode=eq.'+c.mode+'&select=status,accounts&limit=1');
+      const bank=rows[0]?.status==='ACTIVE'?rows[0]?.accounts?.[0]:null;
+      return res.status(200).json({success:true,provider:'monnify',status:bank?'verified':'not_verified',assignment_status:bank?'assigned':'not_requested',virtual_account_ready:!!bank,account_number:bank?.account_number||null,account_name:bank?.account_name||null,bank_name:bank?.bank_name||null,message:bank?'Monnify has issued your verified dedicated funding account.':'Use Fund Wallet on the dashboard to verify your identity and create your new Monnify account. Your existing balance is unchanged.'});
+    }
+
+    // Read only this customer's legacy virtual-account/KYC record.
     const accountResponse = await fetch(
       `${supabaseUrl}/rest/v1/virtual_accounts?user_id=eq.${encodeURIComponent(
         user.id

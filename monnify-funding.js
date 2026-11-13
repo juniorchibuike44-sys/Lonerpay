@@ -126,6 +126,7 @@
         document.querySelectorAll('.service').forEach(card => {
           if (/^(Education|Recharge Cards)$/i.test(card.querySelector('h3')?.textContent.trim() || '')) card.classList.add('lp-primary-restricted');
         });
+        if (location.hash === '#fund-wallet') { history.replaceState(null, '', location.pathname + location.search); open(); }
         return;
       }
       const button = document.createElement('button'); button.id = 'lpMonnifyPilot'; button.type = 'button'; button.className = 'lp-mnf-pilot';

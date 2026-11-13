@@ -6,6 +6,7 @@ import virtual from '../api/virtual-account.js';
 import initialize from '../api/fund-wallet/initialize.js';
 import access from '../api/monnify-access.js';
 import {monnifyIsPrimary} from '../api/_monnify.js';
+import kyc from '../api/kyc/status.js';
 const uid='11111111-1111-1111-1111-111111111111';
 const env={MONNIFY_ENABLED:'true',MONNIFY_PRIMARY:'true',MONNIFY_ROLLOUT:'pilot',MONNIFY_PILOT_USER_ID:uid,MONNIFY_MODE:'live',MONNIFY_API_KEY:'key',MONNIFY_SECRET_KEY:'secret',MONNIFY_CONTRACT_CODE:'contract',SUPABASE_URL:'https://db.example',SUPABASE_SECRET_KEY:'db-test',PAYSTACK_SECRET_KEY:'sk_live_test'};
 const bank={account_number:'1234567890',bank_name:'Moniepoint Microfinance Bank',account_name:'Test User'};
@@ -38,6 +39,20 @@ test('stale account forms and Paystack checkouts cannot create new Paystack fund
 test('unmigrated customers retain their existing account details',()=>fixture(async()=>{
  const calls=mock('other'),r=res();await virtual(req('GET'),r);assert.equal(r.code,200);assert.equal(r.data.virtual_account.account_number,'9999999999');assert.ok(!calls.some(c=>c.url.includes('/lp_monnify_accounts?')));
 }));
+
+test('customer-wide rollout selects Monnify for other users and replaces legacy Profile KYC records',()=>fixture(async()=>{
+ process.env.MONNIFY_ROLLOUT='all';const calls=mock('other');assert.equal(monnifyIsPrimary('other'),true);
+ let r=res();await access(req('GET'),r);assert.equal(r.data.primary,true);assert.equal(r.data.available,true);
+ r=res();await virtual(req('GET'),r);assert.equal(r.data.provider,'monnify');assert.equal(r.data.virtual_account.account_number,bank.account_number);
+ r=res();await kyc(req('GET'),r);assert.equal(r.data.provider,'monnify');assert.equal(r.data.status,'verified');assert.equal(r.data.account_number,bank.account_number);
+ assert.ok(calls.filter(c=>c.url.includes('/lp_monnify_accounts?')).every(c=>c.url.includes('user_id=eq.other')));
+ assert.ok(!calls.some(c=>c.url.includes('/virtual_accounts?')||c.url.includes('api.paystack.co')));
+}));
+
+test('Profile scripts parse after retirement of the old verification form',async()=>{
+ const html=await readFile(new URL('../profile.html',import.meta.url),'utf8');const dom=new JSDOM(html);
+ try{const {default:vm}=await import('node:vm');for(const script of dom.window.document.scripts)if(!script.src&&(!script.type||script.type==='text/javascript'))new vm.Script(script.textContent);assert.ok(!html.includes('id="kycBvn"'));assert.ok(html.includes('dashboard.html#fund-wallet'));}finally{dom.window.close();}
+});
 
 const source=await readFile(new URL('../monnify-funding.js',import.meta.url),'utf8');
 const tick=()=>new Promise(r=>setTimeout(r,10));
