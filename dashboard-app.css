@@ -100,3 +100,22 @@ body.lp-gold-dashboard.lp-app-screen #lpVoiceLauncher>span:last-child:after{cont
 
 /* Restore the swipeable LonerPay highlights below the bill shortcuts. */
 body.lp-gold-dashboard.lp-app-screen .lp-carousel-wrap{display:block!important;order:5;min-width:0;width:100%;margin:0!important}
+
+/* Shared mobile gutters and stable action geometry across phone widths. */
+body.lp-gold-dashboard.lp-app-screen{--lp-gutter:20px}
+body.lp-gold-dashboard.lp-app-screen .header{padding-left:var(--lp-gutter)!important;padding-right:var(--lp-gutter)!important;box-sizing:border-box}
+body.lp-gold-dashboard.lp-app-screen .container{padding-left:var(--lp-gutter)!important;padding-right:var(--lp-gutter)!important}
+body.lp-gold-dashboard.lp-app-screen .balance #lpHomeQuickActions{grid-template-columns:repeat(3,minmax(0,1fr))!important;align-items:stretch!important;gap:8px!important}
+body.lp-gold-dashboard.lp-app-screen .balance #lpHomeQuickActions button.lpHomeQuick{display:flex!important;flex-direction:column!important;justify-content:center!important;align-items:center!important;height:62px!important;min-height:62px!important;padding:8px 3px!important;gap:6px!important;font-size:11px!important;line-height:1.2!important;white-space:nowrap!important;letter-spacing:0!important;min-width:0!important}
+body.lp-gold-dashboard.lp-app-screen .balance #lpHomeQuickActions button span{display:grid!important;place-items:center!important;line-height:1!important}
+body.lp-gold-dashboard.lp-app-screen .balance #lpBalancePrivacyBtn{top:42px!important;right:22px!important}
+body.lp-gold-dashboard.lp-app-screen .lg-highlights .lp-slide-copy{display:flex!important;align-items:flex-start!important;justify-content:flex-start!important;padding:18px!important;box-sizing:border-box}
+body.lp-gold-dashboard.lp-app-screen .lg-highlights .lg-highlight-action{margin-top:auto!important;flex-shrink:0!important}
+body.lp-gold-dashboard.lp-app-screen .lg-highlights .lp-slide-copy h3{max-width:85%!important}
+body.lp-gold-dashboard.lp-app-screen .lg-highlights .lp-slide-copy p{max-width:80%!important;margin-bottom:10px!important}
+body.lp-gold-dashboard.lp-app-screen .lp-bottom-nav{grid-template-columns:repeat(4,minmax(0,1fr))!important;align-items:stretch!important}
+body.lp-gold-dashboard.lp-app-screen .lp-nav-item{min-width:0!important;margin:0!important;line-height:1.2!important;align-self:stretch!important}
+@media(max-width:480px){body.lp-gold-dashboard.lp-app-screen{--lp-gutter:16px}}
+@media(max-width:360px){body.lp-gold-dashboard.lp-app-screen .container .balance{padding:18px 16px!important}body.lp-gold-dashboard.lp-app-screen .balance #lpHomeQuickActions button.lpHomeQuick{font-size:10px!important}body.lp-gold-dashboard.lp-app-screen .lg-highlights .lp-slide-copy h3{font-size:19px!important}}
+/* Use one scroll surface while the full-screen service menu is open. */
+html:has(body.lp-app-screen #lpAppServices){overflow:hidden!important}
