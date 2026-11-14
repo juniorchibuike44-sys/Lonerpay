@@ -10,15 +10,19 @@ New Business Tools subscriptions and renewals are disabled server-side. The subs
 
 These changes do not resolve the outstanding licensed wallet partnership or prove full Play policy compliance. Do not submit a release until the regulated wallet arrangement, Data safety, reviewer access, real-device testing and signing requirements are resolved.
 
+## 14 November 2026 internal upload correction
+
+Play Console rejected minimum SDK 23 with automatic protection enabled. Minimum SDK is now 24 and version code is 2; version name remains 1.0.0. This excludes Android 6 devices. The rebuilt bundle uses the same upload key.
+
 ## Package and architecture
 
-- Proposed release application ID: `com.lonerpay.app`, version 1 / 1.0.0. Confirm before the first Play upload; package identity becomes fixed after publication.
+- Proposed release application ID: `com.lonerpay.app`, version code 2 / 1.0.0. Confirm before the first Play upload; package identity becomes fixed after publication.
 - Test application ID: `com.lonerpay.app.debug`, label **LonerPay Test**. It can be installed beside a later production build. Debug keys are not production signing keys; reinstalling a differently signed test build may require uninstalling the earlier test.
 - This test APK opens the existing **live** LonerPay website. The label describes the Android package, not a free-payment sandbox. Purchases through it use the existing live account/provider setup.
 - Native Java launcher plus Google Android Browser Helper Trusted Web Activity. Opens `https://lonerpay.com/index.html`; no embedded WebView, JavaScript bridge, provider keys or separate wallet implementation. Payment/authentication logic remains on the existing website. Browser capabilities such as passkeys, file downloads, web sharing, microphone and optional location still require real-device checks.
 - The app requests network access/state only. It requests no contacts, SMS, native camera/microphone or native location permission. Website permissions are handled by the browser; these still belong in Data safety review.
 - Offline native screen and web fallback provide connection guidance. The service worker caches **only `/offline.html`**; API calls, sessions, balances, receipts and payment responses are not cached. Online HTTP errors are left unchanged. Mid-payment network failure does not imply failure or refund.
-- Target/compile SDK 36, minimum 23, JDK 17, AGP 8.10.1, Gradle 8.11.1, Android Browser Helper 2.6.2 (pinned stable release).
+- Target/compile SDK 36, minimum 24, JDK 17, AGP 8.10.1, Gradle 8.11.1, Android Browser Helper 2.6.2 (pinned stable release).
 
 ## Build
 
@@ -32,7 +36,7 @@ cd android
 - `android/app/build/outputs/apk/debug/app-debug.apk`: installable test APK.
 - `android/app/build/outputs/bundle/release/app-release.aab`: unsigned unless release signing variables are supplied. **An unsigned AAB cannot be uploaded to Play.**
 - `.github/workflows/android.yml` builds these automatically after Android source changes on main. GitHub → Actions → Android test package → successful run → **LonerPay-Android-Test** artifact. This workflow does not submit anything to Google Play.
-- The workflow provides an optional manual signing job after the owner securely configures `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD` in GitHub repository secrets. Never commit a keystore or put passwords in chat. Upload-key storage/backup and Play App Signing must be arranged by the owner. No production key is created by this preparation.
+- The workflow provides an optional manual signing job after the owner securely configures `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD` in GitHub repository secrets. Never commit a keystore or put passwords in chat. Upload-key storage/backup and Play App Signing must be arranged by the owner. An upload key and a private owner backup were created for the November 2026 internal build. Reuse that upload key for subsequent bundles; do not commit the backup or its password.
 
 ## Website association (required for full-screen trusted mode)
 
