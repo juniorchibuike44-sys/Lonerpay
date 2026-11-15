@@ -3,7 +3,7 @@
     <color name="gold">#936514</color>
     <color name="cream">#FAF8F2</color>
     <color name="icon_background">#FFFFFF</color>
-    <style name="AppTheme" parent="android:style/Theme.Material.Light.NoActionBar">
+    <style name="AppTheme" parent="Theme.AppCompat.Light.NoActionBar">
         <item name="android:fontFamily">sans</item>
         <item name="android:colorAccent">@color/gold</item>
         <item name="android:windowLightStatusBar">true</item>

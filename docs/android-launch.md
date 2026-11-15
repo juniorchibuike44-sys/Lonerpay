@@ -16,11 +16,11 @@ Play Console rejected minimum SDK 23 with automatic protection enabled. Minimum 
 
 ## Package and architecture
 
-- Proposed release application ID: `com.lonerpay.app`, version code 2 / 1.0.0. Confirm before the first Play upload; package identity becomes fixed after publication.
+- Proposed release application ID: `com.lonerpay.app`, version code 3 / 1.0.1. Confirm before the first Play upload; package identity becomes fixed after publication.
 - Test application ID: `com.lonerpay.app.debug`, label **LonerPay Test**. It can be installed beside a later production build. Debug keys are not production signing keys; reinstalling a differently signed test build may require uninstalling the earlier test.
 - This test APK opens the existing **live** LonerPay website. The label describes the Android package, not a free-payment sandbox. Purchases through it use the existing live account/provider setup.
 - Native Java launcher plus Google Android Browser Helper Trusted Web Activity. Opens `https://lonerpay.com/index.html`; no embedded WebView, JavaScript bridge, provider keys or separate wallet implementation. Payment/authentication logic remains on the existing website. Browser capabilities such as passkeys, file downloads, web sharing, microphone and optional location still require real-device checks.
-- The app requests network access/state only. It requests no contacts, SMS, native camera/microphone or native location permission. Website permissions are handled by the browser; these still belong in Data safety review.
+- The app requests network access/state and native biometric/fingerprint authentication. Fingerprint templates remain in Android; the app receives only the authentication result. It requests no contacts, SMS, native camera/microphone or native location permission. Website permissions are handled by the browser; these still belong in Data safety review.
 - Offline native screen and web fallback provide connection guidance. The service worker caches **only `/offline.html`**; API calls, sessions, balances, receipts and payment responses are not cached. Online HTTP errors are left unchanged. Mid-payment network failure does not imply failure or refund.
 - Target/compile SDK 36, minimum 24, JDK 17, AGP 8.10.1, Gradle 8.11.1, Android Browser Helper 2.6.2 (pinned stable release).
 
@@ -97,3 +97,9 @@ LonerPay is operated by LONERHUB LIMITED.
 - https://developer.android.com/training/app-links/configure-assetlinks
 - https://support.google.com/googleplay/android-developer/answer/9858738
 - https://support.google.com/googleplay/android-developer/answer/10144311
+
+## 15 November 2026 native biometric opening (1.0.1 / 3)
+
+The native launcher offers an opt-in strong-biometric prompt using AndroidX BiometricPrompt. After successful verification it opens dashboard.html with the browser-owned existing session. No password, token, email or biometric template is copied into Android preferences; only the local opt-in boolean is saved. Cancellation leaves the native screen locked; the explicit sign-in alternative opens index.html and its normal authentication flow. An expired or signed-out browser session must sign in again. The private WebActivity accepts no arbitrary URLs and is not exported.
+
+This is an app-icon convenience unlock for a saved web session, not a replacement for server authentication or an enforcement boundary around Chrome/TWA recents. It does not add native payment authorization. Android chooses the supported strong biometric modality; the API does not guarantee fingerprint-only on every phone. Real-device tests must cover first enable, success, mismatch, cancellation, lockout, no enrollment, offline start, process restart, alternate account, expired session, and existing payment/receipt flows before promotion. The initial build was compiled and linted; hardware prompt behavior still needs the owner's phone test.
