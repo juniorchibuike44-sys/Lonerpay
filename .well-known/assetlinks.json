@@ -1,0 +1,14 @@
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.lonerpay.app",
+      "sha256_cert_fingerprints": [
+        "D6:2B:97:03:E9:43:BD:6A:22:AF:38:07:B2:B8:D3:86:8F:5C:8B:D1:19:79:04:BC:50:5C:E5:38:A3:E2:B8:84"
+      ]
+    }
+  }
+]
