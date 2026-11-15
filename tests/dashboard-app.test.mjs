@@ -53,3 +53,15 @@ test('rebuilt shell controls dispatch once to current funding and history handle
  const nav=w.document.querySelector('.lp-bottom-nav');nav.children[1].replaceWith(nav.children[1].cloneNode(true));nav.children[1].click();assert.equal(history,2);
  row.children[2].click();assert.ok(w.document.getElementById('lpAppServices'));
 }));
+
+ test('Android Back closes All Services and restores scroll, including after Forward',()=>fixture(async w=>{
+ const html=await readFile(new URL('../dashboard.html',import.meta.url),'utf8');
+ const doc=new JSDOM(html);const nav=doc.window.document.getElementById('lp-view-navigation').textContent;doc.window.close();
+ const original=w.getComputedStyle.bind(w);w.getComputedStyle=e=>e.id==='lpAppServices'?{position:'fixed',display:'block',visibility:'visible',top:'0px',bottom:'0px'}:original(e);
+ w.scrollTo=()=>{};w.eval(nav);w.document.dispatchEvent(new w.Event('DOMContentLoaded'));await delay();
+ const opener=w.document.querySelector('#lpHomeServicesHead button');opener.focus();w.document.body.style.overflow='auto';opener.click();await delay();
+ assert.ok(w.history.state.lpViewNavigation>0);assert.ok(w.document.getElementById('lpAppServices'));
+ w.history.back();await delay();assert.equal(w.document.getElementById('lpAppServices'),null);assert.equal(w.document.body.style.overflow,'auto');assert.equal(w.document.activeElement,opener);
+ w.history.forward();await delay();assert.ok(w.document.getElementById('lpAppServices'));assert.equal(w.document.body.style.overflow,'hidden');
+ w.document.querySelector('#lpAppServices header button').click();await delay();assert.equal(w.document.getElementById('lpAppServices'),null);assert.equal(w.document.body.style.overflow,'auto');
+ }));
