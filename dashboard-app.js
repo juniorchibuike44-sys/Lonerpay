@@ -13,7 +13,15 @@
    const button=document.createElement('button');button.type='button';button.className='lp-app-service';const glyph=document.createElement('span');const original=card.querySelector(':scope > div:first-child svg');if(original)glyph.append(original.cloneNode(true));else glyph.innerHTML=icon('services');const label=document.createElement('strong');label.textContent=name;button.append(glyph,label);button.onclick=()=>{close();card.click();};grid.append(button);count++;
   });sheet.querySelector('[role=status]').textContent=count?'':'No matching services. Try another name.';
  }
- function open(){close();listSignature=null;listNodes=[];focusBefore=document.activeElement;overflowBefore=document.body.style.overflow;document.body.style.overflow='hidden';sheet=document.createElement('section');sheet.id='lpAppServices';sheet.className='lp-app-services';sheet.setAttribute('role','dialog');sheet.setAttribute('aria-modal','true');sheet.setAttribute('aria-labelledby','lpAppServicesTitle');sheet.innerHTML='<div class="lp-app-services-inner"><header><button type="button" aria-label="Back to dashboard">‹</button><h2 id="lpAppServicesTitle">All services</h2></header><input type="search" placeholder="Search services" aria-label="Search services" autocomplete="off"><div class="lp-app-services-grid"></div><p role="status" aria-live="polite"></p></div>';document.body.append(sheet);sheet.querySelector('header button').onclick=close;sheet.querySelector('input').oninput=list;document.addEventListener('keydown',keys);list();sheet.querySelector('header button').focus();}
+ function open(){close();listSignature=null;listNodes=[];focusBefore=document.activeElement;overflowBefore=document.body.style.overflow;document.body.style.overflow='hidden';sheet=document.createElement('div');sheet.id='lpAppServices';sheet.className='lp-app-services';sheet.setAttribute('role','dialog');sheet.setAttribute('aria-modal','true');sheet.setAttribute('aria-labelledby','lpAppServicesTitle');sheet.innerHTML='<div class="lp-app-services-inner"><header><button type="button" aria-label="Back to dashboard">‹</button><h2 id="lpAppServicesTitle">All services</h2></header><input type="search" placeholder="Search services" aria-label="Search services" autocomplete="off"><div class="lp-app-services-grid"></div><p role="status" aria-live="polite"></p></div>';document.body.append(sheet);sheet.querySelector('header button').onclick=close;sheet.querySelector('input').oninput=list;document.addEventListener('keydown',keys);list();sheet.querySelector('header button').focus();}
+ // Browser/Android Back restores retained dashboard layers directly.
+ // Keep this menu's focus, keyboard listener and scroll lock in sync too.
+ function syncNavigation(){
+  const attached=document.getElementById('lpAppServices');
+  if(sheet&&!attached){sheet=null;document.body.style.overflow=overflowBefore;document.removeEventListener('keydown',keys);focusBefore?.focus();}
+  else if(attached&&!sheet){sheet=attached;overflowBefore=document.body.style.overflow;document.body.style.overflow='hidden';document.addEventListener('keydown',keys);}
+ }
+ new MutationObserver(syncNavigation).observe(document.body,{childList:true});
  window.openLonerPayServices=open;
  // Delegate shell actions so late-created/replaced controls never lose navigation.
  document.addEventListener('click',e=>{
