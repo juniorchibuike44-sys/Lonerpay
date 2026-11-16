@@ -17,22 +17,23 @@ export default async function handler(req,res){
  const users=Array.isArray(data.users)?data.users:[];
  records=users.map(u=>({id:u.id,name:u.user_metadata?.full_name||u.user_metadata?.name||"",email:u.email||"",phone:u.user_metadata?.phone||u.phone||"",created_at:u.created_at,last_sign_in_at:u.last_sign_in_at,email_verified:!!u.email_confirmed_at,support:u.app_metadata?.last_support_request?{reference:u.app_metadata.last_support_request.reference,category:u.app_metadata.last_support_request.category,status:u.app_metadata.last_support_request.status,message:u.app_metadata.last_support_request.message}:null,closure:u.app_metadata?.account_closure_request?{reference:u.app_metadata.account_closure_request.reference,status:u.app_metadata.account_closure_request.status}:null}));
  total=Number.isFinite(Number(data.total))?Number(data.total):null;has_more=users.length===50;
- }else if(section==="kyc"){
- const q=new URLSearchParams({select:"user_id,customer_email,assignment_status,bank_name,account_name",order:"user_id.asc",limit:"50",offset:String((page-1)*50)});
- const data=await get(auth.supabaseUrl+"/rest/v1/virtual_accounts?"+q);
- records=Array.isArray(data)?data:[];has_more=records.length===50;
- }else{
- const key=process.env.PAYSTACK_SECRET_KEY;if(!key)return res.status(503).json({error:"Paystack server credential is not configured."});
- mode=key.startsWith("sk_test_")?"test":"live";
- const path={merchants:"subaccount",settlements:"settlement",payouts:"transfer"}[section];
- const q=new URLSearchParams({page:String(page),perPage:"50"});
- if(section!=="merchants"){q.set("from",new Date(Date.now()-days*86400000).toISOString());q.set("to",new Date().toISOString());}
- const data=await get("https://api.paystack.co/"+path+"?"+q,{Authorization:"Bearer "+key});
- if(data.status!==true)throw Error("Paystack did not confirm this report.");
- const raw=Array.isArray(data.data)?data.data:[];total=Number.isFinite(Number(data.meta?.total))?Number(data.meta.total):null;has_more=data.meta?.pageCount?page<Number(data.meta.pageCount):raw.length===50;
- records=raw.map(x=>section==="merchants"?{reference:x.subaccount_code,name:x.business_name,bank:x.settlement_bank,status:x.active?"active":"inactive",currency:x.currency}:section==="settlements"?{reference:String(x.id),amount:Number(x.total_amount||0)/100,effective_amount:x.effective_amount==null?null:Number(x.effective_amount)/100,status:x.status,currency:x.currency,date:x.settlement_date||x.createdAt||x.created_at}: {reference:x.reference||x.transfer_code,amount:Number(x.amount||0)/100,status:x.status,currency:x.currency,date:x.createdAt||x.created_at,recipient:x.recipient?.name||""});
+ }else if(section==="kyc"||section==="merchants"){
+ const q=new URLSearchParams({select:"user_id,account_reference,status,accounts,created_at",mode:"eq.live",order:"created_at.desc",limit:"50",offset:String((page-1)*50)});
+ const data=await get(auth.supabaseUrl+"/rest/v1/lp_monnify_accounts?"+q);
+ const accounts=Array.isArray(data)?data:[];has_more=accounts.length===50;mode="live";
+ records=accounts.flatMap(row=>(Array.isArray(row.accounts)?row.accounts:[]).slice(0,1).map(account=>section==="kyc"?{
+  customer_email:"User "+String(row.user_id).slice(0,8),account_name:account.account_name||"",assignment_status:row.status,bank_name:account.bank_name||""
+ }:{reference:row.account_reference,name:account.account_name||"",bank:account.bank_name||"",status:String(row.status||"").toLowerCase(),currency:"NGN"}));
+ }else if(section==="settlements"){
+ const from=new Date(Date.now()-days*86400000).toISOString();
+ const q=new URLSearchParams({select:"reference,state,verified,created_at",event_type:"eq.SUCCESSFUL_TRANSACTION",state:"eq.credited",created_at:"gte."+from,order:"created_at.desc",limit:"50",offset:String((page-1)*50)});
+ const data=await get(auth.supabaseUrl+"/rest/v1/lp_monnify_inbox?"+q);
+ const rows=Array.isArray(data)?data:[];has_more=rows.length===50;mode="live";
+ records=rows.map(row=>({reference:row.reference,amount:Number(row.verified?.amount||0),effective_amount:row.verified?.provider_net_amount==null?null:Number(row.verified.provider_net_amount),status:row.state,currency:"NGN",date:row.created_at}));
+ }else if(section==="payouts"){
+ records=[];has_more=false;mode="disabled";
  }
- return res.status(200).json({section,records,page,total,has_more,mode,source:section==="merchants"?"Paystack subaccounts":section==="kyc"?"Virtual account verification":section==="users"?"Supabase customers":"Paystack"});
+ return res.status(200).json({section,records,page,total,has_more,mode,source:section==="merchants"?"Monnify dedicated accounts":section==="kyc"?"Monnify account verification":section==="users"?"Supabase customers":section==="settlements"?"Monnify verified funding":"Outbound payouts disabled"});
  }catch{return res.status(502).json({error:"Unable to load this section. Check the server credential permissions and provider availability."});}
 }
 
