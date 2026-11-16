@@ -3,7 +3,7 @@
   'use strict';
   const token = () => localStorage.getItem('lonerpay_access_token');
   const escape = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  let overlay, timer, originalFocus, controller, primaryView = false, accessCache;
+  let overlay, timer, originalFocus, controller, primaryView = false, accessCache, knownAccount = null;
   function close() {
     controller?.abort(); clearInterval(timer); overlay?.remove(); overlay = null;
     document.removeEventListener('keydown', keydown); originalFocus?.focus();
@@ -76,9 +76,14 @@
     };
   }
   function showChoices(session) {
-    render(`<p>Choose how you want to fund your wallet.</p><div class="lp-mnf-bank"><strong>Quick Checkout</strong><span>No BVN or NIN required. Pay by transfer, USSD or phone number.</span><button type="button" id="lpMnfQuickChoice">Use Quick Checkout</button></div><div class="lp-mnf-bank"><strong>Dedicated account</strong><span>Create or view your permanent personal funding account.</span><button type="button" id="lpMnfAccountChoice">Use dedicated account</button></div>${terms}`);
+    const hasAccount=Boolean(knownAccount?.accounts?.length);
+    const accountTitle=hasAccount?'Dedicated account':'Create a dedicated account';
+    const accountText=hasAccount?'View your permanent personal funding account.':'Create a permanent personal account using your BVN or NIN.';
+    const accountAction=hasAccount?'View dedicated account':'Create a dedicated account';
+    render(`<p>Choose how you want to fund your wallet.</p><div class="lp-mnf-bank"><strong>Quick Checkout</strong><span>No BVN or NIN required. Pay by transfer, USSD or phone number.</span><button type="button" id="lpMnfQuickChoice">Use Quick Checkout</button></div><div class="lp-mnf-bank"><strong>${accountTitle}</strong><span>${accountText}</span><button type="button" id="lpMnfAccountChoice">${accountAction}</button></div>${terms}`);
     overlay.querySelector('#lpMnfQuickChoice').onclick=()=>showQuickCheckout(session);
     overlay.querySelector('#lpMnfAccountChoice').onclick=async()=>{
+      if(knownAccount?.accounts?.length)return showAccount(knownAccount,session);
       render('<p role="status">Checking your dedicated account…</p>');
       try{const result=await request('/api/monnify-account',session,undefined,controller.signal);if(result.account?.accounts?.length)showAccount(result.account,session);else showForm(session);}
       catch(error){render(`<p role="alert">${escape(error.message)}</p><button type="button" id="lpMnfBack">Back to funding options</button>`);overlay.querySelector('#lpMnfBack').onclick=()=>showChoices(session);}
@@ -93,7 +98,7 @@
     overlay.className = 'lp-mnf-overlay'; document.body.appendChild(overlay);
     document.addEventListener('keydown', keydown);
     timer = setInterval(() => { if (token() !== session) close(); }, 500);
-    if (overlay === view) showChoices(session);
+    knownAccount = null;\n    render('<p role="status">Loading funding options…</p>');\n    try {\n      const result = await request('/api/monnify-account', session, undefined, controller.signal);\n      if (overlay !== view) return;\n      knownAccount = result.account?.accounts?.length ? result.account : null;\n    } catch { if (overlay !== view) return; }\n    showChoices(session);
   }
   function fundingAccess(session) {
     if (!accessCache || accessCache.session !== session || Date.now() - accessCache.time > 30000) {
