@@ -4,7 +4,7 @@ import {monnifyConfig,monnifyDb,monnifyRequest,monnifyAccessAllowed,validateRese
 export function fundingNotification(notification) {
  const type=notification?.eventType,event=notification?.eventData;
  if(!['SUCCESSFUL_TRANSACTION','SUCCESSFUL_REFUND','FAILED_REFUND','REJECTED_PAYMENT'].includes(type))return null;
- const checkout=type==='SUCCESSFUL_TRANSACTION'&&typeof event?.paymentReference==='string'&&/^LPQ-[A-Z0-9-]{10,90}$/.test(event.paymentReference);
+ const checkout=type==='SUCCESSFUL_TRANSACTION'&&typeof event?.paymentReference==='string'&&/^LPQ(?:[A-Z0-9]{20,90}|-[A-Z0-9-]{10,90})$/.test(event.paymentReference);
  if(type==='SUCCESSFUL_TRANSACTION'&&event?.product?.type!=='RESERVED_ACCOUNT'&&!checkout)return null;
  const ref=event?.transactionReference;
  if(typeof ref!=='string'||!ref||ref.length>200)throw Error('Invalid transaction reference');
