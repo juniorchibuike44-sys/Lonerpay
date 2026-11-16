@@ -4,7 +4,8 @@ import {monnifyConfig,monnifyDb,monnifyRequest,monnifyAccessAllowed,validateRese
 export function fundingNotification(notification) {
  const type=notification?.eventType,event=notification?.eventData;
  if(!['SUCCESSFUL_TRANSACTION','SUCCESSFUL_REFUND','FAILED_REFUND','REJECTED_PAYMENT'].includes(type))return null;
- const checkout=type==='SUCCESSFUL_TRANSACTION'&&typeof event?.paymentReference==='string'&&/^LPQ-[A-Z0-9-]{10,90}$/.test(event.paymentReference);\n if(type==='SUCCESSFUL_TRANSACTION'&&event?.product?.type!=='RESERVED_ACCOUNT'&&!checkout)return null;
+ const checkout=type==='SUCCESSFUL_TRANSACTION'&&typeof event?.paymentReference==='string'&&/^LPQ-[A-Z0-9-]{10,90}$/.test(event.paymentReference);
+ if(type==='SUCCESSFUL_TRANSACTION'&&event?.product?.type!=='RESERVED_ACCOUNT'&&!checkout)return null;
  const ref=event?.transactionReference;
  if(typeof ref!=='string'||!ref||ref.length>200)throw Error('Invalid transaction reference');
  if(event.product?.type==='RESERVED_ACCOUNT'&&(typeof event.product.reference!=='string'||!event.product.reference||event.product.reference.length>100))throw Error('Invalid account reference');
