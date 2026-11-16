@@ -37,15 +37,15 @@
   const terms = '<p class="lp-mnf-muted">Your balance is prepaid credit for airtime, data, electricity and TV purchases only. It earns no interest and cannot be withdrawn or transferred.</p>';
   function showAccount(account, session) {
     render(`<p>Transfer to this account to fund your LonerPay wallet.</p>${account.accounts.map(a => `<div class="lp-mnf-bank"><small>${escape(a.bank_name)}</small><strong>${escape(a.account_number)}</strong><span>${escape(a.account_name)}</span><button type="button" data-copy="${escape(a.account_number)}">Copy account number</button></div>`).join('')}`);
-    overlay.querySelectorAll('[data-copy]').forEach(button => button.onclick = async () => {
+    overlay.querySelector('#lpMnfBack').onclick = () => showChoices(session);\n    overlay.querySelectorAll('[data-copy]').forEach(button => button.onclick = async () => {
       try { await navigator.clipboard.writeText(button.dataset.copy); button.textContent = 'Copied'; }
       catch { button.textContent = 'Select and copy the account number above'; }
     });
   }
 
   function showForm(session) {
-    render(`<p>Create your personal funding account using your BVN or NIN.</p><form id="lpMnfForm"><label>Full legal name<input name="full_name" required minlength="3" maxlength="100" autocomplete="name"></label><label>Identity document<select name="identity_type"><option value="bvn">BVN</option><option value="nin">NIN</option></select></label><label>BVN or NIN<input name="identity_number" type="password" inputmode="numeric" autocomplete="off" required pattern="[0-9]{11}" minlength="11" maxlength="11"></label><label class="lp-mnf-consent"><input name="consent" type="checkbox" required><span>I consent to LonerPay securely sending my name, email and BVN or NIN to Monnify for identity verification and account creation.</span></label>${terms}<p class="lp-mnf-muted">Your BVN or NIN is not saved by this form. Never send it to support in a message.</p><p id="lpMnfStatus" role="status" aria-live="polite"></p><button type="submit">Create funding account</button></form>`);
-    const form = overlay.querySelector('form');
+    render(`<button type="button" id="lpMnfBack">← Funding options</button><p>Create your personal funding account using your BVN or NIN.</p><form id="lpMnfForm"><label>Full legal name<input name="full_name" required minlength="3" maxlength="100" autocomplete="name"></label><label>Identity document<select name="identity_type"><option value="bvn">BVN</option><option value="nin">NIN</option></select></label><label>BVN or NIN<input name="identity_number" type="password" inputmode="numeric" autocomplete="off" required pattern="[0-9]{11}" minlength="11" maxlength="11"></label><label class="lp-mnf-consent"><input name="consent" type="checkbox" required><span>I consent to LonerPay securely sending my name, email and BVN or NIN to Monnify for identity verification and account creation.</span></label>${terms}<p class="lp-mnf-muted">Your BVN or NIN is not saved by this form. Never send it to support in a message.</p><p id="lpMnfStatus" role="status" aria-live="polite"></p><button type="submit">Create funding account</button></form>`);
+    overlay.querySelector('#lpMnfBack').onclick = () => showChoices(session);\n    const form = overlay.querySelector('form');
     form.onsubmit = async e => {
       e.preventDefault(); if (!form.reportValidity()) return;
       const button = form.querySelector('button'), status = form.querySelector('[role=status]');
@@ -58,6 +58,30 @@
       } catch (error) { if (form.isConnected) { status.textContent = error.message; button.disabled = false; } }
     };
   }
+  function showQuickCheckout(session) {
+    render(`<button type="button" id="lpMnfBack">← Funding options</button><p>Fund immediately without creating a dedicated account.</p><form id="lpMnfQuick"><label>Amount (₦)<input name="amount" type="number" inputmode="decimal" min="100" max="500000" step="0.01" required placeholder="1000"></label><p class="lp-mnf-muted">Available at checkout: bank transfer, USSD and phone-number payment. Card is disabled for now.</p>${terms}<p id="lpMnfStatus" role="status" aria-live="polite"></p><button type="submit">Continue to secure checkout</button></form>`);
+    overlay.querySelector('#lpMnfBack').onclick = () => showChoices(session);
+    const form=overlay.querySelector('form');
+    form.onsubmit=async e=>{
+      e.preventDefault();if(!form.reportValidity())return;
+      const button=form.querySelector('button[type=submit]'),status=form.querySelector('[role=status]');
+      button.disabled=true;status.textContent='Creating your secure checkout…';
+      try{
+        const result=await request('/api/monnify-checkout',session,{amount:form.elements.amount.value},controller.signal);
+        if(!/^https:\/\//i.test(result.checkout_url))throw Error('Checkout link was not valid.');
+        window.location.assign(result.checkout_url);
+      }catch(error){if(form.isConnected){status.textContent=error.message;button.disabled=false;}}
+    };
+  }
+  function showChoices(session) {
+    render(`<p>Choose how you want to fund your wallet.</p><div class="lp-mnf-bank"><strong>Quick Checkout</strong><span>No BVN or NIN required. Pay by transfer, USSD or phone number.</span><button type="button" id="lpMnfQuickChoice">Use Quick Checkout</button></div><div class="lp-mnf-bank"><strong>Dedicated account</strong><span>Create or view your permanent personal funding account.</span><button type="button" id="lpMnfAccountChoice">Use dedicated account</button></div>${terms}`);
+    overlay.querySelector('#lpMnfQuickChoice').onclick=()=>showQuickCheckout(session);
+    overlay.querySelector('#lpMnfAccountChoice').onclick=async()=>{
+      render('<p role="status">Checking your dedicated account…</p>');
+      try{const result=await request('/api/monnify-account',session,undefined,controller.signal);if(result.account?.accounts?.length)showAccount(result.account,session);else showForm(session);}
+      catch(error){render(`<p role="alert">${escape(error.message)}</p><button type="button" id="lpMnfBack">Back to funding options</button>`);overlay.querySelector('#lpMnfBack').onclick=()=>showChoices(session);}
+    };
+  }
   async function open() {
     close(); originalFocus = document.activeElement;
     const session = token(); if (!session) return;
@@ -67,14 +91,7 @@
     overlay.className = 'lp-mnf-overlay'; document.body.appendChild(overlay);
     document.addEventListener('keydown', keydown);
     timer = setInterval(() => { if (token() !== session) close(); }, 500);
-    render('<p role="status">Checking your Monnify connection…</p>');
-    try {
-      const result = await request('/api/monnify-account', session, undefined, controller.signal);
-      if (overlay !== view) return;
-      if (result.account?.accounts?.length) showAccount(result.account, session); else showForm(session);
-    } catch (error) {
-      if (overlay === view) render(`<p role="alert">${escape(error.message)}</p><p>No payment has been requested. Close this screen and try again later.</p>`);
-    }
+    if (overlay === view) showChoices(session);
   }
   function fundingAccess(session) {
     if (!accessCache || accessCache.session !== session || Date.now() - accessCache.time > 30000) {
@@ -114,6 +131,18 @@
         document.querySelectorAll('.service').forEach(card => {
           if (/^(Education|Recharge Cards)$/i.test(card.querySelector('h3')?.textContent.trim() || '')) card.classList.add('lp-primary-restricted');
         });
+        const params=new URLSearchParams(location.search);
+        const checkoutReference=params.get('funding')==='checkout'?params.get('reference'):'';
+        if(checkoutReference){
+          params.delete('funding');params.delete('reference');
+          history.replaceState(null,'',location.pathname+(params.toString()?'?'+params:'')+location.hash);
+          try{
+            const result=await request('/api/monnify-checkout?reference='+encodeURIComponent(checkoutReference),session);
+            await window.refreshLonerPayDashboard?.('checkout-return');
+            if(result.credited) window.alert('Wallet funded successfully.');
+            else window.alert('Payment confirmation is still pending. Your wallet will update automatically when Monnify confirms it.');
+          }catch{window.alert('We could not confirm the payment yet. Your wallet will update automatically after confirmation.');}
+        }
         if (location.hash === '#fund-wallet') { history.replaceState(null, '', location.pathname + location.search); open(); }
         return;
       }
