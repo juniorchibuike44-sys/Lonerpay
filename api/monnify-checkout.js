@@ -10,7 +10,7 @@ function siteUrl() {
  if(production&&/^[a-z0-9.-]+$/i.test(production))return 'https://'+production;
  throw Error('Checkout return URL is not configured');
 }
-function reference(){return 'LPQ-'+Date.now().toString(36).toUpperCase()+'-'+randomBytes(8).toString('hex').toUpperCase();}
+function reference(){return 'LPQ'+Date.now().toString(36).toUpperCase()+randomBytes(8).toString('hex').toUpperCase();}
 
 export default async function handler(req,res){
  hardenResponse(res);
@@ -33,7 +33,7 @@ export default async function handler(req,res){
    return res.status(200).json({checkout_url:checkout.checkoutUrl,payment_reference:paymentReference,amount});
   }
   const paymentReference=String(req.query.reference||'');
-  if(!/^LPQ-[A-Z0-9-]{10,90}$/.test(paymentReference))return res.status(400).json({error:'Invalid checkout reference'});
+  if(!/^LPQ(?:[A-Z0-9]{20,90}|-[A-Z0-9-]{10,90})$/.test(paymentReference))return res.status(400).json({error:'Invalid checkout reference'});
   const rows=await monnifyDb('lp_monnify_checkouts?payment_reference=eq.'+encodeURIComponent(paymentReference)+'&user_id=eq.'+auth.user.id+'&mode=eq.'+c.mode+'&select=*&limit=1');
   const checkout=rows[0];if(!checkout)return res.status(404).json({error:'Checkout not found'});
   if(checkout.status==='credited')return res.status(200).json({status:'credited',credited:true});
