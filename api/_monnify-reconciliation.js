@@ -4,13 +4,13 @@ import {monnifyConfig,monnifyDb,monnifyRequest,monnifyAccessAllowed,validateRese
 export function fundingNotification(notification) {
  const type=notification?.eventType,event=notification?.eventData;
  if(!['SUCCESSFUL_TRANSACTION','SUCCESSFUL_REFUND','FAILED_REFUND','REJECTED_PAYMENT'].includes(type))return null;
- if(type==='SUCCESSFUL_TRANSACTION'&&event?.product?.type!=='RESERVED_ACCOUNT')return null;
+ const checkout=type==='SUCCESSFUL_TRANSACTION'&&typeof event?.paymentReference==='string'&&/^LPQ-[A-Z0-9-]{10,90}$/.test(event.paymentReference);\n if(type==='SUCCESSFUL_TRANSACTION'&&event?.product?.type!=='RESERVED_ACCOUNT'&&!checkout)return null;
  const ref=event?.transactionReference;
  if(typeof ref!=='string'||!ref||ref.length>200)throw Error('Invalid transaction reference');
  if(event.product?.type==='RESERVED_ACCOUNT'&&(typeof event.product.reference!=='string'||!event.product.reference||event.product.reference.length>100))throw Error('Invalid account reference');
  if(type.includes('REFUND')&&(typeof event.refundReference!=='string'||!event.refundReference||event.refundReference.length>200))throw Error('Invalid refund reference');
  const product=event.product?.type==='RESERVED_ACCOUNT'?{type:'RESERVED_ACCOUNT',reference:event.product.reference}:undefined;
- const payload={transactionReference:ref,...(product?{product}:{}),...(event.amountPaid!=null?{amountPaid:moneyKobo(event.amountPaid)/100}:{}),...(event.refundReference?{refundReference:event.refundReference}:{}),...(typeof event.refundStatus==='string'?{refundStatus:event.refundStatus.slice(0,30)}:{})};
+ const payload={transactionReference:ref,...(product?{product}:{}),...(checkout?{paymentReference:event.paymentReference}:{}),...(event.amountPaid!=null?{amountPaid:moneyKobo(event.amountPaid)/100}:{}),...(event.refundReference?{refundReference:event.refundReference}:{}),...(typeof event.refundStatus==='string'?{refundStatus:event.refundStatus.slice(0,30)}:{})};
  const id=createHash('sha256').update([type,ref,payload.refundReference||''].join(':')).digest('hex');
  return {id,reference:ref,event_type:type,payload};
 }
@@ -26,9 +26,17 @@ export async function processFunding(row,c=monnifyConfig(),{audit=false}={}) {
    return finish(row,'review');
   }
   if(row.event_type!=='SUCCESSFUL_TRANSACTION')return finish(row,'ignored');
-  const rows=await monnifyDb('lp_monnify_accounts?account_reference=eq.'+encodeURIComponent(row.payload.product?.reference||'')+'&mode=eq.'+c.mode+'&select=user_id,account_reference,status,mode&limit=1');
-  const account=rows[0];
-  if(!account||!monnifyAccessAllowed(c,account.user_id))throw Error('account_mapping_unavailable');
+  const isCheckout=typeof row.payload.paymentReference==='string';
+  let account,checkout;
+  if(isCheckout) {
+   const rows=await monnifyDb('lp_monnify_checkouts?payment_reference=eq.'+encodeURIComponent(row.payload.paymentReference)+'&mode=eq.'+c.mode+'&select=*&limit=1');
+   checkout=rows[0];
+   if(!checkout||!monnifyAccessAllowed(c,checkout.user_id))throw Error('account_mapping_unavailable');
+  } else {
+   const rows=await monnifyDb('lp_monnify_accounts?account_reference=eq.'+encodeURIComponent(row.payload.product?.reference||'')+'&mode=eq.'+c.mode+'&select=user_id,account_reference,status,mode&limit=1');
+   account=rows[0];
+   if(!account||!monnifyAccessAllowed(c,account.user_id))throw Error('account_mapping_unavailable');
+  }
   const t=await monnifyRequest(c,'/api/v2/merchant/transactions/query?transactionReference='+encodeURIComponent(row.reference));
   if(t.transactionReference!==row.reference)throw Error('provider_reference_mismatch');
   if(t.paymentStatus==='REVERSED'||t.paymentStatus==='REFUNDED') {
@@ -36,7 +44,16 @@ export async function processFunding(row,c=monnifyConfig(),{audit=false}={}) {
    return finish(row,'review',{verified:{payment_status:t.paymentStatus}});
   }
   let payment;
-  try { payment=validateReservedPayment(t,row.payload,account,c); }
+  try {
+   if(isCheckout) {
+    if(t.paymentStatus!=='PAID'||t.currency!=='NGN'||!['ACCOUNT_TRANSFER','USSD','PHONE_NUMBER'].includes(t.paymentMethod))throw Error('Payment is not a confirmed NGN checkout');
+    if(t.paymentReference!==checkout.payment_reference||t.paymentReference!==row.payload.paymentReference)throw Error('Checkout reference mismatch');
+    if(t.contractCode!=null&&String(t.contractCode)!==c.contract)throw Error('Payment contract mismatch');
+    const amount=moneyKobo(t.amountPaid)/100;
+    if(amount!==Number(checkout.amount)||moneyKobo(row.payload.amountPaid)!==moneyKobo(t.amountPaid))throw Error('Checkout amount mismatch');
+    payment={p_payment_reference:checkout.payment_reference,p_mode:c.mode,p_reference:t.transactionReference,p_amount:amount};
+   } else payment=validateReservedPayment(t,row.payload,account,c);
+  }
   catch(error) {
    if(audit||row.state==='credited') {
     await monnifyDb('rpc/lp_monnify_review','POST',{p_reference:row.reference,p_reason:'confirmed_payment_changed'});
@@ -51,7 +68,7 @@ export async function processFunding(row,c=monnifyConfig(),{audit=false}={}) {
   }
   if(c.mode!=='live')return finish(row,'ignored');
   // Audit is observation only. Replay of an already credited event never adds value again.
-  const credit=!audit?await monnifyDb('rpc/lp_credit_monnify','POST',payment):null;
+  const credit=!audit?await monnifyDb(isCheckout?'rpc/lp_credit_monnify_checkout':'rpc/lp_credit_monnify','POST',payment):null;
   let net=null;try{if(t.settlementAmount!==null&&t.settlementAmount!==undefined&&t.settlementAmount!=='')net=Number(t.settlementAmount)===0?0:moneyKobo(t.settlementAmount)/100;}catch{}
   const verified={payment_status:t.paymentStatus,amount:payment.p_amount,provider_net_amount:net,provider_fee:net!=null&&net<=payment.p_amount?Math.round((payment.p_amount-net)*100)/100:null};
   return {...await finish(row,'credited',{verified}),credited:credit?.credited===true};
