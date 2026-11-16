@@ -98,7 +98,14 @@
     overlay.className = 'lp-mnf-overlay'; document.body.appendChild(overlay);
     document.addEventListener('keydown', keydown);
     timer = setInterval(() => { if (token() !== session) close(); }, 500);
-    knownAccount = null;\n    render('<p role="status">Loading funding options…</p>');\n    try {\n      const result = await request('/api/monnify-account', session, undefined, controller.signal);\n      if (overlay !== view) return;\n      knownAccount = result.account?.accounts?.length ? result.account : null;\n    } catch { if (overlay !== view) return; }\n    showChoices(session);
+    knownAccount = null;
+    render('<p role="status">Loading funding options…</p>');
+    try {
+      const result = await request('/api/monnify-account', session, undefined, controller.signal);
+      if (overlay !== view) return;
+      knownAccount = result.account?.accounts?.length ? result.account : null;
+    } catch { if (overlay !== view) return; }
+    showChoices(session);
   }
   function fundingAccess(session) {
     if (!accessCache || accessCache.session !== session || Date.now() - accessCache.time > 30000) {
