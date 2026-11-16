@@ -37,7 +37,8 @@
   const terms = '<p class="lp-mnf-muted">Your balance is prepaid credit for airtime, data, electricity and TV purchases only. It earns no interest and cannot be withdrawn or transferred.</p>';
   function showAccount(account, session) {
     render(`<p>Transfer to this account to fund your LonerPay wallet.</p>${account.accounts.map(a => `<div class="lp-mnf-bank"><small>${escape(a.bank_name)}</small><strong>${escape(a.account_number)}</strong><span>${escape(a.account_name)}</span><button type="button" data-copy="${escape(a.account_number)}">Copy account number</button></div>`).join('')}`);
-    overlay.querySelector('#lpMnfBack').onclick = () => showChoices(session);\n    overlay.querySelectorAll('[data-copy]').forEach(button => button.onclick = async () => {
+    overlay.querySelector('#lpMnfBack').onclick = () => showChoices(session);
+    overlay.querySelectorAll('[data-copy]').forEach(button => button.onclick = async () => {
       try { await navigator.clipboard.writeText(button.dataset.copy); button.textContent = 'Copied'; }
       catch { button.textContent = 'Select and copy the account number above'; }
     });
@@ -45,7 +46,8 @@
 
   function showForm(session) {
     render(`<button type="button" id="lpMnfBack">← Funding options</button><p>Create your personal funding account using your BVN or NIN.</p><form id="lpMnfForm"><label>Full legal name<input name="full_name" required minlength="3" maxlength="100" autocomplete="name"></label><label>Identity document<select name="identity_type"><option value="bvn">BVN</option><option value="nin">NIN</option></select></label><label>BVN or NIN<input name="identity_number" type="password" inputmode="numeric" autocomplete="off" required pattern="[0-9]{11}" minlength="11" maxlength="11"></label><label class="lp-mnf-consent"><input name="consent" type="checkbox" required><span>I consent to LonerPay securely sending my name, email and BVN or NIN to Monnify for identity verification and account creation.</span></label>${terms}<p class="lp-mnf-muted">Your BVN or NIN is not saved by this form. Never send it to support in a message.</p><p id="lpMnfStatus" role="status" aria-live="polite"></p><button type="submit">Create funding account</button></form>`);
-    overlay.querySelector('#lpMnfBack').onclick = () => showChoices(session);\n    const form = overlay.querySelector('form');
+    overlay.querySelector('#lpMnfBack').onclick = () => showChoices(session);
+    const form = overlay.querySelector('form');
     form.onsubmit = async e => {
       e.preventDefault(); if (!form.reportValidity()) return;
       const button = form.querySelector('button'), status = form.querySelector('[role=status]');
