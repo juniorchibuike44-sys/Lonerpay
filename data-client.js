@@ -424,8 +424,12 @@
         if (!/^\d{4}$/.test(pin.value)) return fail("Enter your 4-digit payment PIN.");
         overlay.dataset.paymentBusy = "1";
         sheet.querySelectorAll(".ld-back,.ld-close").forEach(control => control.disabled = true);
-        button.disabled = true; button.textContent = "Processing…";
-        const progress = document.createElement("div"); button.before(progress);
+        button.disabled = true;
+        const review = sheet.querySelector(".ld-review");
+        review.hidden = true;
+        const progress = document.createElement("div");
+        progress.className = "ld-processing";
+        sheet.appendChild(progress);
         window.LonerPayPurchaseProgress?.render(progress, 0, "data");
         try {
           const result = await purchaseData({network, phone, variationCode:selected.code, amount:selected.amount, pin:pin.value, onSubmitted: () => window.LonerPayPurchaseProgress?.render(progress, 1, "data")}); pin.value = "";
@@ -450,7 +454,7 @@
           }
           if (String(result.code) !== "000" || status !== "delivered") throw new Error("Data payment was not confirmed as delivered.");
           sheet.innerHTML = `<div class="ld-review" style="text-align:center;padding-top:38px"><div style="width:68px;height:68px;border-radius:50%;background:#e8faf2;color:#07865a;display:grid;place-items:center;margin:auto;font-size:34px">✓</div><h2>Data Purchase Successful</h2><p style="color:#66768b">${escapeText(selected.name)} was sent to ${phone}.</p><button class="ld-primary ld-done" type="button">Done</button></div>`; const complete = document.createElement("div"); sheet.querySelector(".ld-done").before(complete); window.LonerPayPurchaseProgress?.render(complete, 2, "data"); sheet.querySelector(".ld-done").onclick=close;
-        } catch (purchaseError) { progress.remove(); const refund = purchaseError.refunded ? " Your wallet was refunded." : purchaseError.refund_error ? ` Refund issue: ${purchaseError.refund_error}` : ""; fail((purchaseError.message || "Data payment failed.") + refund); button.disabled=false; button.textContent="Confirm Payment"; } finally { delete overlay.dataset.paymentBusy; sheet.querySelectorAll(".ld-back,.ld-close").forEach(control => control.disabled = false); }
+        } catch (purchaseError) { progress.remove(); if(review.isConnected)review.hidden=false; const refund = purchaseError.refunded ? " Your wallet was refunded." : purchaseError.refund_error ? ` Refund issue: ${purchaseError.refund_error}` : ""; fail((purchaseError.message || "Data payment failed.") + refund); button.disabled=false; button.textContent="Confirm Payment"; } finally { delete overlay.dataset.paymentBusy; sheet.querySelectorAll(".ld-back,.ld-close").forEach(control => control.disabled = false); }
       };
     };
     load();
