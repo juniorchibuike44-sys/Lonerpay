@@ -2464,10 +2464,10 @@ function openAITips() {
   
 </script>
 <!-- Shared display-only bundles load before the data UI, including on a new device. -->
-<script src="recipient-phone.js?v=20261021-account-phone"></script>
+<script src="recipient-phone.js?v=20261117-recent-recipients"></script>
 <script src="/api/data-catalogue"></script>
 <script src="purchase-progress.js?v=20261116-animated"></script>
-<script src="data-client.js?v=20261116-animated-2"></script>
+<script src="data-client.js?v=20261117-recent-recipients"></script>
 <script src="electricity-client.js?v=20261017-gold-screens"></script>
 <script src="tv-client.js?v=20261017-gold-screens"></script>
 <script src="wallet-client.js?v=20261113-monnify-all"></script>
@@ -2899,6 +2899,7 @@ function openAITips() {
               const confirmation = await window.waitForSecurePayment?.(data.request_id);
               if (!sheet.isConnected) return;
               if (confirmation?.status === "successful") {
+                window.LonerPayRecipientPhone?.remember(p);
                 successScreen(overlay,"Airtime Successful",a,[["Network",network],["Phone",p],["Status","Successful"]]);
                 const complete = document.createElement("div"); overlay.querySelector(".lp-done").before(complete); window.LonerPayPurchaseProgress?.render(complete, 2, "airtime");
               } else {
@@ -2910,6 +2911,7 @@ function openAITips() {
           }
           if (String(data.code)!=="000" || (status && status!=="delivered")) throw new Error("Airtime payment failed.");
           if (typeof recordTransaction === "function") recordTransaction("Airtime",a,`Network: ${network} | Phone: ${p}`);
+          window.LonerPayRecipientPhone?.remember(p);
           successScreen(overlay,"Airtime Successful",a,[["Network",network],["Phone",p],["Status","Successful"]]);
                 const complete = document.createElement("div"); overlay.querySelector(".lp-done").before(complete); window.LonerPayPurchaseProgress?.render(complete, 2, "airtime");
         } catch(e) {
