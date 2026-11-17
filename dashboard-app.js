@@ -46,3 +46,61 @@
  function init(){paint();let scheduled=false;new MutationObserver(()=>{if(scheduled)return;scheduled=true;requestAnimationFrame(()=>{scheduled=false;paint();if(sheet)list();});}).observe(document.querySelector('.container'),{childList:true,subtree:true});setTimeout(paint,850);setTimeout(paint,1900);}
  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
 })();
+
+
+/* Motion and touch feedback only; payment/navigation callbacks remain unchanged. */
+(()=>{
+ 'use strict';
+ const body=document.body;
+ const dashboardTarget=target=>target?.closest?.('.services .service,#lpHomeQuickActions button,.lp-bottom-nav .lp-nav-item');
+ function stagger(){
+  document.querySelectorAll('.container>:not(script),.lp-bottom-nav').forEach((node,index)=>{
+   node.style.setProperty('--lp-stagger',Math.min(index*45,315)+'ms');
+  });
+  requestAnimationFrame(()=>requestAnimationFrame(()=>body.classList.add('lp-live-ready')));
+ }
+ function ripple(event){
+  const target=dashboardTarget(event.target);if(!target)return;
+  const rect=target.getBoundingClientRect(),dot=document.createElement('i');
+  dot.className='lp-tap-ripple';dot.setAttribute('aria-hidden','true');
+  dot.style.left=(event.clientX-rect.left)+'px';dot.style.top=(event.clientY-rect.top)+'px';
+  target.append(dot);setTimeout(()=>dot.remove(),520);
+  if(navigator.vibrate)navigator.vibrate(8);
+ }
+ function markOpening(event){
+  const card=event.target.closest?.('.services .service');if(!card)return;
+  card.classList.add('lp-opening');card.setAttribute('aria-busy','true');
+  setTimeout(()=>{card.classList.remove('lp-opening');card.removeAttribute('aria-busy');},900);
+ }
+ function activateNav(event){
+  const item=event.target.closest?.('.lp-bottom-nav .lp-nav-item');if(!item)return;
+  document.querySelectorAll('.lp-bottom-nav .lp-nav-item').forEach(node=>node.classList.toggle('active',node===item));
+ }
+ function animateBalance(){
+  const amount=document.querySelector('.balance h2');if(!amount)return;
+  let previous=amount.textContent;
+  new MutationObserver(()=>{
+   if(amount.textContent===previous)return;previous=amount.textContent;
+   amount.closest('.balance')?.classList.remove('lp-balance-updated');
+   requestAnimationFrame(()=>amount.closest('.balance')?.classList.add('lp-balance-updated'));
+   setTimeout(()=>amount.closest('.balance')?.classList.remove('lp-balance-updated'),600);
+  }).observe(amount,{childList:true,characterData:true,subtree:true});
+ }
+ function decorateServiceSheet(root=document){
+  root.querySelectorAll?.('.lp-app-service').forEach((node,index)=>{
+   node.style.setProperty('--lp-item-delay',Math.min(index*35,280)+'ms');
+  });
+ }
+ function connection(){body.classList.toggle('lp-offline',!navigator.onLine)}
+ function init(){
+  stagger();animateBalance();decorateServiceSheet();connection();
+  document.addEventListener('pointerdown',ripple,{passive:true});
+  document.addEventListener('click',markOpening,true);
+  document.addEventListener('click',activateNav,true);
+  addEventListener('online',connection);addEventListener('offline',connection);
+  new MutationObserver(records=>records.forEach(record=>record.addedNodes.forEach(node=>{
+   if(node.nodeType===1)decorateServiceSheet(node.matches?.('.lp-app-services')?node:node);
+  }))).observe(body,{childList:true,subtree:true});
+ }
+ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
+})();
