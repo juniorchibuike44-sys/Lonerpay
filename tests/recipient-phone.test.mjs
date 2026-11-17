@@ -1,7 +1,7 @@
 import test from 'node:test';import assert from 'node:assert/strict';import {readFile} from 'node:fs/promises';import {JSDOM} from 'jsdom';
 const helper=await readFile(new URL('../recipient-phone.js',import.meta.url),'utf8'),data=await readFile(new URL('../data-client.js',import.meta.url),'utf8'),html=await readFile(new URL('../dashboard.html',import.meta.url),'utf8');
 const idx=html.indexOf('  window.buyAirtime = function ()'),start=html.indexOf('>',html.lastIndexOf('<script',idx))+1,airtime=html.slice(start,html.indexOf('</script>',idx));
-const jwt=phone=>'header.'+Buffer.from(JSON.stringify({user_metadata:{phone}})).toString('base64url')+'.signature';
+const jwt=phone=>'header.'+Buffer.from(JSON.stringify({sub:'user-'+String(phone||'empty').replace(/\\D/g,''),user_metadata:{phone}})).toString('base64url')+'.signature';
 const tick=()=>new Promise(r=>setTimeout(r,25));
 function setup(profile,registered='+234 803 123 4567'){
  const dom=new JSDOM('<head></head><body></body>',{url:'https://lonerpay.com/dashboard.html',runScripts:'dangerously'}),w=dom.window;w.localStorage.setItem('lonerpay_access_token',jwt(registered));w.AbortController=AbortController;w.AbortSignal=AbortSignal;
@@ -30,4 +30,9 @@ test('review and Back preserve another recipient, selected network and amount wi
 });
 test('normalisation supports Nigerian local and international formats without guessing invalid numbers',()=>{
  const {dom,w}=setup(async()=>Response.json({phone:''}));for(const number of ['08031234567','+2348031234567','002348031234567','8031234567'])assert.equal(w.LonerPayRecipientPhone.normalise(number),'08031234567');for(const number of ['123','+15551234567','not-a-phone'])assert.equal(w.LonerPayRecipientPhone.normalise(number),'');dom.window.close();
+});
+
+test('successful recipient memory suggests matching numbers after three digits',async()=>{
+ const {dom,w}=setup(async()=>Response.json({phone:'08031234567'}));assert.equal(w.LonerPayRecipientPhone.remember('09021234567'),true);assert.equal(w.LonerPayRecipientPhone.remember('09025556666'),true);
+ w.buyAirtime();const input=w.document.querySelector('.lp-air-phone');input.value='090';input.dispatchEvent(new w.Event('input',{bubbles:true}));const choices=[...w.document.querySelectorAll('.lp-recipient-suggestion')].map(button=>button.firstChild.textContent);assert.deepEqual(choices,['09025556666','09021234567']);w.document.querySelector('.lp-recipient-suggestion').click();assert.equal(input.value,'09025556666');dom.window.close();
 });
