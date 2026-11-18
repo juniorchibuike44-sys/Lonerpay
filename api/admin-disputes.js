@@ -37,10 +37,15 @@ export default async function handler(req,res){
     if(action==='recheck'){
       if(transaction.details?.provider!=='pairgate')return res.status(409).json({error:'This payment cannot be checked automatically. Verify it with the provider and close the case with a note.'});
       const result=await reconcilePurchase(transaction,{note:note||`Case ${item.case_reference}`,actor:auth.user.id});
-      const resolved=['successful','refunded'].includes(result.status);
-      const resolution=result.status==='refunded'?'refunded':result.status==='successful'?'provider_confirmed_delivery':null;
-      const updated=await patchCase(auth,id,{case_status:resolved?'resolved':'investigating',transaction_status:result.status,provider_status:result.status,resolution,resolution_note:resolved?(note||`Provider recheck completed: ${result.status}`):(note||'Provider has not returned a final status'),resolved_at:resolved?new Date().toISOString():null,resolved_by:resolved?auth.user.id:null});
-      return res.status(resolved?200:202).json({case:updated?.[0],reconciliation:result});
+      const refunded=result.status==='refunded';
+      const providerDelivered=result.status==='successful';
+      const resolutionNote=refunded
+        ? (note||'Provider confirmed failure. Customer wallet refunded.')
+        : providerDelivered
+          ? (note||'Provider reports successful. Customer non-delivery complaint still requires provider investigation.')
+          : (note||'Provider has not returned a final status.');
+      const updated=await patchCase(auth,id,{case_status:refunded?'resolved':'investigating',transaction_status:result.status,provider_status:result.status,resolution:refunded?'refunded':null,resolution_note:resolutionNote,resolved_at:refunded?new Date().toISOString():null,resolved_by:refunded?auth.user.id:null});
+      return res.status(refunded?200:202).json({case:updated?.[0],reconciliation:result,provider_follow_up:providerDelivered});
     }
     if(note.length<10)return res.status(400).json({error:'Add a clear resolution note of at least 10 characters.'});
     const resolution=transaction.status==='refunded'?'refunded':transaction.status==='successful'&&['successful','success','completed','paid','approved','delivered'].includes(String(transaction.details?.provider_status||'').toLowerCase())?'provider_confirmed_delivery':'other';
