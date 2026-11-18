@@ -26,12 +26,23 @@ test('All Services keeps secondary features, excludes paused payments, and searc
 
 test('service selection closes the menu before invoking the original purchase handler',()=>fixture(async w=>{
  let calls=0;w.document.getElementById('data').onclick=()=>{calls++;assert.equal(w.document.getElementById('lpAppServices'),null);};
- w.openLonerPayServices();[...w.document.querySelectorAll('.lp-app-service')].find(b=>b.textContent==='Data').click();assert.equal(calls,1);
+ w.openLonerPayServices();[...w.document.querySelectorAll('.lp-app-service')].find(b=>b.querySelector('strong')?.textContent==='Data').click();assert.equal(calls,1);
 }));
 
 test('background updates keep service buttons stable, while newly added services appear once',()=>fixture(async w=>{
  w.openLonerPayServices();const original=w.document.querySelector('.lp-app-service');const update=w.document.createElement('p');update.textContent='Updated greeting';w.document.querySelector('.container').append(update);await delay();assert.equal(w.document.querySelector('.lp-app-service'),original);
- const extra=w.document.createElement('div');extra.className='service';extra.innerHTML='<div></div><h3>Nearby Places</h3>';w.document.querySelector('.services').append(extra);await delay();assert.equal([...w.document.querySelectorAll('.lp-app-service')].filter(b=>b.textContent==='Nearby Places').length,1);
+ const extra=w.document.createElement('div');extra.className='service';extra.innerHTML='<div></div><h3>Nearby Places</h3>';w.document.querySelector('.services').append(extra);await delay();assert.equal([...w.document.querySelectorAll('.lp-app-service strong')].filter(b=>b.textContent==='Nearby Places').length,1);
+}));
+
+test('home and Services Hub expose clear customer-focused categories',()=>fixture(async w=>{
+ const categories=w.document.getElementById('lpDashboardCategories');assert.ok(categories);
+ assert.deepEqual([...categories.querySelectorAll('.lp-explore-grid strong')].map(n=>n.textContent),['Money','Pay bills','Business','Discover']);
+ categories.querySelector('[data-category="Business"]').click();
+ assert.equal(w.document.querySelector('.lp-app-category-chips .active').textContent,'Business');
+ assert.deepEqual([...w.document.querySelectorAll('.lp-app-category-head h3')].map(n=>n.textContent),[]);
+ w.document.querySelector('.lp-app-category-chips button').click();
+ assert.ok([...w.document.querySelectorAll('.lp-app-category-head h3')].map(n=>n.textContent).includes('Everyday'));
+ assert.equal(w.document.querySelector('.lp-bottom-nav .lp-nav-item:nth-child(3)').textContent.trim(),'Services');
 }));
 
 test('Escape closes Services and restores focus and scroll state',()=>fixture(async w=>{
