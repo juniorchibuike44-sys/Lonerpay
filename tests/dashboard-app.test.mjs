@@ -45,6 +45,12 @@ test('home and Services Hub expose clear customer-focused categories',()=>fixtur
  assert.equal(w.document.querySelector('.lp-bottom-nav .lp-nav-item:nth-child(3)').textContent.trim(),'Services');
 }));
 
+test('upper dashboard exposes a live balance refresh without changing service actions',()=>fixture(async w=>{
+ const live=w.document.getElementById('lpBalanceLive');assert.ok(live);let refreshed=0;w.refreshSecureState=async()=>{refreshed++;};
+ live.querySelector('button').click();await delay();assert.equal(refreshed,1);assert.match(live.textContent,/Updated just now/);
+ assert.equal(w.document.querySelectorAll('.services .service').length,4);assert.equal(w.document.getElementById('data').querySelector('h3').textContent,'Data');
+}));
+
 test('Escape closes Services and restores focus and scroll state',()=>fixture(async w=>{
  const opener=w.document.querySelector('#lpHomeServicesHead button');opener.focus();w.document.body.style.overflow='auto';opener.click();assert.equal(w.document.body.style.overflow,'hidden');
  w.document.dispatchEvent(new w.KeyboardEvent('keydown',{key:'Escape'}));assert.equal(w.document.getElementById('lpAppServices'),null);assert.equal(w.document.body.style.overflow,'auto');assert.equal(w.document.activeElement,opener);

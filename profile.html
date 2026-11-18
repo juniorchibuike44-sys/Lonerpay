@@ -777,6 +777,17 @@ async function verification(){
 verification();
 })();
 </script>
+<style id="lp-profile-account-centre">
+.header{position:sticky;top:0;z-index:20;min-height:70px}.header h1{font-size:20px!important;letter-spacing:-.4px}.header:after{content:'ACCOUNT CENTRE';margin-left:auto;color:#936514;font-size:11px;font-weight:850;letter-spacing:1px}
+.profile-card{display:grid;grid-template-columns:72px minmax(0,1fr);grid-template-rows:auto auto auto auto;column-gap:16px;text-align:left!important;align-items:center;padding:22px!important}
+.profile-card .avatar{grid-row:1/5;margin:0!important}.profile-card h2{margin:0 0 3px!important;font-size:21px!important}.profile-card p{font-size:14px!important}.profile-card .lp-profile-email{font-size:13px!important;margin:5px 0 0!important}.profile-card .lp-profile-status{justify-self:start;margin-top:9px!important;font-size:12px!important}
+.lp-profile-quick{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin:0 0 24px}
+.lp-profile-quick button{min-width:0;border:1px solid #e8dfcf;border-radius:17px;background:#fff;padding:15px 7px;color:#45371f;font:inherit;font-size:13px;font-weight:750;box-shadow:0 5px 18px #10213b08}
+.lp-profile-quick button span{display:grid;place-items:center;width:39px;height:39px;margin:0 auto 8px;border-radius:13px;background:#f3ecd9;color:#936514;font-size:18px}
+.lp-profile-quick button:nth-child(2) span{background:#eaf4ef;color:#387a61}.lp-profile-quick button:nth-child(3) span{background:#eef0fa;color:#666fa7}
+@media(max-width:380px){.profile-card{grid-template-columns:60px minmax(0,1fr);column-gap:12px}.profile-card .avatar{width:60px;height:60px}.lp-profile-quick button{font-size:12px;padding-left:4px;padding-right:4px}}
+</style>
+<script id="lp-profile-account-centre-js">(()=>{function add(){const card=document.querySelector('.profile-card');if(!card||document.querySelector('.lp-profile-quick'))return;const quick=document.createElement('nav');quick.className='lp-profile-quick';quick.setAttribute('aria-label','Profile shortcuts');quick.innerHTML='<button type="button" data-action="account"><span>▣</span>Account</button><button type="button" data-action="security"><span>✓</span>Security</button><button type="button" data-action="support"><span>?</span>Support</button>';card.after(quick);quick.querySelector('[data-action=account]').onclick=()=>window.lpAccount?.();quick.querySelector('[data-action=security]').onclick=()=>window.securitySettings?.();quick.querySelector('[data-action=support]').onclick=()=>window.lpSupport?.();const title=document.querySelector('.header h1');if(title)title.textContent='Profile';}if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',add,{once:true});else add();})();</script>
 <script>window.addEventListener('load',()=>{if(location.hash==='#verification'&&typeof window.lpKyc==='function')window.lpKyc()});</script></body>
 </html>
 
