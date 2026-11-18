@@ -2466,8 +2466,8 @@ function openAITips() {
 <!-- Shared display-only bundles load before the data UI, including on a new device. -->
 <script src="recipient-phone.js?v=20261117-recent-recipients"></script>
 <script src="/api/data-catalogue"></script>
-<script src="purchase-progress.js?v=20261116-animated"></script>
-<script src="data-client.js?v=20261117-recent-recipients"></script>
+<script src="purchase-progress.js?v=20261118-share-receipt"></script>
+<script src="data-client.js?v=20261118-share-receipt"></script>
 <script src="electricity-client.js?v=20261017-gold-screens"></script>
 <script src="tv-client.js?v=20261017-gold-screens"></script>
 <script src="wallet-client.js?v=20261113-monnify-all"></script>
@@ -2760,10 +2760,12 @@ function openAITips() {
             <div style="font-size:11px;color:#64748b;text-transform:uppercase;font-weight:900">Meter token</div>
             <strong style="display:block;font-size:20px;word-break:break-all;margin-top:5px">${esc(token)}</strong>
           </div>` : ""}
-          <button class="lp-svc-primary lp-done" type="button" style="margin-top:18px">Done</button>
+          <button class="lp-svc-secondary lp-share-receipt" type="button" style="margin-top:18px;border:1px solid #d9c79f;border-radius:14px;background:#fff;color:#805b1b">↗ Share receipt</button>
+          <button class="lp-svc-primary lp-done" type="button" style="margin-top:10px">Done</button>
         </div>
       </div>`;
     overlay.querySelector(".lp-done").onclick = () => overlay.remove();
+    overlay.querySelector(".lp-share-receipt").onclick = async event => {const button=event.currentTarget,old=button.textContent;button.disabled=true;button.textContent="Opening share…";try{const result=await window.LonerPayPurchaseProgress?.shareReceipt({title,amount,details:lines});if(result==='copied'){button.textContent="Receipt copied";setTimeout(()=>{if(button.isConnected)button.textContent=old},1800);return;}}catch(error){if(error?.name!=='AbortError')alert(error.message||"Could not share receipt.");}finally{button.disabled=false;if(button.textContent==="Opening share…")button.textContent=old;}};
   }
 
   // ---------- AIRTIME ----------
