@@ -38,5 +38,6 @@ test('refund UI and owner queue keep wallet credit behind verified reconciliatio
  assert.match(sql,/one_active_case/);
  assert.match(sql,/enable row level security/);
  assert.match(sql,/auth\.uid\(\).*user_id/s);
- assert.doesNotMatch(sql,/grant select, insert/);
+ assert.doesNotMatch(sql,/grant select, insert on table public\.lp_payment_disputes to authenticated/);
+ assert.match(sql,/grant select, insert, update on table public\.lp_payment_disputes to service_role/);
 });
