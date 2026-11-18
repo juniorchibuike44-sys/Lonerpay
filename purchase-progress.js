@@ -29,5 +29,15 @@
     host.setAttribute('role','status');host.setAttribute('aria-live','polite');
     host.innerHTML=`<div class="lp-purchase-orbit"><div class="lp-purchase-ring"></div><div class="lp-purchase-core">${complete?'✓':'L'}</div></div><h2>${title}</h2><p>${message}</p><div class="lp-purchase-dots" aria-hidden="true"><span></span><span></span><span></span></div>`;
   }
-  window.LonerPayPurchaseProgress={render};
+  function receiptText({title='Payment successful',amount=0,details=[]}={}){
+    const money=new Intl.NumberFormat('en-NG',{style:'currency',currency:'NGN'}).format(Number(amount)||0);
+    return ['LonerPay Receipt',title,'Amount: '+money,...details.filter(x=>Array.isArray(x)&&x[1]!=null).map(([key,value])=>key+': '+value),'Status: Successful','Date: '+new Date().toLocaleString('en-NG',{timeZone:'Africa/Lagos'}),'Thank you for using LonerPay.'].join('\n');
+  }
+  async function shareReceipt(receipt){
+    const text=receiptText(receipt),data={title:'LonerPay Receipt',text};
+    if(navigator.share){await navigator.share(data);return 'shared';}
+    if(navigator.clipboard?.writeText){await navigator.clipboard.writeText(text);return 'copied';}
+    const area=document.createElement('textarea');area.value=text;area.style.position='fixed';area.style.opacity='0';document.body.append(area);area.select();const copied=document.execCommand?.('copy');area.remove();if(copied)return 'copied';throw Error('Sharing is not available on this device.');
+  }
+  window.LonerPayPurchaseProgress={render,shareReceipt,receiptText};
 })();
