@@ -38,7 +38,7 @@ export function validateMonnifyBusinessPayment(t,record,mode='live'){
  const reference=String(t?.paymentReference||'');
  if(!record||!businessReference(reference)||reference!==record.reference)throw paymentError('reference_mismatch');
  if(t.paymentStatus!=='PAID')throw paymentError('not_confirmed');
- if(String(t.currency||'NGN')!=='NGN')throw paymentError('currency_mismatch');
+ if(String(t.currencyCode||t.currency||'')!=='NGN')throw paymentError('currency_mismatch');
  if(Number(t.amountPaid)!==1000)throw paymentError('amount_mismatch');
  if(mode==='live'&&String(t.paymentDescription||'').toLowerCase()&&!String(t.paymentDescription).toLowerCase().includes('business'))throw paymentError('purpose_mismatch');
  // Monnify's verify response does not guarantee that checkout metadata is echoed.
@@ -47,8 +47,11 @@ export function validateMonnifyBusinessPayment(t,record,mode='live'){
  if(m.user_id!=null&&String(m.user_id)!==record.user_id)throw paymentError('account_mismatch');
  if(m.purpose!=null&&m.purpose!=='business_tools')throw paymentError('purpose_mismatch');
  const provider=String(t.transactionReference||'');if(!provider||provider.length>200)throw paymentError('provider_id_invalid');
- const paid=t.paidOn||t.paid_at||t.completedOn;if(!Number.isFinite(Date.parse(paid)))throw paymentError('payment_time_missing');
- return {p_reference:reference,p_provider:provider,p_amount:100000,p_currency:'NGN',p_received:100000,p_requested:100000,p_fees:null,p_channel:String(t.paymentMethod||'monnify').slice(0,40),p_paid:paid};
+ const paid=t.paidOn||t.paid_at||t.completedOn,paidMs=Date.parse(paid);if(!Number.isFinite(paidMs))throw paymentError('payment_time_missing');
+ // Some Monnify responses have historically represented local checkout time with
+ // an inconsistent offset. Never send a future timestamp into the activation RPC.
+ const confirmedAt=paidMs>Date.now()+300000?new Date().toISOString():new Date(paidMs).toISOString();
+ return {p_reference:reference,p_provider:provider,p_amount:100000,p_currency:'NGN',p_received:100000,p_requested:100000,p_fees:null,p_channel:String(t.paymentMethod||'monnify').slice(0,40),p_paid:confirmedAt};
 }
 export async function confirmMonnifyBusinessPayment(a,t,mode){const reference=String(t?.paymentReference||'');if(!businessReference(reference))throw Error('Invalid Business payment reference.');const rows=await businessDb(a,'lp_business_subscription_payments?reference=eq.'+encodeURIComponent(reference)+'&limit=1');const p=validateMonnifyBusinessPayment(t,rows[0],mode);return businessDb(a,'rpc/lp_business_subscription_confirm_v2','POST',p);}
 
