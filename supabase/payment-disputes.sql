@@ -33,6 +33,7 @@ on public.lp_payment_disputes (user_id, created_at desc);
 alter table public.lp_payment_disputes enable row level security;
 revoke all on table public.lp_payment_disputes from public, anon, authenticated;
 grant select on table public.lp_payment_disputes to authenticated;
+grant select, insert, update on table public.lp_payment_disputes to service_role;
 
 drop policy if exists "Customers can view their payment disputes" on public.lp_payment_disputes;
 create policy "Customers can view their payment disputes"
