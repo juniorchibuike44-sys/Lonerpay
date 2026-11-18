@@ -41,7 +41,11 @@ export function validateMonnifyBusinessPayment(t,record,mode='live'){
  if(String(t.currency||'NGN')!=='NGN')throw paymentError('currency_mismatch');
  if(Number(t.amountPaid)!==1000)throw paymentError('amount_mismatch');
  if(mode==='live'&&String(t.paymentDescription||'').toLowerCase()&&!String(t.paymentDescription).toLowerCase().includes('business'))throw paymentError('purpose_mismatch');
- if(String(m.user_id||'')!==record.user_id||m.purpose!=='business_tools')throw paymentError('account_mismatch');
+ // Monnify's verify response does not guarantee that checkout metadata is echoed.
+ // The server-created, unique reference already binds this payment to its owner.
+ // When metadata is present, it must still agree with that server-owned record.
+ if(m.user_id!=null&&String(m.user_id)!==record.user_id)throw paymentError('account_mismatch');
+ if(m.purpose!=null&&m.purpose!=='business_tools')throw paymentError('purpose_mismatch');
  const provider=String(t.transactionReference||'');if(!provider||provider.length>200)throw paymentError('provider_id_invalid');
  const paid=t.paidOn||t.paid_at||t.completedOn;if(!Number.isFinite(Date.parse(paid)))throw paymentError('payment_time_missing');
  return {p_reference:reference,p_provider:provider,p_amount:100000,p_currency:'NGN',p_received:100000,p_requested:100000,p_fees:null,p_channel:String(t.paymentMethod||'monnify').slice(0,40),p_paid:paid};
