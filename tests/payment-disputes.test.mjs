@@ -30,11 +30,15 @@ test('already-refunded transactions cannot open a refund case',async()=>{
 test('refund UI and owner queue keep wallet credit behind verified reconciliation',async()=>{
  const customer=await readFile(new URL('../payment-support-client.js',import.meta.url),'utf8');
  const admin=await readFile(new URL('../api/admin-disputes.js',import.meta.url),'utf8');
+ const adminUi=await readFile(new URL('../admin-disputes.js',import.meta.url),'utf8');
  const sql=await readFile(new URL('../supabase/payment-disputes.sql',import.meta.url),'utf8');
  assert.match(customer,/Report a problem/);
  assert.match(customer,/cannot credit a wallet by itself/);
  assert.match(admin,/reconcilePurchase/);
  assert.doesNotMatch(admin,/refund_wallet/);
+ assert.match(admin,/case_status:refunded\?'resolved':'investigating'/);
+ assert.match(admin,/provider_follow_up:providerDelivered/);
+ assert.match(adminUi,/Case completed\. No further actions are available/);
  assert.match(sql,/one_active_case/);
  assert.match(sql,/enable row level security/);
  assert.match(sql,/auth\.uid\(\).*user_id/s);
