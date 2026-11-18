@@ -171,3 +171,13 @@ body.lp-gold-dashboard.lp-app-screen #lpVoiceLauncher{order:7}
 .lp-app-service-copy small{font-size:9px;color:#8a98a1;line-height:1.35}
 .lp-app-service>b{color:#9ba7af;font-size:20px;font-weight:400;padding-right:5px}
 .lp-app-services [role=status]{color:#788893;text-align:center;font-size:12px;padding:24px 0}
+
+/* Upper dashboard polish only. Service presentation intentionally remains unchanged. */
+body.lp-gold-dashboard.lp-app-screen #lpBalanceLive{display:flex;align-items:center;justify-content:space-between;margin:15px -4px -4px;padding:11px 4px 0;border-top:1px solid #ffffff17;color:#c8d6dc;position:relative;z-index:2}
+body.lp-gold-dashboard.lp-app-screen #lpBalanceLive>span{display:grid;grid-template-columns:8px auto;grid-template-rows:auto auto;column-gap:8px;align-items:center}
+body.lp-gold-dashboard.lp-app-screen #lpBalanceLive i{grid-row:1/3;width:7px;height:7px;border-radius:50%;background:#6fd0a8;box-shadow:0 0 0 4px #6fd0a817}
+body.lp-gold-dashboard.lp-app-screen #lpBalanceLive b{font-size:10px;color:#e9f0f3;font-weight:650;line-height:1.2}
+body.lp-gold-dashboard.lp-app-screen #lpBalanceLive small{font-size:8px!important;color:#91a6b0!important;line-height:1.3}
+body.lp-gold-dashboard.lp-app-screen #lpBalanceLive button{display:grid;place-items:center;width:32px;height:32px;border:1px solid #ffffff20;border-radius:11px;background:#ffffff0b;color:#d6e1e6;font-size:18px;padding:0}
+body.lp-gold-dashboard.lp-app-screen #lpBalanceLive button.refreshing{animation:lpBalanceSpin .8s linear infinite}
+@keyframes lpBalanceSpin{to{transform:rotate(360deg)}}
