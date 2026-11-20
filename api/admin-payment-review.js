@@ -34,10 +34,14 @@ export default async function handler(req,res){
   if (purchases.length > 1) return res.status(409).json({error:'Multiple purchases match. Use the LonerPay reference from the receipt.'});
   const [purchase] = purchases;
 
-  const [refund] = await readLedger({
+  const refundFilters = {
    select:'status,amount,created_at',user_id:'eq.'+purchase.user_id,
-   request_id:'eq.'+purchase.request_id+':refund',transaction_type:'eq.refund',limit:'1'
-  });
+   transaction_type:'eq.refund',limit:'1'
+  };
+  let [refund] = await readLedger({...refundFilters,request_id:'eq.'+purchase.request_id+':refund'});
+  if (!refund) {
+   [refund] = await readLedger({...refundFilters,request_id:'eq.REFUND:'+purchase.request_id});
+  }
   const details = purchase.details || {};
   return res.status(200).json({purchase:{
    request_id:purchase.request_id,
