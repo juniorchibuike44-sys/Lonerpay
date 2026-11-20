@@ -21,14 +21,16 @@
     Object.defineProperties(plans,{partial:{value:partial===true,configurable:true},refreshedTypes:{value:refreshedTypes,configurable:true}});
     return plans;
   }
-  function keepFullCatalogue(network,incoming,{partial,savedAt=Date.now(),refreshedTypes=[]}={}){
+  function keepFullCatalogue(network,incoming,{partial,savedAt=Date.now(),refreshedTypes=[],failedTypes=[]}={}){
     const previous=cachedDataPlans(network,PLAN_DISPLAY_MS);
     // Only a complete response may replace the whole catalogue. Partial results
-    // refresh successful families and keep saved plans from missing families.
+    // refresh successful families, but explicitly failed families are hidden.
+    // This prevents a stale provider plan from reaching checkout while Pairgate
+    // is rate-limiting or has withdrawn that family.
     let displayed=incoming;
     if(partial&&previous){
-      const refreshed=new Set(refreshedTypes);
-      const merged=new Map(previous.filter(p=>!p.planType||!refreshed.has(p.planType)).map(p=>[p.code,p]));
+      const refreshed=new Set(refreshedTypes),failed=new Set(failedTypes);
+      const merged=new Map(previous.filter(p=>!p.planType||(!refreshed.has(p.planType)&&!failed.has(p.planType))).map(p=>[p.code,p]));
       for(const plan of incoming)merged.set(plan.code,plan);
       displayed=[...merged.values()].sort((a,b)=>a.amount-b.amount);
     }
@@ -124,7 +126,7 @@
           .map(item => ({ code: String(item.code), name: String(item.name || "Data plan"),
             amount: Number(item.amount), planType:item.planType||null, network, serviceID }));
         if (!plans.length) throw new Error("No data plans are available for this network.");
-        return keepFullCatalogue(network,plans,{partial:data.partial===true,refreshedTypes:Array.isArray(data.refreshedTypes)?data.refreshedTypes:[]});
+        return keepFullCatalogue(network,plans,{partial:data.partial===true,refreshedTypes:Array.isArray(data.refreshedTypes)?data.refreshedTypes:[],failedTypes:Array.isArray(data.failedTypes)?data.failedTypes:[]});
       } catch (error) {
         const fallback = !error.auth && cachedDataPlans(network, PLAN_DISPLAY_MS);
         if (fallback) return fallback;
@@ -384,7 +386,7 @@
         }
         plans = loaded; renderPlans();
         if (loaded.partial) {
-          summary.textContent = "Some categories could not refresh. Saved bundles remain shown; prices are checked before payment. Tap to retry.";
+          summary.textContent = "Some provider bundles are temporarily hidden because they could not be verified. Tap to retry.";
           summary.style.cursor = "pointer";
           summary.onclick = () => { summary.onclick = null; load(); };
         }
