@@ -3,7 +3,7 @@
  async function request(body,reference){const send=window.lpBusinessSession?.request?.bind(window.lpBusinessSession)||fetch;const r=await send('/api/admin-payment-review'+(reference?'?'+new URLSearchParams({request_id:reference}):''),{method:body?'POST':'GET',headers:{Authorization:'Bearer '+localStorage.getItem('lonerpay_access_token'),'Content-Type':'application/json'},...(body?{body:JSON.stringify(body)}:{}),cache:'no-store'});const d=await r.json();if(!r.ok)throw Error(d.error||'Review unavailable');return d;}
  function mountLookup(section) {
   const lookup = document.createElement('section');
-  lookup.innerHTML = '<h3>Find a purchase</h3><form><label>LonerPay reference <input name="reference" maxlength="150" required></label> <button class="outline">Find purchase</button></form><div aria-live="polite"></div>';
+  lookup.innerHTML = '<h3>Find a purchase</h3><form><label>LonerPay or PayGate reference <input name="reference" maxlength="150" autocapitalize="off" spellcheck="false" required></label> <button class="outline">Find purchase</button></form><div aria-live="polite"></div>';
   section.prepend(lookup);
   const form = lookup.querySelector('form');
   const button = form.querySelector('button');
@@ -14,7 +14,7 @@
    event.preventDefault();
    const reference = form.elements.reference.value.trim();
    if (!reference) {
-    output.textContent = 'Enter a LonerPay reference.';
+    output.textContent = 'Enter a LonerPay or PayGate reference.';
     return;
    }
    button.disabled = true;

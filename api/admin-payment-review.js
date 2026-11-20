@@ -13,25 +13,30 @@ export default async function handler(req,res){
   if (!requestId || requestId.length > 150) return res.status(400).json({error:'Enter a valid LonerPay reference'});
 
   const readLedger = async (filters) => {
-   const query = new URLSearchParams({...filters, limit:'1'});
+   const query = new URLSearchParams(filters);
    const response = await fetch(auth.supabaseUrl+'/rest/v1/wallet_transactions?'+query,{
     headers:{apikey:auth.secretKey,Authorization:'Bearer '+auth.secretKey},
     signal:AbortSignal.timeout(8000)
    });
    if (!response.ok) throw Error('Cannot load wallet records');
-   const [row] = await response.json();
-   return row;
+   return response.json();
   };
 
-  const purchase = await readLedger({
+  const purchaseFilters = {
    select:'user_id,request_id,status,service,amount,details,created_at',
-   request_id:'eq.'+requestId,transaction_type:'eq.debit'
-  });
-  if (!purchase) return res.status(404).json({error:'No purchase found for that LonerPay reference'});
+   transaction_type:'eq.debit',limit:'2'
+  };
+  let purchases = await readLedger({...purchaseFilters,request_id:'eq.'+requestId});
+  if (!purchases.length) {
+   purchases = await readLedger({...purchaseFilters,'details->>provider_reference':'eq.'+requestId});
+  }
+  if (!purchases.length) return res.status(404).json({error:'No purchase found for that reference'});
+  if (purchases.length > 1) return res.status(409).json({error:'Multiple purchases match. Use the LonerPay reference from the receipt.'});
+  const [purchase] = purchases;
 
-  const refund = await readLedger({
+  const [refund] = await readLedger({
    select:'status,amount,created_at',user_id:'eq.'+purchase.user_id,
-   request_id:'eq.'+requestId+':refund',transaction_type:'eq.refund'
+   request_id:'eq.'+purchase.request_id+':refund',transaction_type:'eq.refund',limit:'1'
   });
   const details = purchase.details || {};
   return res.status(200).json({purchase:{
