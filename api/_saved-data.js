@@ -23,7 +23,18 @@ export function savedDataCatalogues(rows) {
       }
     }
     const plans = [...byCode.values()].sort((a,b) => a.amount-b.amount);
-    if (plans.length) catalogues[serviceID] = {savedAt:Math.min(...plans.map(p=>p.savedAt)),variations:plans.map(({savedAt,...plan})=>plan)};
+    if (plans.length) {
+      const savedAtByType = {};
+      for (const plan of plans) {
+        if (!plan.planType) continue;
+        savedAtByType[plan.planType] = Math.max(savedAtByType[plan.planType] || 0, plan.savedAt);
+      }
+      catalogues[serviceID] = {
+        savedAt:Math.min(...plans.map(p=>p.savedAt)),
+        savedAtByType,
+        variations:plans.map(({savedAt,...plan})=>plan)
+      };
+    }
   }
   return catalogues;
 }
