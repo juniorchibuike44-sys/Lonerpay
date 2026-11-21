@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { pairgateRequest } from "./_pairgate.js";
 
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+const CHECKOUT_CATALOGUE_MAX_AGE_MS = 60 * 60_000;
 const busy = retryAfter => Object.assign(new Error("Data plans are busy. Please try again shortly."), { statusCode: 429, retryAfter });
 async function control(action, path, owner, payload = null, delay = 60) {
   const response = await fetch(new URL("/rest/v1/rpc/lp_catalogue_control", process.env.SUPABASE_URL), {
@@ -88,7 +89,7 @@ export async function checkoutDataPlan(network, code) {
     const selected=plansIn(row.payload.data).find(p=>String(p?.plan_id||p?.id||'')===String(code));
     if(!selected)continue;
     const savedAt=Date.parse(row.saved_at);
-    if(Number.isFinite(savedAt)&&savedAt<=now+5000&&savedAt>now-60_000)return selected;
+    if(Number.isFinite(savedAt)&&savedAt<=now+5000&&savedAt>now-CHECKOUT_CATALOGUE_MAX_AGE_MS)return selected;
     if(!knownFamily)knownFamily=family;
   }
   let error=null;
