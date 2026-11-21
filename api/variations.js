@@ -3,6 +3,7 @@ import { sharedCatalogueRequest as catalogueRequest, cataloguePlanTypes } from "
 
 const dataPlanCache = globalThis.__lonerPayDataPlanCacheV2 || new Map();
 globalThis.__lonerPayDataPlanCacheV2 = dataPlanCache;
+const SAVED_FAMILY_FALLBACK_MS = 60 * 60_000;
 const cacheGet = (key, maxAge) => {
   const item = dataPlanCache.get(key);
   return item && Date.now() - item.savedAt < maxAge ? item.value : null;
@@ -139,13 +140,34 @@ export default async function handler(req, res) {
           });
         }
       }
+      // PairGate can rate-limit one plan family while the other families still
+      // succeed. Keep a recently provider-confirmed copy of only that failed
+      // family visible instead of collapsing the customer's catalogue.
+      const fallbackTypes = [];
+      if (failedTypes.length) {
+        try {
+          const saved = (await readSavedDataCatalogues())?.[serviceID];
+          const now = Date.now();
+          for (const type of failedTypes) {
+            const savedAt = Number(saved?.savedAtByType?.[type] || saved?.savedAt);
+            if (!Number.isFinite(savedAt) || savedAt > now + 5000 || savedAt <= now - SAVED_FAMILY_FALLBACK_MS) continue;
+            const savedPlans = (saved?.variations || []).filter(plan => plan.planType === type);
+            if (!savedPlans.length) continue;
+            plans.push(...savedPlans);
+            fallbackTypes.push(type);
+          }
+        } catch (error) {
+          console.warn("Saved data catalogue fallback unavailable", { network, message: error?.message });
+        }
+      }
+      const unresolvedFailedTypes = failedTypes.filter(type => !fallbackTypes.includes(type));
       const unique = [...new Map(plans.map(plan => [plan.code, plan])).values()]
         .sort((a, b) => a.amount - b.amount);
       if (!unique.length && catalogueError) throw catalogueError;
       if (!unique.length) return res.status(502).json({ error: failedTypes.length ? "Data plans are temporarily unavailable. Please try again shortly." : "No data bundles are currently available for this network." });
       // A successful family must not turn failed families into a cached full catalogue.
-      if (!failedTypes.length) cacheSet(`plans:${network}`, unique);
-      return res.status(200).json({ serviceID, serviceName: `${network.toUpperCase()} Data`, provider: "pairgate", partial: failedTypes.length > 0, refreshedTypes:planTypes.filter(type=>!failedTypes.includes(type)), failedTypes, retryAfter: catalogueError?.retryAfter, variations: unique });
+      if (!unresolvedFailedTypes.length) cacheSet(`plans:${network}`, unique);
+      return res.status(200).json({ serviceID, serviceName: `${network.toUpperCase()} Data`, provider: "pairgate", partial: unresolvedFailedTypes.length > 0, refreshedTypes:planTypes.filter(type=>!failedTypes.includes(type)), fallbackTypes, failedTypes:unresolvedFailedTypes, retryAfter: catalogueError?.retryAfter, variations: unique });
     }
 
     // Get service variations from VTpass
