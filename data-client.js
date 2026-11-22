@@ -16,7 +16,8 @@
   // Saved catalogues are display-only; checkout validates availability and price.
   const PLAN_DISPLAY_MS = Infinity;
   const memoryPlans = new Map();
-  const planKey=network=>`lonerpay_data_plans_pairgate_v3_${String(network).toLowerCase()}`;
+  const planKey=network=>`lonerpay_data_plans_pairgate_v4_${String(network).toLowerCase()}`;
+  const catalogueLooksComplete=(network,plans)=>network!=="MTN"||plans.some(plan=>plan.planType==="GIFTING");
   function markPlans(plans,partial,refreshedTypes=[]){
     Object.defineProperties(plans,{partial:{value:partial===true,configurable:true},refreshedTypes:{value:refreshedTypes,configurable:true}});
     return plans;
@@ -51,7 +52,10 @@
           Array.isArray(cached.plans) && cached.plans.length &&
           cached.plans.every(p => p.network === network && p.serviceID === serviceIDs[network] &&
             p.code && Number.isFinite(Number(p.amount)) && Number(p.amount) > 0)) {
-        return markPlans(cached.plans,cached.partial);
+        // Older MTN responses could be marked complete after returning only CG.
+        // Treat that record as partial so the live GIFTING catalogue is fetched.
+        const partial=cached.partial===true||!catalogueLooksComplete(network,cached.plans);
+        return markPlans(cached.plans,partial);
       }
     } catch (_) {}
     return null;
