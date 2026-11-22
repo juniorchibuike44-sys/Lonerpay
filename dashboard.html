@@ -1441,7 +1441,7 @@ function safeTransferText(value) {
 }
 
 
-function buyData() {
+function legacyDataPreviewDisabled() {
   document.getElementById("dataBundleOverlay")?.remove();
 
   const overlay = document.createElement("div");
@@ -1651,7 +1651,7 @@ function buyData() {
       </div>`;
 
     sheet.querySelector(".lp-data-close").onclick = () => overlay.remove();
-    sheet.querySelector(".lp-review-back").onclick = () => { overlay.remove(); buyData(); };
+    sheet.querySelector(".lp-review-back").onclick = () => { overlay.remove(); legacyDataPreviewDisabled(); };
     sheet.querySelector(".lp-review-confirm").onclick = () => {
       const pin = sheet.querySelector(".lp-pin").value;
       const error = sheet.querySelector(".lp-inline-error");
@@ -1670,6 +1670,12 @@ function buyData() {
   };
 
   render();
+}
+
+// The live PayGate client replaces this fallback after it loads. Never expose
+// the retired VTpass preview or its hard-coded sample plans to customers.
+function buyData() {
+  alert("Data plans are still loading. Please wait a moment and try again.");
 }
 
 
