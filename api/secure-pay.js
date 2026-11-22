@@ -1157,8 +1157,7 @@ export default async function handler(
         return res.status(202).json({ code: "099", pending: true, message: "Data purchase was accepted and is awaiting confirmation", request_id: requestId, wallet: { balance: Number(debit.new_balance), transaction_id: debit.transaction_id } });
       }
       let query, finalStatus = "";
-      for (let attempt = 0; attempt < 2; attempt += 1) {
-        if (attempt > 0) await new Promise(resolve => setTimeout(resolve, 1000));
+      for (let attempt = 0; attempt < 1; attempt += 1) {
         query = await pairgateRequest(`/transaction/status?reference_code=${encodeURIComponent(providerReference)}`, { method: "GET" });
         finalStatus = pairgateStatus(query.data);
         if ((query.response.ok && isPairgateSuccessfulStatus(finalStatus)) || (query.response.ok && isPairgateFailedStatus(finalStatus))) break;
