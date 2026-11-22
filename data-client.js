@@ -403,10 +403,46 @@
     overlay.querySelectorAll(".ld-network").forEach(button => button.onclick = () => { network = button.dataset.network; overlay.querySelectorAll(".ld-network").forEach(x=>x.classList.remove("on")); button.classList.add("on"); load(); });
     overlay.querySelectorAll(".ld-filter").forEach(button => button.onclick = () => { filter = button.dataset.filter; overlay.querySelectorAll(".ld-filter").forEach(x=>x.classList.remove("on")); button.classList.add("on"); renderPlans(); });
 
-    next.onclick = () => {
+    let verifyingPlan = false;
+    next.onclick = async () => {
+      if (verifyingPlan) return;
       const phone = overlay.querySelector(".ld-phone").value.replace(/\D/g, "");
       if (!/^0\d{10}$/.test(phone)) return showError("Enter a valid 11-digit Nigerian phone number.");
       if (!selected) return showError("Select a data bundle.");
+      const plan = selected;
+      const sequence = loadSequence;
+      const token = getAccessToken();
+      verifyingPlan = true;
+      next.disabled = true;
+      next.textContent = "Checking bundle…";
+      error.style.display = "none";
+      try {
+        const params = new URLSearchParams({ serviceID: plan.serviceID, verifyPlan: plan.code });
+        const response = await fetch(`/api/variations?${params}`, {
+          headers: { Authorization: `Bearer ${token}` },
+          cache: "no-store",
+          signal: AbortSignal.timeout(15000)
+        });
+        const result = await response.json();
+        if (!overlay.isConnected || sequence !== loadSequence || selected !== plan || getAccessToken() !== token) return;
+        if (response.status === 429) {
+          const seconds = Math.max(1, Number(result.retryAfter) || 60);
+          return showError(`This bundle is temporarily unavailable. Try Continue again in ${seconds} seconds or choose another bundle.`);
+        }
+        if (!response.ok || !Number.isFinite(result.amount) || result.amount <= 0) {
+          return showError(result.error || "Could not verify this bundle. Try Continue again.");
+        }
+        selected = { ...plan, amount: result.amount };
+      } catch (_) {
+        if (overlay.isConnected && sequence === loadSequence && selected === plan) {
+          showError("Could not verify this bundle. Try Continue again.");
+        }
+        return;
+      } finally {
+        verifyingPlan = false;
+        next.disabled = !selected;
+        next.textContent = "Continue";
+      }
       const sheet = overlay.querySelector(".ld-sheet");
       const catalogueNodes = Array.from(sheet.childNodes);
       const catalogueScroll = overlay.querySelector(".ld-body").scrollTop;

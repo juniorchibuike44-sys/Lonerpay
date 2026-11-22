@@ -1,5 +1,5 @@
 import { readSavedDataCatalogues } from "./_saved-data.js";
-import { sharedCatalogueRequest as catalogueRequest, cataloguePlanTypes } from "./_catalogue.js";
+import { sharedCatalogueRequest as catalogueRequest, cataloguePlanTypes, checkoutDataPlan } from "./_catalogue.js";
 
 const dataPlanCache = globalThis.__lonerPayDataPlanCacheV2 || new Map();
 globalThis.__lonerPayDataPlanCacheV2 = dataPlanCache;
@@ -104,6 +104,18 @@ export default async function handler(req, res) {
 
     if (dataServices.has(serviceID)) {
       const network = serviceID === "etisalat-data" ? "9mobile" : serviceID.replace(/-data$/, "");
+      if (req.query?.verifyPlan !== undefined) {
+        const code = req.query.verifyPlan;
+        if (typeof code !== "string" || !code.trim() || code.length > 80) {
+          return res.status(400).json({ error: "Select a valid data bundle." });
+        }
+        const plan = await checkoutDataPlan(network, code);
+        const amount = Number(plan?.price || plan?.amount);
+        if (!Number.isFinite(amount) || amount <= 0) {
+          return res.status(409).json({ error: "This bundle is no longer available. Choose another bundle." });
+        }
+        return res.status(200).json({ amount });
+      }
       const cachedPlans = cacheGet(`plans:${network}`, 10 * 60_000);
       if (cachedPlans) return res.status(200).json({ serviceID, serviceName: `${network.toUpperCase()} Data`, provider: "pairgate", cached: true, variations: cachedPlans });
       const planTypes = await cataloguePlanTypes(network);

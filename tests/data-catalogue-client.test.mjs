@@ -18,7 +18,13 @@ test('expired login clears displayed cached plans instead of hiding authenticati
 test('pending checkout checks automatically and shows success without submitting again', async () => {
   const reference = '202611220814test';
   let payments = 0;
+  let planChecks = 0;
   const { dom, w } = setup(async url => {
+    if (url.includes('verifyPlan=')) {
+      planChecks++;
+      if (planChecks === 1) return Response.json({ retryAfter: 47 }, { status: 429 });
+      return Response.json({ amount: 103 });
+    }
     if (url === '/api/secure-pay') {
       payments++;
       return Response.json({ pending: true, request_id: reference }, { status: 202 });
@@ -37,7 +43,11 @@ test('pending checkout checks automatically and shows success without submitting
     await pause();
     w.document.querySelector('.ld-phone').value = '08012345678';
     w.document.querySelector('[data-code="4"]').click();
-    w.document.querySelector('.ld-continue').click();
+    await w.document.querySelector('.ld-continue').onclick();
+    assert.equal(w.document.querySelector('.ld-pin'), null);
+    assert.match(w.document.querySelector('.ld-error').textContent, /47 seconds/);
+    assert.equal(payments, 0);
+    await w.document.querySelector('.ld-continue').onclick();
     w.document.querySelector('.ld-pin').value = '1234';
     await w.document.querySelector('.ld-pay').onclick();
     assert.deepEqual(checks, [reference]);
