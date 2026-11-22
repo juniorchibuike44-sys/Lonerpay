@@ -271,7 +271,7 @@
       await window.refreshSecureTransactions();
     }
 
-client wait    if (!response.ok) {
+    if (!response.ok) {
       const error =
         new Error(
           data.error ||
