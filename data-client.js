@@ -271,17 +271,7 @@
       await window.refreshSecureTransactions();
     }
 
-    if (response.ok && (data.pending || String(data.code) === "099") && window.waitForSecurePayment) {
-      const confirmation = await window.waitForSecurePayment(data.request_id);
-      if (confirmation.status === "successful") data = { ...data, pending: false, code: "000", content: { transactions: { status: "delivered" } } };
-      if (confirmation.status === "refunded" || confirmation.status === "failed") {
-        const error = new Error(confirmation.status === "refunded" ? "Purchase failed. Your wallet was refunded." : "Purchase failed. Check Transactions for details.");
-        error.refunded = confirmation.status === "refunded";
-        throw error;
-      }
-    }
-
-    if (!response.ok) {
+client wait    if (!response.ok) {
       const error =
         new Error(
           data.error ||
@@ -464,7 +454,7 @@
           if (String(result.code) !== "000" || status !== "delivered") throw new Error("Data payment was not confirmed as delivered.");
           window.LonerPayRecipientPhone?.remember(phone);
           showSuccess();
-        } catch (purchaseError) { progress.remove(); if(review.isConnected){review.hidden=false;if(heading)heading.textContent="Review Data Purchase";if(subtitle)subtitle.textContent="Confirm before payment";} const refund = purchaseError.refunded ? " Your wallet was refunded." : purchaseError.refund_error ? ` Refund issue: ${purchaseError.refund_error}` : ""; fail((purchaseError.message || "Data payment failed.") + refund); button.disabled=false; button.textContent="Confirm Payment"; } finally { delete overlay.dataset.paymentBusy; sheet.querySelectorAll(".ld-back,.ld-close").forEach(control => control.disabled = false); }
+        } catch (purchaseError) { progress.remove(); if(review.isConnected){review.hidden=false;if(heading)heading.textContent="Review Data Purchase";if(subtitle)subtitle.textContent="Confirm before payment";} const message=purchaseError.message || "Data payment failed."; const refund = purchaseError.refunded&&!/refund/i.test(message) ? " Your wallet was refunded." : purchaseError.refund_error ? ` Refund issue: ${purchaseError.refund_error}` : ""; fail(message + refund); button.disabled=false; button.textContent="Confirm Payment"; } finally { delete overlay.dataset.paymentBusy; sheet.querySelectorAll(".ld-back,.ld-close").forEach(control => control.disabled = false); }
       };
     };
     load();
