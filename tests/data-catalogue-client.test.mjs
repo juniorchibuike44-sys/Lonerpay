@@ -14,3 +14,39 @@ test('cold partial list can grow into full catalogue and overlapping calls share
 test('slow MTN response cannot overwrite the selected Airtel catalogue',async()=>{let resolveMtn;const {dom,w}=setup(async url=>{if(url.includes('snapshot=1'))return Response.json({catalogues:{}});if(url.includes('mtn-data'))return await new Promise(r=>resolveMtn=r);return Response.json({variations:plans(2,'Airtel')});});w.buyData();await pause();w.document.querySelector('[data-network="Airtel"]').click();await pause();assert.equal(w.document.querySelectorAll('.ld-plan').length,2);resolveMtn(Response.json({variations:plans()}));await pause();assert.equal(w.document.querySelectorAll('.ld-plan').length,2);assert.equal(w.document.querySelector('.ld-network.on').dataset.network,'Airtel');dom.window.close();});
 test('expired login clears displayed cached plans instead of hiding authentication failure',async()=>{const {dom,w}=setup(async url=>url.includes('snapshot=1')?Response.json({catalogues:{}}):Response.json({error:'Expired'},{status:401}),{savedAt:Date.now()-11*60000,partial:false,plans:plans()});w.buyData();assert.equal(w.document.querySelectorAll('.ld-plan').length,6);await pause();assert.equal(w.document.querySelectorAll('.ld-plan').length,0);assert.match(w.document.querySelector('.ld-state').textContent,/session expired/);dom.window.close();});
 
+
+test('pending checkout checks automatically and shows success without submitting again', async () => {
+  const reference = '202611220814test';
+  let payments = 0;
+  const { dom, w } = setup(async url => {
+    if (url === '/api/secure-pay') {
+      payments++;
+      return Response.json({ pending: true, request_id: reference }, { status: 202 });
+    }
+    if (url.includes('snapshot=1')) return Response.json({ catalogues: {} });
+    return Response.json({ variations: plans() });
+  });
+  try {
+    const checks = [];
+    let confirm;
+    w.waitForSecurePayment = id => {
+      checks.push(id);
+      return new Promise(resolve => { confirm = resolve; });
+    };
+    w.buyData();
+    await pause();
+    w.document.querySelector('.ld-phone').value = '08012345678';
+    w.document.querySelector('[data-code="4"]').click();
+    w.document.querySelector('.ld-continue').click();
+    w.document.querySelector('.ld-pin').value = '1234';
+    await w.document.querySelector('.ld-pay').onclick();
+    assert.deepEqual(checks, [reference]);
+    assert.equal(w.document.querySelector('.ld-check').hidden, true);
+    confirm({ status: 'successful' });
+    await pause();
+    assert.match(w.document.querySelector('.ld-sheet h2').textContent, /Data Purchase Successful/);
+    assert.equal(payments, 1);
+  } finally {
+    dom.window.close();
+  }
+});

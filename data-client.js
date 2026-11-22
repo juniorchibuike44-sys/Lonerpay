@@ -435,20 +435,39 @@
           const result = await purchaseData({network, phone, variationCode:selected.code, amount:selected.amount, pin:pin.value, onSubmitted: () => window.LonerPayPurchaseProgress?.render(progress, 1, "data")}); pin.value = "";
           const status = String(result?.content?.transactions?.status || "").toLowerCase();
           if (result.pending || String(result.code) === "099" || status === "pending" || status === "initiated") {
-            sheet.innerHTML = `<div class="ld-review" style="text-align:center;padding-top:38px"><h2>Awaiting Confirmation</h2><p style="color:#66768b">Your request was submitted. If the data has arrived, do not buy it again. We are waiting for the provider’s final status.</p><p style="color:#66768b">Reference: ${escapeText(result.request_id || "")}</p><button class="ld-primary ld-check" type="button">Check Status</button><button class="ld-secondary ld-done" type="button">Done</button><p class="ld-check-result" style="color:#66768b"></p></div>`;
+            sheet.innerHTML = `<div class="ld-review" style="text-align:center;padding-top:38px"><h2>Awaiting Confirmation</h2><p class="ld-check-result" role="status" style="color:#66768b">Your request was submitted. Checking with the provider…</p><p style="color:#66768b;overflow-wrap:anywhere">Reference: ${escapeText(result.request_id || "")}</p><button class="ld-primary ld-check" type="button" hidden>Check Status</button><button class="ld-secondary ld-done" type="button">Done</button></div>`;
+            const check = sheet.querySelector(".ld-check");
+            const statusMessage = sheet.querySelector(".ld-check-result");
             sheet.querySelector(".ld-done").onclick = close;
-            sheet.querySelector(".ld-check").onclick = async event => {
-              const check = event.currentTarget; check.disabled = true; check.textContent = "Checking…";
-              const confirmation = await window.waitForSecurePayment?.(result.request_id);
-              if (!sheet.isConnected) return;
+            async function checkStatus() {
+              check.disabled = true;
+              check.hidden = true;
+              statusMessage.textContent = "Checking with the provider…";
+              let confirmation;
+              try {
+                confirmation = await window.waitForSecurePayment?.(result.request_id);
+              } catch (_) {
+                // A status lookup error leaves the original purchase pending.
+              }
+              if (!check.isConnected) return;
               if (confirmation?.status === "successful") {
                 window.LonerPayRecipientPhone?.remember(phone);
                 showSuccess();
-              } else {
-                sheet.querySelector(".ld-check-result").textContent = confirmation?.status === "refunded" ? "Purchase failed. Your wallet was refunded." : confirmation?.status === "failed" ? "Purchase failed. Check Transactions for details." : "Still awaiting the provider’s confirmation. You can close this screen and check Transactions later.";
-                check.disabled = false; check.textContent = "Check Status";
+                return;
               }
-            };
+              if (confirmation?.status === "refunded" || confirmation?.status === "failed") {
+                sheet.querySelector("h2").textContent = "Data Purchase Failed";
+                statusMessage.textContent = confirmation.status === "refunded"
+                  ? "Your wallet was refunded."
+                  : "Check Transactions for details.";
+                return;
+              }
+              statusMessage.textContent = "Still waiting for the provider. Check Transactions before buying again.";
+              check.disabled = false;
+              check.hidden = false;
+            }
+            check.onclick = checkStatus;
+            void checkStatus();
             return;
           }
           if (String(result.code) !== "000" || status !== "delivered") throw new Error("Data payment was not confirmed as delivered.");
