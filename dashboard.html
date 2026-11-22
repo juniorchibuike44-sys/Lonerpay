@@ -346,6 +346,7 @@ button:active {
 <link rel="stylesheet" href="dashboard-gold.css?v=20261017-alignment">
 <script src="dashboard-gold.js?v=20261019-places" defer></script>
 <script src="notifications-client.js?v=20261021-inbox-flow" defer></script><script src="bill-reminders-client.js?v=20261029" defer></script><script src="referrals-client.js?v=20261029" defer></script><script src="business-session.js?v=20261017-session" defer></script><script src="business-launcher.js?v=20261027-reseller" defer></script><script src="business-hub.js?v=20261111-paused" defer></script><script src="voice-control.js?v=20261019-navigation" defer></script><script src="discovery-client.js?v=20261120-requests" defer></script><link rel="manifest" href="/manifest.webmanifest"><meta name="theme-color" content="#f4f6f9"><script src="/app-install.js?v=20261020-android" defer></script><link rel="stylesheet" href="monnify-funding.css?v=20261113-primary">
+<script src="data-client.js?v=20261122-live-launcher" defer></script>
     <link rel="stylesheet" href="dashboard-app.css?v=20261118-account-centre">
 </head>
 
@@ -1674,8 +1675,23 @@ function legacyDataPreviewDisabled() {
 
 // The live PayGate client replaces this fallback after it loads. Never expose
 // the retired VTpass preview or its hard-coded sample plans to customers.
+let dataLauncherWait = null;
 function buyData() {
-  alert("Data plans are still loading. Please wait a moment and try again.");
+  const loadingFallback = buyData;
+  if (dataLauncherWait) return;
+  let attempts = 0;
+  dataLauncherWait = setInterval(() => {
+    if (window.buyData !== loadingFallback) {
+      clearInterval(dataLauncherWait); dataLauncherWait = null;
+      window.buyData();
+      return;
+    }
+    attempts += 1;
+    if (attempts >= 40) {
+      clearInterval(dataLauncherWait); dataLauncherWait = null;
+      alert("Data plans could not start. Check your connection and try again.");
+    }
+  }, 250);
 }
 
 
@@ -2473,7 +2489,6 @@ function openAITips() {
 <script src="recipient-phone.js?v=20261117-recent-recipients"></script>
 <script src="/api/data-catalogue"></script>
 <script src="purchase-progress.js?v=20261118-receipt-image"></script>
-<script src="data-client.js?v=20261122-fast-purchase"></script>
 <script src="electricity-client.js?v=20261017-gold-screens"></script>
 <script src="tv-client.js?v=20261017-gold-screens"></script>
 <script src="wallet-client.js?v=20261113-monnify-all"></script>
